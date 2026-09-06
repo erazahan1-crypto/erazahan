@@ -1,0 +1,473 @@
+---
+import Layout from '../layouts/Layout.astro';
+import {
+  posts,
+  pages,
+  postBySlug,
+  pageByPath,
+  letterPathByLetter,
+  normLetter,
+  ALPHABET,
+  nameLetterPages,
+  nameLetterPageByPath,
+  fixNameGrids,
+  fixAnatomyPage,
+  stripBrokenImages,
+  postCover,
+  addInternalLinks,
+  fixBrokenInternalLinks,
+  resolveWordSlug,
+  relatedForPost,
+  LEGACY_PATH_ALIASES,
+} from '../lib/site';
+import type { Comment } from '../lib/site';
+import { excerptOf } from '../lib/site';
+import { SITE } from '../lib/config';
+import { articleSchema, breadcrumbSchema, itemListSchema } from '../lib/seo';
+
+export function getStaticPaths() {
+  const routes: { params: { path: string } }[] = [];
+  const seen = new Set<string>();
+  for (const p of posts) {
+    if (p.slug && !seen.has(p.slug)) {
+      seen.add(p.slug);
+      routes.push({ params: { path: p.slug } });
+    }
+  }
+  for (const p of pages) {
+    if (p.isFront) continue;
+    if (p.path && !seen.has(p.path)) {
+      seen.add(p.path);
+      routes.push({ params: { path: p.path } });
+    }
+  }
+  for (const np of nameLetterPages) {
+    if (np.path && !seen.has(np.path)) {
+      seen.add(np.path);
+      routes.push({ params: { path: np.path } });
+    }
+  }
+  return routes;
+}
+
+const raw = Astro.params.path;
+const slug = Array.isArray(raw) ? raw.join('/') : (raw ?? '');
+
+const legacyRedirect = LEGACY_PATH_ALIASES[slug];
+if (legacyRedirect) {
+  return Astro.redirect(encodeURI(`/${legacyRedirect}/`), 301);
+}
+
+const post = postBySlug.get(slug);
+const page = pageByPath.get(slug);
+const namePage = nameLetterPageByPath.get(slug);
+const isNamesHub = !!page && page.slug === 'anunneri-nshanakutyuny';
+const namesHubContent = isNamesHub && page ? fixNameGrids(page.content) : '';
+
+const isHub = !!page && page.slug === 'erazahan-online';
+const stripHub = (html: string) =>
+  html
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<div[^>]*erazahan-alphabet-grid[\s\S]*?<\/div>/gi, '');
+const hubContent = isHub && page ? stripHub(page.content) : '';
+
+const isAnatomy = !!page && page.path === 'gangabanutyun';
+const anatomyContent = isAnatomy && page ? fixAnatomyPage(page.content) : '';
+
+const isChg = !!page && page.path === 'chgtnvac-erazner';
+const chgThreads: { question: Comment; answers: Comment[] }[] = [];
+const chgOrphans: Comment[] = [];
+if (isChg && page) {
+  const comments = page.comments ?? [];
+  const questions = comments.filter((c) => !c.parent || c.parent === '0');
+  const questionIds = new Set(questions.map((q) => q.id));
+  for (const q of questions) {
+    chgThreads.push({ question: q, answers: comments.filter((a) => a.parent === q.id) });
+  }
+  for (const c of comments) {
+    if (c.parent && c.parent !== '0' && !questionIds.has(c.parent)) chgOrphans.push(c);
+  }
+}
+
+const title = post ? post.title : namePage ? namePage.title : page ? page.title : 'Էջը չի գտնվել';
+const description = post
+  ? (post.description && post.description.trim()) || excerptOf(post, 160)
+  : namePage ? namePage.title : page ? page.title : 'Էջը գոյություն չունի';
+const cover = post ? postCover(post) : null;
+const related = post ? relatedForPost(post) : [];
+
+const crumbs = [
+  { name: 'Գլխավոր', url: `${SITE}/` },
+  ...(post && post.letter
+    ? [{ name: `Տառ ${post.letter}`, url: `${SITE}/${letterPathByLetter.get(normLetter(post.letter)) || ''}` }]
+    : []),
+  { name: title, url: `${SITE}/${slug}/` },
+];
+---
+
+<Layout title={title} description={description} type={post ? 'article' : 'website'} image={cover || undefined}>
+  {
+    post ? (
+      <article class="reveal mx-auto max-w-3xl px-4 py-12 sm:px-6">
+        <script type="application/ld+json" set:html={JSON.stringify(articleSchema(post))} />
+        <script type="application/ld+json" set:html={JSON.stringify(breadcrumbSchema(crumbs))} />
+        <nav class="text-sm text-slate-400">
+          <a href="/" class="transition hover:text-white">Գլխավոր</a>
+          {post.letter ? (
+            <>
+              <span class="mx-1.5">›</span>
+              <a
+                href={`/${letterPathByLetter.get(normLetter(post.letter)) || ''}`}
+                class="transition hover:text-white"
+              >
+                Տառ {post.letter}
+              </a>
+            </>
+          ) : null}
+        </nav>
+
+        <h1 class="mt-4 font-display text-3xl font-bold leading-tight text-white sm:text-4xl">
+          {post.title}
+        </h1>
+
+        <div class="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-400">
+          {post.letter ? (
+            <span class="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-medium">
+              Տառ {post.letter}
+            </span>
+          ) : null}
+          {post.date ? <span>{post.date}</span> : null}
+        </div>
+
+        {cover ? (
+          <img
+            src={cover}
+            alt={post.title}
+            class="mt-6 w-full max-w-xl rounded-2xl border border-white/10 object-cover shadow-lg"
+            loading="lazy"
+          />
+        ) : null}
+
+        {post.content ? (
+            <div class="dream-content mt-6" set:html={fixBrokenInternalLinks(addInternalLinks(stripBrokenImages(post.content), post.slug))} />
+        ) : null}
+
+        {related.length > 0 ? (
+          <section class="mt-12 border-t border-white/10 pt-8">
+            <h2 class="font-display text-2xl font-bold text-white">Առնչվող երազներ</h2>
+            <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {related.map((r) => (
+                <a
+                  href={`/${r.slug}/`}
+                  class="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:-translate-y-0.5 hover:border-violet-400/40 hover:bg-white/10"
+                >
+                  <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-violet-500/30 to-indigo-600/30 font-display text-sm font-bold text-white">
+                    {r.letter || '🌙'}
+                  </span>
+                  <span class="font-semibold leading-snug text-white transition group-hover:text-violet-200">
+                    {r.title}
+                  </span>
+                </a>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {post.comments && post.comments.length > 0 ? (
+          <section class="mt-12 border-t border-white/10 pt-8">
+            <h2 class="font-display text-2xl font-bold text-white">
+              Մեկնաբանություններ ({post.comments.length})
+            </h2>
+            <ul class="mt-6 space-y-4">
+              {post.comments.map((c) => (
+                <li
+                  class={
+                    c.parent && c.parent !== '0'
+                      ? 'ml-6 rounded-xl border border-white/5 bg-white/5 p-4'
+                      : 'rounded-xl border border-white/5 bg-white/5 p-4'
+                  }
+                >
+                  <div class="flex flex-wrap items-center gap-2 text-sm">
+                    <span class="font-semibold text-white">{c.author || 'Անանուն'}</span>
+                    {c.date ? <span class="text-slate-500">{c.date}</span> : null}
+                  </div>
+                  <p class="mt-2 text-sm leading-relaxed text-slate-300">{c.content}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+      </article>
+    ) : page && page.kind === 'letter' ? (
+      <div class="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+        <script type="application/ld+json" set:html={JSON.stringify(itemListSchema(`Երազներ «${page.letter}» տառով`, page.wordList.map((w) => ({ name: w.wordText, slug: resolveWordSlug(w.slug) })).filter((i) => i.slug).map((i) => ({ name: i.name, url: `${SITE}/${i.slug}/` }))))} />
+        <script type="application/ld+json" set:html={JSON.stringify(breadcrumbSchema(crumbs))} />
+        <div class="text-center">
+          <div class="mx-auto grid size-20 place-items-center rounded-2xl bg-gradient-to-br from-violet-500/30 to-indigo-600/30 font-display text-4xl font-bold text-white">
+            {page.letter}
+          </div>
+          <h1 class="mt-6 font-display text-3xl font-bold text-white sm:text-4xl">{page.title}</h1>
+          <p class="mt-3 text-sm text-slate-400">{page.wordList.length} մեկնաբանություն</p>
+          <div class="mx-auto mt-6 max-w-md">
+            <div class="relative">
+              <input
+                id="letter-filter"
+                type="search"
+                placeholder={`Փնտրել «${page.letter}» տառում…`}
+                autocomplete="off"
+                class="w-full rounded-full border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-violet-400/60 focus:bg-white/10 focus:ring-2 focus:ring-violet-500/30"
+              />
+              <svg class="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.35-4.35"></path></svg>
+            </div>
+          </div>
+        </div>
+
+        <div id="letter-grid" class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {page.wordList.map((w) => {
+            const slug = resolveWordSlug(w.slug);
+            return slug ? (
+              <a
+                href={`/${slug}/`}
+                data-word={`${w.wordText} ${w.wordTranslit}`.toLowerCase()}
+                class="group rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:-translate-y-0.5 hover:border-violet-400/40 hover:bg-white/10"
+              >
+                <div class="font-semibold text-white group-hover:text-violet-200">{w.wordText}</div>
+                {w.wordTranslit ? (
+                  <div class="mt-1 text-xs text-slate-400">{w.wordTranslit}</div>
+                ) : null}
+              </a>
+            ) : (
+              <div class="rounded-2xl border border-white/5 bg-white/5 p-4" data-word={`${w.wordText} ${w.wordTranslit}`.toLowerCase()}>
+                <div class="font-semibold text-slate-300">{w.wordText}</div>
+                {w.wordTranslit ? (
+                  <div class="mt-1 text-xs text-slate-500">{w.wordTranslit}</div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+
+        <script>
+          const letterFilter = document.getElementById('letter-filter');
+          const letterGrid = document.getElementById('letter-grid');
+          if (letterFilter && letterGrid) {
+            letterFilter.addEventListener('input', () => {
+              const term = letterFilter.value.trim().toLowerCase();
+              letterGrid.querySelectorAll('[data-word]').forEach((card) => {
+                card.style.display = !term || (card.dataset.word || '').includes(term) ? '' : 'none';
+              });
+            });
+          }
+        </script>
+      </div>
+    ) : namePage ? (
+      <div class="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+        <div class="text-center">
+          <div class="mx-auto grid size-20 place-items-center rounded-2xl bg-gradient-to-br from-violet-500/30 to-indigo-600/30 font-display text-4xl font-bold text-white">
+            {namePage.letter}
+          </div>
+          <h1 class="mt-6 font-display text-3xl font-bold text-white sm:text-4xl">{namePage.title}</h1>
+          <p class="mt-3 text-sm text-slate-400">{namePage.names.length} անուն</p>
+        </div>
+
+        <div class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {namePage.names.map((n) => (
+            <a
+              href={`/${n.slug}/`}
+              class="group flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:-translate-y-0.5 hover:border-violet-400/40 hover:bg-white/10"
+            >
+              <span class="font-semibold text-white group-hover:text-violet-200">{n.wordText}</span>
+              <span class="text-violet-300/70 opacity-0 transition group-hover:opacity-100" aria-hidden="true">→</span>
+            </a>
+          ))}
+        </div>
+      </div>
+    ) : isHub ? (
+      <div class="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+        {hubContent ? <div class="dream-content" set:html={fixBrokenInternalLinks(stripBrokenImages(hubContent))} /> : null}
+        <div class="mt-10 border-t border-white/10 pt-8">
+          <div class="flex flex-wrap justify-center gap-2.5">
+            {ALPHABET.map((letter) => {
+              const lp = letterPathByLetter.get(normLetter(letter));
+              const cls =
+                'grid size-10 place-items-center rounded-xl border border-white/10 bg-white/5 font-semibold text-slate-200 transition hover:scale-105 hover:border-violet-400/60 hover:bg-violet-500/20 hover:text-white sm:size-11';
+              return lp ? (
+                <a href={`/${lp}/`} class={cls}>
+                  {letter}
+                </a>
+              ) : (
+                <span class="grid size-10 cursor-default place-items-center rounded-xl border border-white/5 bg-white/5 font-semibold text-slate-600 sm:size-11">
+                  {letter}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    ) : page ? (
+      <article class="reveal mx-auto max-w-3xl px-4 py-12 sm:px-6">
+        <h1 class="font-display text-3xl font-bold text-white sm:text-4xl">{page.title}</h1>
+        {page.content ? (
+          <div
+            class="dream-content mt-6"
+            set:html={fixBrokenInternalLinks(stripBrokenImages(isNamesHub ? namesHubContent : isAnatomy ? anatomyContent : page.content))}
+          />
+        ) : null}
+
+        {isChg ? (
+          <>
+            <section class="mt-10 rounded-2xl border border-violet-400/30 bg-white/5 p-6">
+              <h2 class="font-display text-2xl font-bold text-white">Պատմեք ձեր երազը</h2>
+              <p class="mt-2 text-sm leading-relaxed text-slate-400">
+                Չե՞ք գտել ձեր երազի բացատրությունը։ Գրեք այն այստեղ, և մենք կպատասխանենք շուտով։
+              </p>
+              <form class="mt-5 space-y-4" data-dream-form>
+                <div>
+                  <label class="mb-1.5 block text-sm font-medium text-slate-300" for="dream-name">
+                    Անուն
+                  </label>
+                  <input
+                    id="dream-name"
+                    name="name"
+                    type="text"
+                    autocomplete="name"
+                    class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder:text-slate-500 outline-none transition focus:border-violet-400/60 focus:ring-2 focus:ring-violet-500/30"
+                    placeholder="Ձեր անունը (պարտադիր չէ)"
+                  />
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-sm font-medium text-slate-300" for="dream-text">
+                    Ձեր երազը
+                  </label>
+                  <textarea
+                    id="dream-text"
+                    name="dream"
+                    rows="5"
+                    required
+                    class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder:text-slate-500 outline-none transition focus:border-violet-400/60 focus:ring-2 focus:ring-violet-500/30"
+                    placeholder="Գրեք ձեր երազը…"
+                  ></textarea>
+                </div>
+                <button
+                  type="submit"
+                  class="rounded-xl bg-gradient-to-r from-violet-500 to-indigo-600 px-6 py-3 font-semibold text-white shadow-lg shadow-violet-900/40 transition hover:from-violet-400 hover:to-indigo-500 active:scale-95"
+                >
+                  Ուղարկել
+                </button>
+                <p class="hidden text-sm font-medium text-emerald-400" data-dream-success>
+                  Շնորհակալություն, ձեր երազն ուղարկված է։
+                </p>
+                <p class="hidden text-sm font-medium text-rose-400" data-dream-error>
+                  Ներեցեք, ինչ-որ բան սխալ գնաց։ Փորձեք կրկին։
+                </p>
+              </form>
+            </section>
+            <script is:inline>
+              (function () {
+                const form = document.querySelector('[data-dream-form]');
+                if (!form) return;
+                const ok = form.querySelector('[data-dream-success]');
+                const err = form.querySelector('[data-dream-error]');
+                const btn = form.querySelector('button[type="submit"]');
+                form.addEventListener('submit', async function (e) {
+                  e.preventDefault();
+                  const dream = form.querySelector('[name="dream"]');
+                  if (!dream || !dream.value.trim()) return;
+                  ok.classList.add('hidden');
+                  err.classList.add('hidden');
+                  btn.disabled = true;
+                  const prev = btn.textContent;
+                  btn.textContent = 'Ուղարկվում է…';
+                  try {
+                    const res = await fetch('/api/dreams', { method: 'POST', body: new FormData(form) });
+                    if (!res.ok) throw new Error('bad');
+                    ok.classList.remove('hidden');
+                    form.reset();
+                  } catch (ex) {
+                    err.classList.remove('hidden');
+                  } finally {
+                    btn.disabled = false;
+                    btn.textContent = prev;
+                  }
+                });
+              })();
+            </script>
+            <section class="mt-12 border-t border-white/10 pt-8">
+              <h2 class="font-display text-2xl font-bold text-white">
+                Հարցեր և պատասխաններ ({page.comments?.length ?? 0})
+              </h2>
+              <div class="mt-6 space-y-6">
+                {chgThreads.map((t) => (
+                  <div class="rounded-2xl border border-white/5 bg-white/5 p-4">
+                    <div class="flex flex-wrap items-center gap-2 text-sm">
+                      <span class="font-semibold text-white">{t.question.author || 'Անանուն'}</span>
+                      {t.question.date ? <span class="text-slate-500">{t.question.date}</span> : null}
+                    </div>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-200">{t.question.content}</p>
+                    {t.answers.length > 0 ? (
+                      <div class="mt-4 space-y-3 border-l-2 border-violet-500/40 pl-4">
+                        {t.answers.map((a) => (
+                          <div class="rounded-xl border border-white/5 bg-white/5 p-3">
+                            <div class="flex flex-wrap items-center gap-2 text-xs">
+                              <span class="font-semibold text-violet-300">{a.author || 'Erazahan'}</span>
+                              {a.date ? <span class="text-slate-500">{a.date}</span> : null}
+                            </div>
+                            <p class="mt-1.5 text-sm leading-relaxed whitespace-pre-line text-slate-300">
+                              {a.content}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p class="mt-3 inline-flex items-center gap-1.5 rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-xs font-medium text-amber-300">
+                        Սպասում է պատասխանի
+                      </p>
+                    )}
+                  </div>
+                ))}
+                {chgOrphans.map((c) => (
+                  <div class="rounded-xl border border-white/5 bg-white/5 p-4">
+                    <div class="flex flex-wrap items-center gap-2 text-sm">
+                      <span class="font-semibold text-violet-300">{c.author || 'Erazahan'}</span>
+                      {c.date ? <span class="text-slate-500">{c.date}</span> : null}
+                    </div>
+                    <p class="mt-2 text-sm leading-relaxed whitespace-pre-line text-slate-300">{c.content}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </>
+        ) : page.comments && page.comments.length > 0 ? (
+          <section class="mt-12 border-t border-white/10 pt-8">
+            <h2 class="font-display text-2xl font-bold text-white">
+              Հարցեր և պատասխաններ ({page.comments.length})
+            </h2>
+            <ul class="mt-6 space-y-4">
+              {page.comments.map((c) => (
+                <li class="rounded-xl border border-white/5 bg-white/5 p-4">
+                  <div class="flex flex-wrap items-center gap-2 text-sm">
+                    <span class="font-semibold text-white">{c.author || 'Անանուն'}</span>
+                    {c.date ? <span class="text-slate-500">{c.date}</span> : null}
+                  </div>
+                  <p class="mt-2 text-sm leading-relaxed text-slate-300">{c.content}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+      </article>
+    ) : (
+      <div class="mx-auto max-w-3xl px-4 py-20 text-center sm:px-6">
+        <p class="text-6xl" aria-hidden="true">🌙</p>
+        <h1 class="mt-4 font-display text-3xl font-bold text-white">Էջը չի գտնվել</h1>
+        <p class="mt-3 text-slate-400">Ներեցեք, այս էջը գոյություն չունի:</p>
+        <a
+          href="/"
+          class="mt-6 inline-block rounded-xl bg-gradient-to-r from-violet-500 to-indigo-600 px-6 py-3 font-semibold text-white shadow-lg shadow-violet-900/40 transition hover:from-violet-400 hover:to-indigo-500"
+        >
+          Գլխավոր էջ
+        </a>
+      </div>
+    )
+  }
+</Layout>

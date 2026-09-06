@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS dreams (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL DEFAULT '',
+  dream TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);

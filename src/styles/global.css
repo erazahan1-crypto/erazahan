@@ -1,0 +1,355 @@
+@import "../../node_modules/tailwindcss/index.css";
+
+/* Переменные, на которые ссылаются импортированные <style> из WordPress-контента */
+:root {
+  --card-bg: rgba(255, 255, 255, 0.05);
+  --border-color: rgba(255, 255, 255, 0.1);
+  --text-main: #e2e8f0;
+  --text-light: #cbd5e1;
+  --accent-gold: #e8c66a;
+  --bg-dark: #0a0817;
+}
+
+@theme {
+  --font-sans: "Noto Sans Armenian", "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Noto Serif Armenian", ui-serif, Georgia, serif;
+
+  --color-night-950: #0a0817;
+  --color-night-900: #131029;
+  --color-night-800: #1d1840;
+  --color-night-700: #2a2357;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #0a0817;
+    color: #e2e8f0;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background-color: rgba(139, 92, 246, 0.45);
+    color: #ffffff;
+  }
+}
+
+/* Акцентный текстовый градиент (золото → сирень) */
+.text-gradient {
+  background-image: linear-gradient(120deg, #f5e6c8 0%, #e8c66a 40%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Звёздное небо для hero-блока */
+.starfield {
+  background-image:
+    radial-gradient(5px 5px at 12% 28%, rgba(255, 255, 255, 1), transparent 70%),
+    radial-gradient(4px 4px at 38% 65%, rgba(255, 255, 255, 0.95), transparent 70%),
+    radial-gradient(6px 6px at 68% 18%, rgba(245, 230, 200, 1), transparent 70%),
+    radial-gradient(4px 4px at 84% 72%, rgba(255, 255, 255, 0.9), transparent 70%),
+    radial-gradient(5px 5px at 22% 88%, rgba(167, 139, 250, 1), transparent 70%),
+    radial-gradient(4px 4px at 55% 42%, rgba(255, 255, 255, 0.95), transparent 70%),
+    radial-gradient(6px 6px at 92% 48%, rgba(232, 198, 106, 1), transparent 70%);
+}
+
+/* Второй слой звёзд (другой узор) для эффекта мерцания */
+.starfield-2 {
+  background-image:
+    radial-gradient(4px 4px at 8% 75%, rgba(255, 255, 255, 0.95), transparent 70%),
+    radial-gradient(5px 5px at 30% 12%, rgba(255, 255, 255, 0.9), transparent 70%),
+    radial-gradient(4px 4px at 48% 55%, rgba(232, 198, 106, 0.95), transparent 70%),
+    radial-gradient(6px 6px at 63% 80%, rgba(255, 255, 255, 1), transparent 70%),
+    radial-gradient(4px 4px at 78% 35%, rgba(167, 139, 250, 0.95), transparent 70%),
+    radial-gradient(5px 5px at 90% 82%, rgba(255, 255, 255, 0.9), transparent 70%),
+    radial-gradient(4px 4px at 15% 45%, rgba(245, 230, 200, 0.95), transparent 70%);
+}
+
+/* Типографика импортированного HTML-контента снов и страниц */
+.dream-content {
+  line-height: 1.75;
+  color: #cbd5e1;
+}
+
+.dream-content h1,
+.dream-content h2,
+.dream-content h3,
+.dream-content h4,
+.dream-content h5 {
+  font-family: var(--font-display);
+  color: #ffffff;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 1.5em 0 0.5em;
+}
+
+.dream-content h1 { font-size: 1.6rem; }
+.dream-content h2 { font-size: 1.4rem; }
+.dream-content h3 { font-size: 1.2rem; }
+.dream-content h4 { font-size: 1.1rem; }
+
+.dream-content p {
+  margin: 0.75em 0;
+}
+
+.dream-content ul,
+.dream-content ol {
+  margin: 0.75em 0;
+  padding-left: 1.5em;
+}
+
+.dream-content ul { list-style: disc; }
+.dream-content ol { list-style: decimal; }
+
+.dream-content a {
+  color: #c4b5fd;
+  text-decoration: underline;
+}
+
+.dream-content strong,
+.dream-content b {
+  color: #ffffff;
+}
+
+.dream-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+  margin: 1em 0;
+}
+
+.dream-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+}
+
+.dream-content th,
+.dream-content td {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0.5em 0.75em;
+  text-align: left;
+}
+
+/* ==== Аккуратные сетки-«таблицы» букв и чисел в импортированных страницах ==== */
+.dream-content .fortune-alphabet-matrix,
+.dream-content .names-alphabet-grid,
+.dream-content .erazahan-alphabet-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)) !important;
+  gap: 10px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 1.5rem auto !important;
+  padding: 0 !important;
+}
+
+.dream-content .fortune-letter-cell,
+.dream-content .name-letter-cell,
+.dream-content .live-alphabet-card {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  min-height: 50px;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  color: #e2e8f0 !important;
+  transition: all 0.2s ease !important;
+  box-sizing: border-box;
+}
+
+.dream-content .fortune-letter-cell a,
+.dream-content .name-letter-cell a,
+.dream-content .live-alphabet-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: inherit !important;
+  text-decoration: none !important;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.dream-content .fortune-letter-cell:hover,
+.dream-content .name-letter-cell:hover,
+.dream-content .live-alphabet-card:hover {
+  border-color: rgba(167, 139, 250, 0.7) !important;
+  background-color: rgba(139, 92, 246, 0.22) !important;
+  color: #ffffff !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(139, 92, 246, 0.28);
+}
+
+
+/* ==== Иконки-карточки страницы «Գանգաբանություն» ==== */
+.dream-content .anatomy-icon-box svg {
+  width: 34px;
+  height: 34px;
+  display: block;
+}
+
+/* ==== «Թվագիտություն»: чиним мобильную сетку таблицы чисел ==== */
+@media (max-width: 768px) {
+  .dream-content .numerology-matrix-grid {
+    grid-template-columns: repeat(9, 1fr) !important;
+    gap: 6px !important;
+  }
+  .dream-content .num-cell.header-number {
+    grid-column: auto !important;
+    height: auto !important;
+    border-radius: 8px !important;
+    font-size: 16px !important;
+  }
+  .dream-content .num-cell.header-number::before {
+    content: none !important;
+  }
+  .dream-content .num-cell.header-number b {
+    display: inline !important;
+  }
+}
+
+/* ===================== «Живой» сайт: анимации ===================== */
+
+/* Появление при прокрутке. Класс js-reveal ставится на <html> инлайновым скриптом,
+   поэтому без JS весь контент остаётся видимым. */
+html.js-reveal .reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+html.js-reveal .reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Мерцание звёздного неба */
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-twinkle {
+  animation: twinkle 2.4s ease-in-out infinite;
+}
+
+@keyframes twinkle-alt {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.animate-twinkle-alt {
+  animation: twinkle-alt 2.4s ease-in-out infinite;
+}
+
+/* «Дыхание» цветных пятен в hero */
+@keyframes blob-float {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(34px, -42px) scale(1.16);
+  }
+  66% {
+    transform: translate(-28px, 24px) scale(0.9);
+  }
+}
+
+.animate-blob {
+  animation: blob-float 11s ease-in-out infinite;
+}
+
+.animate-blob-slow {
+  animation: blob-float 16s ease-in-out infinite reverse;
+}
+
+/* Переливающийся градиентный заголовок */
+@keyframes shimmer {
+  to {
+    background-position: 200% center;
+  }
+}
+
+.shimmer-text {
+  background-image: linear-gradient(
+    110deg,
+    #f5e6c8 0%,
+    #e8c66a 25%,
+    #fff6d8 40%,
+    #a78bfa 65%,
+    #f5e6c8 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 3.5s linear infinite;
+}
+
+/* Световой блик на карточке при наведении */
+.card-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-shine::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -75%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.6s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.card-shine:hover::before {
+  left: 130%;
+}
+
+/* Уважение к настройке «меньше движения» */
+@media (prefers-reduced-motion: reduce) {
+  html.js-reveal .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .animate-twinkle,
+  .animate-twinkle-alt,
+  .animate-blob,
+  .animate-blob-slow,
+  .shimmer-text {
+    animation: none !important;
+  }
+
+  .card-shine::before {
+    content: none;
+  }
+}
+

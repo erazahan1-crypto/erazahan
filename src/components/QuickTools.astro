@@ -1,0 +1,258 @@
+---
+import { menu, ALPHABET, letterPathByLetter, normLetter } from "../lib/site";
+
+const topMenu = menu.filter((m) => m.parent === "0");
+---
+
+<div class="fixed bottom-4 right-4 z-40 flex flex-col gap-2" aria-label="Արագ գործիքներ">
+  <button
+    id="quick-menu"
+    type="button"
+    title="Մենյու"
+    aria-label="Մենյու"
+    aria-expanded="false"
+    aria-controls="panel-menu"
+    class="grid size-11 place-items-center rounded-full border border-white/10 bg-night-800/80 text-slate-200 shadow-lg shadow-black/40 backdrop-blur transition hover:-translate-y-0.5 hover:border-violet-400/60 hover:bg-violet-500/20 hover:text-white"
+  >
+    <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path></svg>
+  </button>
+  <button
+    id="quick-search"
+    type="button"
+    title="Որոնում"
+    aria-label="Որոնում"
+    aria-expanded="false"
+    aria-controls="panel-search"
+    class="grid size-11 place-items-center rounded-full border border-white/10 bg-night-800/80 text-slate-200 shadow-lg shadow-black/40 backdrop-blur transition hover:-translate-y-0.5 hover:border-violet-400/60 hover:bg-violet-500/20 hover:text-white"
+  >
+    <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.35-4.35"></path></svg>
+  </button>
+  <button
+    id="quick-alpha"
+    type="button"
+    title="Այբուբեն"
+    aria-label="Այբուբեն"
+    aria-expanded="false"
+    aria-controls="panel-alpha"
+    class="grid size-11 place-items-center rounded-full border border-white/10 bg-night-800/80 font-display text-base font-bold text-slate-200 shadow-lg shadow-black/40 backdrop-blur transition hover:-translate-y-0.5 hover:border-violet-400/60 hover:bg-violet-500/20 hover:text-white"
+  >
+    Ա
+  </button>
+  <a
+    href="/chgtnvac-erazner/"
+    title="Նամակ"
+    aria-label="Նամակ"
+    class="grid size-11 place-items-center rounded-full border border-white/10 bg-night-800/80 text-slate-200 shadow-lg shadow-black/40 backdrop-blur transition hover:-translate-y-0.5 hover:border-violet-400/60 hover:bg-violet-500/20 hover:text-white"
+  >
+    <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 7-10 6L2 7"></path></svg>
+  </a>
+  <button
+    id="to-top"
+    type="button"
+    title="Դեպի վեր"
+    aria-label="Դեպի վեր"
+    class="hidden size-11 place-items-center rounded-full border border-white/10 bg-gradient-to-br from-violet-500 to-indigo-700 text-white shadow-lg shadow-violet-900/40 transition hover:-translate-y-0.5 hover:from-violet-400 hover:to-indigo-500"
+  >
+    <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"></path><path d="m5 12 7-7 7 7"></path></svg>
+  </button>
+</div>
+
+<div
+  id="quick-overlay"
+  class="fixed inset-0 z-[60] hidden items-center justify-center bg-night-950/70 p-4 backdrop-blur-sm"
+  role="dialog"
+  aria-modal="true"
+>
+  <div
+    id="panel-menu"
+    class="hidden max-h-[85vh] w-full max-w-sm flex-col overflow-y-auto rounded-2xl border border-white/10 bg-night-900 p-5 shadow-2xl shadow-black/60"
+  >
+    <div class="flex items-center justify-between gap-4">
+      <h3 class="font-display text-xl font-bold text-white">Մենյու</h3>
+      <button type="button" class="quick-close grid size-9 place-items-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition hover:border-violet-400/60 hover:text-white" aria-label="Փակել">
+        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>
+      </button>
+    </div>
+    <nav class="mt-4 flex flex-col gap-1" aria-label="Բաժիններ">
+      {topMenu.map((m) => (
+        <a href={m.href} class="flex items-center justify-between rounded-xl px-3 py-2.5 text-base font-medium text-slate-200 transition hover:bg-white/5 hover:text-white">
+          {m.label}
+          <span class="text-slate-500" aria-hidden="true">→</span>
+        </a>
+      ))}
+    </nav>
+  </div>
+
+  <div
+    id="panel-search"
+    class="hidden max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-night-900 shadow-2xl shadow-black/60"
+  >
+    <div class="flex items-center justify-between gap-4 border-b border-white/10 p-5">
+      <h3 class="font-display text-xl font-bold text-white">Որոնում</h3>
+      <button type="button" class="quick-close grid size-9 place-items-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition hover:border-violet-400/60 hover:text-white" aria-label="Փակել">
+        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>
+      </button>
+    </div>
+    <div class="p-5">
+      <div class="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 transition focus-within:border-violet-400/60 focus-within:ring-2 focus-within:ring-violet-500/30">
+        <svg class="ml-2 size-5 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.35-4.35"></path></svg>
+        <input id="quick-search-input" type="search" placeholder="Փնտրել երազ…" autocomplete="off" class="w-full bg-transparent px-2 py-2.5 text-white placeholder:text-slate-500 outline-none" />
+      </div>
+      <div id="quick-search-results" class="mt-4 max-h-[55vh] overflow-y-auto"></div>
+    </div>
+  </div>
+
+  <div
+    id="panel-alpha"
+    class="hidden max-h-[85vh] w-full max-w-lg flex-col overflow-y-auto rounded-2xl border border-white/10 bg-night-900 p-5 shadow-2xl shadow-black/60"
+  >
+    <div class="flex items-center justify-between gap-4">
+      <h3 class="font-display text-xl font-bold text-white">Այբուբեն</h3>
+      <button type="button" class="quick-close grid size-9 place-items-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition hover:border-violet-400/60 hover:text-white" aria-label="Փակել">
+        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>
+      </button>
+    </div>
+    <div class="mt-4 grid grid-cols-7 gap-2 sm:grid-cols-8">
+      {ALPHABET.map((letter) => {
+        const path = letterPathByLetter.get(normLetter(letter));
+        return path ? (
+          <a href={`/${path}/`} class="grid aspect-square place-items-center rounded-xl border border-white/10 bg-white/5 font-semibold text-slate-200 transition hover:scale-105 hover:border-violet-400/60 hover:bg-violet-500/20 hover:text-white">{letter}</a>
+        ) : (
+          <span class="grid aspect-square cursor-default place-items-center rounded-xl border border-white/5 bg-white/5 font-semibold text-slate-600">{letter}</span>
+        );
+      })}
+    </div>
+  </div>
+</div>
+
+<script>
+  const toTop = document.getElementById('to-top');
+  const overlay = document.getElementById('quick-overlay');
+  const panels = {
+    menu: document.getElementById('panel-menu'),
+    search: document.getElementById('panel-search'),
+    alpha: document.getElementById('panel-alpha'),
+  };
+  const quickButtons = {
+    menu: document.getElementById('quick-menu'),
+    search: document.getElementById('quick-search'),
+    alpha: document.getElementById('quick-alpha'),
+  };
+  const searchInput = document.getElementById('quick-search-input');
+  const searchResults = document.getElementById('quick-search-results');
+
+  let searchIndex = null;
+  let searchIndexLoaded = false;
+
+  function closePanels() {
+    overlay.classList.add('hidden');
+    overlay.classList.remove('flex');
+    Object.values(panels).forEach((p) => {
+      p.classList.add('hidden');
+      p.classList.remove('flex');
+    });
+    Object.values(quickButtons).forEach((b) => b.setAttribute('aria-expanded', 'false'));
+  }
+
+  function openPanel(name) {
+    Object.entries(panels).forEach(([key, p]) => {
+      const open = key === name;
+      p.classList.toggle('hidden', !open);
+      p.classList.toggle('flex', open);
+      quickButtons[key].setAttribute('aria-expanded', String(open));
+    });
+    overlay.classList.remove('hidden');
+    overlay.classList.add('flex');
+
+    if (name === 'search') {
+      loadSearchIndex();
+      if (searchInput) searchInput.focus();
+      runQuickSearch();
+    }
+  }
+
+  Object.entries(quickButtons).forEach(([name, btn]) => {
+    btn.addEventListener('click', () => {
+      if (panels[name].classList.contains('flex')) closePanels();
+      else openPanel(name);
+    });
+  });
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closePanels();
+  });
+
+  document.querySelectorAll('.quick-close').forEach((btn) => btn.addEventListener('click', closePanels));
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closePanels();
+  });
+
+  window.addEventListener(
+    'scroll',
+    () => {
+      if (window.scrollY > 400) {
+        toTop.classList.remove('hidden');
+        toTop.classList.add('grid');
+      } else {
+        toTop.classList.add('hidden');
+        toTop.classList.remove('grid');
+      }
+    },
+    { passive: true }
+  );
+
+  toTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+  async function loadSearchIndex() {
+    if (searchIndexLoaded) return;
+    searchIndexLoaded = true;
+    try {
+      const res = await fetch('/search-index.json');
+      searchIndex = await res.json();
+    } catch (err) {
+      searchIndex = [];
+    }
+    runQuickSearch();
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function runQuickSearch() {
+    if (!searchResults) return;
+    if (!searchIndex) {
+      searchResults.innerHTML = '<p class="text-sm text-slate-500">Բեռնում…</p>';
+      return;
+    }
+    const term = (searchInput.value || '').trim().toLowerCase();
+    if (!term) {
+      searchResults.innerHTML = '<p class="text-sm text-slate-500">Մուտքագրեք որոնման բառը:</p>';
+      return;
+    }
+    const matches = searchIndex
+      .filter(
+        (item) =>
+          (item.title || '').toLowerCase().includes(term) ||
+          (item.text || '').toLowerCase().includes(term)
+      )
+      .slice(0, 30);
+    if (!matches.length) {
+      searchResults.innerHTML = '<p class="text-sm text-slate-400">Ոչինչ չի գտնվել:</p>';
+      return;
+    }
+    searchResults.innerHTML = matches
+      .map(
+        (item) => `
+          <a href="/${item.slug}/" class="mb-2 block rounded-xl border border-white/10 bg-white/5 p-3 transition hover:border-violet-400/40 hover:bg-white/10">
+            <div class="font-semibold text-white">${escapeHtml(item.title)}</div>
+            ${item.text ? `<div class="mt-1 text-sm text-slate-400">${escapeHtml(item.text)}</div>` : ''}
+          </a>
+        `
+      )
+      .join('');
+  }
+
+  searchInput.addEventListener('input', runQuickSearch);
+</script>

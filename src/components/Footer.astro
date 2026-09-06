@@ -1,0 +1,45 @@
+---
+import { menu } from "../lib/site";
+
+const topMenu = menu.filter((m) => m.parent === "0");
+const currentYear = new Date().getFullYear();
+---
+
+<footer class="border-t border-white/5 bg-night-900/40">
+  <div class="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+    <div class="grid gap-8 md:grid-cols-3">
+      <div>
+        <p class="flex items-center gap-2 font-display text-xl font-bold text-white">
+          <span aria-hidden="true">🌙</span> Երազահան
+        </p>
+        <p class="mt-3 text-sm leading-relaxed text-slate-400">
+          Ավելի քան 4000 երազների մեկնաբանություն՝ այբբենական կարգով: Օգնում ենք հասկանալ ձեր երազների
+          թաքնված պատկերներն ու ուղերձները:
+        </p>
+      </div>
+
+      <nav class="text-sm" aria-label="Նավիգացիա">
+        <p class="font-semibold text-white">Բաժիններ</p>
+        <ul class="mt-3 space-y-2 text-slate-400">
+          {topMenu.map((m) => (
+            <li>
+              <a href={m.href} class="transition hover:text-white">{m.label}</a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      <div class="text-sm">
+        <p class="font-semibold text-white">Ուշադրություն</p>
+        <p class="mt-3 leading-relaxed text-slate-400">
+          Երազների մեկնաբանությունները կրում են տեղեկատվական բնույթ և չեն հանդիսանում բժշկական կամ
+          հոգեբանական խորհրդատվություն:
+        </p>
+      </div>
+    </div>
+
+    <div class="mt-8 border-t border-white/5 pt-6 text-center text-xs text-slate-500">
+      © {currentYear} Երազահան. Բոլոր իրավունքները պաշտպանված են:
+    </div>
+  </div>
+</footer>

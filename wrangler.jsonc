@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "erazahan",
+  "compatibility_date": "2026-09-06",
+  "pages_build_output_dir": "./dist",
+  "d1_databases": [
+    {
+      "binding": "DREAMS_DB",
+      "database_name": "erazahan-dreams",
+      "database_id": "1214b8ef-136b-40cd-8203-f6c426b0675a"
+    }
+  ]
+}
