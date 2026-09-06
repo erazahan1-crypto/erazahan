@@ -334,7 +334,7 @@ export const stripBrokenImages = (html: string): string =>
     return file && !uploadedFiles.has(file) ? '' : tag;
   });
 
-// Обложка поста: сначала поле cover (загруженное через Keystatic), иначе /uploads/<slug>.webp
+// Обложка поста: сначала поле cover, затем совпадающий slug. WordPress добавлял -1 при коллизиях имён.
 export const postCover = (post: { slug: string; cover?: string | null }): string | null => {
   if (post.cover) {
     const c = post.cover.trim();
@@ -343,8 +343,9 @@ export const postCover = (post: { slug: string; cover?: string | null }): string
     if (c.startsWith('public/uploads/')) return '/' + c.slice('public/uploads/'.length);
     return '/uploads/' + c;
   }
-  const file = `${post.slug}.webp`;
-  return uploadedFiles.has(file) ? `/uploads/${file}` : null;
+  const files = [`${post.slug}.webp`, `${post.slug}-1.webp`];
+  const file = files.find((candidate) => uploadedFiles.has(candidate));
+  return file ? `/uploads/${file}` : null;
 };
 
 export const excerptOf = (p: Post, len = 180) => {
