@@ -1,4 +1,4 @@
-@import "../../node_modules/tailwindcss/index.css";
+@import "tailwindcss";
 
 /* Переменные, на которые ссылаются импортированные <style> из WordPress-контента */
 :root {
