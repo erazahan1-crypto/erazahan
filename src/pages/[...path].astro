@@ -38,6 +38,8 @@ export function getStaticPaths() {
   }
   for (const p of pages) {
     if (p.isFront) continue;
+    // This page has a dedicated implementation and must not render legacy comments.
+    if (p.path === 'chgtnvac-erazner') continue;
     if (p.path && !seen.has(p.path)) {
       seen.add(p.path);
       routes.push({ params: { path: p.path } });
