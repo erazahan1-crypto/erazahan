@@ -2,6 +2,8 @@ import postsJson from '../data/posts.json';
 import pagesJson from '../data/pages.json';
 import menuJson from '../data/menu.json';
 import imagesJson from '../data/images.json';
+import fs from 'node:fs';
+import path from 'node:path';
 
 export interface Comment {
   id: string;
@@ -346,6 +348,55 @@ export const postCover = (post: { slug: string; cover?: string | null }): string
   const files = [`${post.slug}.webp`, `${post.slug}-1.webp`];
   const file = files.find((candidate) => uploadedFiles.has(candidate));
   return file ? `/uploads/${file}` : null;
+};
+
+// Читает intrinsic width/height из заголовка локального .webp-файла (нужно для width/height LCP-картинки без CLS).
+const coverDimensionsCache = new Map<string, { width: number; height: number } | null>();
+
+const readWebpDimensions = (buf: Uint8Array): { width: number; height: number } | null => {
+  if (buf.length < 30) return null;
+  const isRiff = buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46;
+  const isWebp = buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50;
+  if (!isRiff || !isWebp) return null;
+  const chunk = String.fromCharCode(buf[12], buf[13], buf[14], buf[15]);
+  if (chunk === 'VP8X') {
+    const width = 1 + (buf[24] | (buf[25] << 8) | (buf[26] << 16));
+    const height = 1 + (buf[27] | (buf[28] << 8) | (buf[29] << 16));
+    return { width, height };
+  }
+  if (chunk === 'VP8 ' && buf[23] === 0x9d && buf[24] === 0x01 && buf[25] === 0x2a) {
+    const width = (buf[26] | (buf[27] << 8)) & 0x3fff;
+    const height = (buf[28] | (buf[29] << 8)) & 0x3fff;
+    return { width, height };
+  }
+  if (chunk === 'VP8L' && buf[20] === 0x2f) {
+    const b0 = buf[21];
+    const b1 = buf[22];
+    const b2 = buf[23];
+    const b3 = buf[24];
+    const width = 1 + (((b1 & 0x3f) << 8) | b0);
+    const height = 1 + (((b3 & 0xf) << 10) | (b2 << 2) | ((b1 & 0xc0) >> 6));
+    return { width, height };
+  }
+  return null;
+};
+
+export const coverDimensions = (coverUrl: string): { width: number; height: number } | null => {
+  if (!coverUrl.startsWith('/uploads/') || !coverUrl.toLowerCase().endsWith('.webp')) return null;
+  if (coverDimensionsCache.has(coverUrl)) return coverDimensionsCache.get(coverUrl)!;
+  let result: { width: number; height: number } | null = null;
+  try {
+    const filePath = path.join(process.cwd(), 'public', coverUrl);
+    const fd = fs.openSync(filePath, 'r');
+    const buf = Buffer.alloc(30);
+    fs.readSync(fd, buf, 0, 30, 0);
+    fs.closeSync(fd);
+    result = readWebpDimensions(buf);
+  } catch {
+    result = null;
+  }
+  coverDimensionsCache.set(coverUrl, result);
+  return result;
 };
 
 export const excerptOf = (p: Post, len = 180) => {

@@ -19,6 +19,7 @@ import {
   resolveWordSlug,
   relatedForPost,
   LEGACY_PATH_ALIASES,
+  coverDimensions,
 } from '../lib/site';
 import type { Comment } from '../lib/site';
 import { excerptOf } from '../lib/site';
@@ -94,6 +95,7 @@ const description = post
   ? (post.description && post.description.trim()) || excerptOf(post, 160)
   : namePage ? namePage.title : page ? page.title : 'Էջը գոյություն չունի';
 const cover = post ? postCover(post) : null;
+const coverSize = cover ? coverDimensions(cover) : null;
 const related = post ? relatedForPost(post) : [];
 
 const crumbs = [
@@ -144,7 +146,11 @@ const crumbs = [
             src={cover}
             alt={post.title}
             class="mt-6 w-full max-w-xl rounded-2xl border border-white/10 object-cover shadow-lg"
-            loading="lazy"
+            width={coverSize?.width ?? 640}
+            height={coverSize?.height ?? 480}
+            loading="eager"
+            fetchpriority="high"
+            decoding="async"
           />
         ) : null}
 
