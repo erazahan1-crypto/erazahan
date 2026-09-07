@@ -1,0 +1,567 @@
+{
+  "totals": {
+    "htmlFiles": 5922,
+    "routeSetSize": 5925
+  },
+  "brokenInternalLinks": 1,
+  "wpTechnicalLinks": 0,
+  "pagesDevLinks": 0,
+  "suspiciousLinks": 0,
+  "externalDomainsCount": 6,
+  "externalDomains": [
+    {
+      "host": "erazahan.info",
+      "count": 5922,
+      "contexts": "link",
+      "examples": "13508-2/index.html|13742-2/index.html|13762-2/index.html"
+    },
+    {
+      "host": "en.wikipedia.org",
+      "count": 16,
+      "contexts": "a",
+      "examples": "erazahan-arjunahosutyun/index.html|erazahan-asexnagorcutyun/index.html|erazahan-choracac-antar-երազահան-չորացած/index.html"
+    },
+    {
+      "host": "hy.wikipedia.org",
+      "count": 9,
+      "contexts": "a",
+      "examples": "erazahan-andznagir-korcnel-երազահան-անձնագիր-կորցնել/index.html|erazahan-nayel-axavninerin/index.html|erazahan-vajri-axavni/index.html"
+    },
+    {
+      "host": "hy.wiktionary.org",
+      "count": 9,
+      "contexts": "a",
+      "examples": "erazahan-arji-hardzakum/index.html|erazahan-art/index.html|erazahan-art-canel/index.html"
+    },
+    {
+      "host": "ru.wikipedia.org",
+      "count": 3,
+      "contexts": "a",
+      "examples": "erazahan-apakov-nayel-երազահան-ապակոն-նայել/index.html|erazahan-axvesi-het-xosel/index.html|երազահան-հախճապակի-նվեր-ստանալ/index.html"
+    },
+    {
+      "host": "qahana.am",
+      "count": 1,
+      "contexts": "a",
+      "examples": "erazahan-azniv-linel/index.html"
+    }
+  ],
+  "securityFindingsCount": 0,
+  "securityFindingsSample": [],
+  "wpResidueCount": 0,
+  "wpResidueSample": [],
+  "contentSanityCount": 1,
+  "contentSanitySample": [
+    {
+      "file": "aqis-tesnel-erazum/index.html",
+      "pattern": "\\[caption[^\\]]*\\]",
+      "snippet": "[caption id=&quot;attachment_19834&quot; align=&quot;alignnone&quot; width=&quot;300&quot;]"
+    }
+  ],
+  "devLeaksCount": 0,
+  "devLeaksSample": [],
+  "jsSourceMapsCount": 0,
+  "jsSourceMaps": [],
+  "googleFontsRefsCount": 0,
+  "brokenAssetsCount": 0,
+  "brokenAssets": [],
+  "assetRefsScanned": 570,
+  "sitemapAllow": {
+    "label": "allow",
+    "exists": true,
+    "total": 5987,
+    "duplicates": 67,
+    "nonErazahanHost": 0,
+    "pagesDevCount": 0,
+    "wpJunkCount": 0,
+    "missingInDistCount": 0,
+    "missingInDistSample": [],
+    "nonErazahanSample": []
+  },
+  "sitemapDefault": {
+    "label": "default",
+    "exists": true,
+    "total": 5987,
+    "duplicates": 67,
+    "nonErazahanHost": 0,
+    "pagesDevCount": 0,
+    "wpJunkCount": 0,
+    "missingInDistCount": 0,
+    "missingInDistSample": [],
+    "nonErazahanSample": []
+  },
+  "seoSampleCount": 45,
+  "seoResults": [
+    {
+      "file": "index.html",
+      "h1Count": 1,
+      "title": "Երազահան — երազների մեկնաբանություն",
+      "desc": "Անվճար օնլայն երազահան. երազների ճշգրիտ ու մանրամասն մեկնաբանություններ այբբենական կարգով:",
+      "canonical": "https://erazahan.info/",
+      "ogUrl": "https://erazahan.info/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "404.html",
+      "h1Count": 1,
+      "title": "Էջը չի գտնվել (404)",
+      "desc": "Ներեցեք, այս էջը գոյություն չունի:",
+      "canonical": "https://erazahan.info/404/",
+      "ogUrl": "https://erazahan.info/404/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "search/index.html",
+      "h1Count": 1,
+      "title": "Որոնում",
+      "desc": "Փնտրեք երազի մեկնաբանությունը",
+      "canonical": "https://erazahan.info/search/",
+      "ogUrl": "https://erazahan.info/search/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "about/index.html",
+      "h1Count": 1,
+      "title": "Մեր Մասին",
+      "desc": "Մեր Մասին",
+      "canonical": "https://erazahan.info/about/",
+      "ogUrl": "https://erazahan.info/about/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "erazahan-online/index.html",
+      "h1Count": 1,
+      "title": "Երազահան. Erazahan Hayeren",
+      "desc": "Երազահան. Erazahan Hayeren",
+      "canonical": "https://erazahan.info/erazahan-online/",
+      "ogUrl": "https://erazahan.info/erazahan-online/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "erazahan-abba/index.html",
+      "h1Count": 1,
+      "title": "Երազահան Աբբա",
+      "desc": "Երազում Աբբա տեսնելը՝ ի՞նչ է նշանակում (Erazum Abba tesnel) Երազում հոգևորական կամ աբբահայր տեսնելը հաճախ հանդիսանում է կարևոր նախազգուշացում: Այս պատկերը հազվա…",
+      "canonical": "https://erazahan.info/erazahan-abba/",
+      "ogUrl": "https://erazahan.info/erazahan-abba/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "erazahan-abbasuhi/index.html",
+      "h1Count": 1,
+      "title": "Երազահան Աբբասուհի (Erazahan Abbasuhi)",
+      "desc": "Ինչ է նշանակում երազում Աբբասուհի տեսնել (Erazum Abbasuhi tesnel) Երազում Աբբասուհի (վանքի մայրապետ, աբբայուհի) տեսնելը հազվադեպ հանդիպող, բայց շատ կարևոր խորհր…",
+      "canonical": "https://erazahan.info/erazahan-abbasuhi/",
+      "ogUrl": "https://erazahan.info/erazahan-abbasuhi/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "erazahan-abort/index.html",
+      "h1Count": 1,
+      "title": "Երազահան Աբորտ. Erazahan Abort",
+      "desc": "Երազում հղիության արհեստական ընդհատում տեսնելը հաճախ արտացոլում է ներքին մեծ անհանգստությունները: Բացի այդ , այն կարող է ուղղակիորեն կապված լինել կյանքի կտրուկ …",
+      "canonical": "https://erazahan.info/erazahan-abort/",
+      "ogUrl": "https://erazahan.info/erazahan-abort/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "erazahan-aceli/index.html",
+      "h1Count": 1,
+      "title": "Երազահան Ածելի: Erazahan Aceli",
+      "desc": "Երազահան Ածելի (Erazahan Aceli) Երազում ածելի (Erazahan Aceli) տեսնելը հակասական և խորը նշանակություն ունեցող պատկեր է։ Ըստ «Համամարդկային երազահան»-ի՝ այն կարո…",
+      "canonical": "https://erazahan.info/erazahan-aceli/",
+      "ogUrl": "https://erazahan.info/erazahan-aceli/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "erazahan-achparar/index.html",
+      "h1Count": 1,
+      "title": "Երազահան Աճպարար",
+      "desc": "Երազահան Աճպարար Երազում աճպարար տեսնել նշանակում է - Անճարակ մարդոց պիտի հանդիպիս:",
+      "canonical": "https://erazahan.info/erazahan-achparar/",
+      "ogUrl": "https://erazahan.info/erazahan-achparar/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "erazahan-achq/index.html",
+      "h1Count": 1,
+      "title": "Երազահան Աչք. Erazahan Achq",
+      "desc": "Երազահան Աչք. Ի՞նչ է նշանակում երազում աչք տեսնել (Erazahan Achq) &amp;#x1f441;&amp;#xfe0f; Հոգու հայելու, զգացմունքների արթնացման, հոգևոր տեսողության և անկեղծ, խորը սի…",
+      "canonical": "https://erazahan.info/erazahan-achq/",
+      "ogUrl": "https://erazahan.info/erazahan-achq/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "erazahan-achq-hanel/index.html",
+      "h1Count": 1,
+      "title": "Երազահան Աչք Հանել",
+      "desc": "Երազահան Աչք Հանել. Ի՞նչ է նշանակում երազում աչք հանել (Erazahan Achq Hanel) &amp;#x2764;&amp;#xfe0f; Հզոր ինվերսիա. ցավոտ թվացող կորուստը վերածվում է հին կապերի խզման,…",
+      "canonical": "https://erazahan.info/erazahan-achq-hanel/",
+      "ogUrl": "https://erazahan.info/erazahan-achq-hanel/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "erazahan-achq-korcnel/index.html",
+      "h1Count": 1,
+      "title": "Երազահան Աչք Կորցնել",
+      "desc": "Երազահան Աչք Կորցնել. Ի՞նչ է նշանակում երազում մեկ աչք կորցնել (Erazahan Achq Korcnel) &amp;#x1f940; Կենսական լույսի մարման, ճակատագրական հարվածի, ծանր կորստի և երի…",
+      "canonical": "https://erazahan.info/erazahan-achq-korcnel/",
+      "ogUrl": "https://erazahan.info/erazahan-achq-korcnel/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "erazahan-achqeric-zrkvel/index.html",
+      "h1Count": 1,
+      "title": "Երազահան Աչքերից Զրկվել",
+      "desc": "Երազահան Աչքերից Զրկվել. Ի՞նչ է նշանակում երազում աչքերից զրկվել (Erazahan Achqeric Zrkvel) &amp;#x1f4b0; Ամենահզոր ինվերսիաներից մեկը. ֆիզիկական տեսողության կորուս…",
+      "canonical": "https://erazahan.info/erazahan-achqeric-zrkvel/",
+      "ogUrl": "https://erazahan.info/erazahan-achqeric-zrkvel/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "erazahan-achqi-bib-xax/index.html",
+      "h1Count": 1,
+      "title": "Երազահան Բիբ Թռթռալ",
+      "desc": "Երազահան Բիբ Թռթռալ. Ի՞նչ է նշանակում երազում բիբի թռթռոց կամ աչք կապուկ (Erazahan Bib Trtral) &amp;#x2728; Խաղարկային էներգիայի, հաճելի անակնկալների, մեծ ցնծության…",
+      "canonical": "https://erazahan.info/erazahan-achqi-bib-xax/",
+      "ogUrl": "https://erazahan.info/erazahan-achqi-bib-xax/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "erazahan-achurd/index.html",
+      "h1Count": 1,
+      "title": "Երազահան Աճուրդ: Erazahan Ajurd",
+      "desc": "Երազահան Աճուրդ. Ի՞նչ է նշանակում երազում աճուրդ տեսնել (Erazahan Achurd) &amp;#x2696;&amp;#xfe0f; Մրցակցային պայքարում հաղթանակի և գործնական մեծ հաջողության նշան Երազո…",
+      "canonical": "https://erazahan.info/erazahan-achurd/",
+      "ogUrl": "https://erazahan.info/erazahan-achurd/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "erazahan-achurdi-nerka-linel/index.html",
+      "h1Count": 1,
+      "title": "Երազահան Աճուրդի Ներկա Լինել",
+      "desc": "Երազահան Աճուրդի Ներկա Լինել. Ի՞նչ է նշանակում երազում աճուրդ դիտելը (Erazahan Achurdi Nerka Linel) &amp;#x26a0;&amp;#xfe0f; Իրավիճակը փրկելու անհաջող փորձերի, վերահսկո…",
+      "canonical": "https://erazahan.info/erazahan-achurdi-nerka-linel/",
+      "ogUrl": "https://erazahan.info/erazahan-achurdi-nerka-linel/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "erazahan-achurdic-ban-gnel/index.html",
+      "h1Count": 1,
+      "title": "Երազահան Աճուրդից Բան Գնել",
+      "desc": "Երազահան Աճուրդից Բան Գնել. Ի՞նչ է նշանակում երազում աճուրդից որևէ բան գնել (Erazahan Achurdic Ban Gnel) &amp;#x1f570;&amp;#xfe0f; Երկար սպասված բարելավման, ուշացած արդ…",
+      "canonical": "https://erazahan.info/erazahan-achurdic-ban-gnel/",
+      "ogUrl": "https://erazahan.info/erazahan-achurdic-ban-gnel/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "erazahan-aciluli/index.html",
+      "h1Count": 1,
+      "title": "Երազահան Ածիլուլի",
+      "desc": "Երազահան Ածիլուլի (Erazahan Aciluli) Երբ երազում հայտնվում է մի խորհրդանիշ, որը կրում է Ածիլուլի (Erazahan Aciluli) անունը, դա հաճախ մեկնաբանվում է որպես մաքրու…",
+      "canonical": "https://erazahan.info/erazahan-aciluli/",
+      "ogUrl": "https://erazahan.info/erazahan-aciluli/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "erazahan-acux/index.html",
+      "h1Count": 1,
+      "title": "Երազահան Ածուխ. Erazahan Acux",
+      "desc": "Երազահան Ածուխ (Erazahan Acux) Երազում ածուխ (Erazahan Acux) տեսնելը «Համամարդկային երազահան»-ի մեկնաբանությամբ հանդիսանում է կարևոր նախազգուշացում։ Այս պատկերը…",
+      "canonical": "https://erazahan.info/erazahan-acux/",
+      "ogUrl": "https://erazahan.info/erazahan-acux/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "ա/index.html",
+      "h1Count": 1,
+      "title": "Ա",
+      "desc": "Սիրտդ անարատ եվ հոգիտ մաքուր է,արտակարգ ձախողութիվններ թէեվ քեզ վշտացուցին,բայց դուն սրտովտ բարի եվ ոչ ոքի չվնասեցիր:Մխիթարութեանդ ժամանակը մոտ է:Քաջ եվ վստահ կ…",
+      "canonical": "https://erazahan.info/%D5%A1/",
+      "ogUrl": "https://erazahan.info/%D5%A1/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "բ/index.html",
+      "h1Count": 1,
+      "title": "Բ",
+      "desc": "Բախտավոր եվ բարի ժամու ծնունդ ես դու մնաս ընդմիշտ բարի,թէեվ կու գան սակավ օրեր ու տխուր,բայց դուն եղիր անհոգ եվ հանդարտ, այդ ամենը կանցնին եվ դուն կը վայելես շա…",
+      "canonical": "https://erazahan.info/%D5%A2/",
+      "ogUrl": "https://erazahan.info/%D5%A2/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "գ/index.html",
+      "h1Count": 1,
+      "title": "Գ",
+      "desc": "Գնա եվ գոհացիր,զի անցուցիր չար ժամն որում կարող էիր անկանիլ ի խորխորատ,զի լսեցիր չար խորհուրդն վատ մարդոյ,այլ հավատք եվ զորութիվն ՝ որ կային սրտիդ մէջ,քաջալերեց…",
+      "canonical": "https://erazahan.info/%D5%A3/",
+      "ogUrl": "https://erazahan.info/%D5%A3/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "դ/index.html",
+      "h1Count": 1,
+      "title": "Դ",
+      "desc": "Արքայութեան դուռը բացուեցավ առջեվդ,բայց դուն յարգը չգիտցար ու ինկար մեծ եվ բազմաթիվ սխալներու մէջ,շատ վնասեցիք բայց մեծ վտանգի չենթարկուեցար: որովհետեվ շուտով ս…",
+      "canonical": "https://erazahan.info/%D5%A4/",
+      "ogUrl": "https://erazahan.info/%D5%A4/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "ե/index.html",
+      "h1Count": 1,
+      "title": "Ե",
+      "desc": "Երջանիկ եվ ուրախ եղիր,որովհետեվ չարը քեզմէ հեռացավ եվ բարին մոտեցավ,կրած զրկանքներդ վերջացան:Ծնողական ժառանգութենէ,բարեկամներուդ աջակցութենէ զրկուեցար թէեվ,բայց…",
+      "canonical": "https://erazahan.info/%D5%A5/",
+      "ogUrl": "https://erazahan.info/%D5%A5/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "զ/index.html",
+      "h1Count": 1,
+      "title": "Զ",
+      "desc": "Ընտանիքիդ զարդն ու բարեկամներուդ ուրախութիվնն ես,բայց սրտիդ պարզութիվնը եվ ճշմարտախոսութիվնդ քեզ օգտակար չեն ըլլալ միշտ եվ յաճախ վնասի կենթարկուիս:Պէտք է այսուհ…",
+      "canonical": "https://erazahan.info/%D5%A6/",
+      "ogUrl": "https://erazahan.info/%D5%A6/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "է/index.html",
+      "h1Count": 1,
+      "title": "Է",
+      "desc": "Խեղճ արարած,ինչու կը տրտմիս եվ կը տառապիս, երբ դու ինքդ վիճակիդ դժբախտութեան պատճառ կըլլաս ամէն օր:Կը ծուլանաս եվ չես աշխատիր,չարիք կը մտածես եվ ուղիղ ճամբուն չ…",
+      "canonical": "https://erazahan.info/%D5%A7/",
+      "ogUrl": "https://erazahan.info/%D5%A7/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "ը/index.html",
+      "h1Count": 1,
+      "title": "Ը",
+      "desc": "Ինչու զուր տեղը կը փնտռես ինչ որ կորսնցուցիր. Հայրենի ժառանգութենէ զրկուեցար,ընտանիքէդ օտարացար,բարեկամներուտ ատելի դարձար, այս ամենուն պատճառը դուն չես սակայն …",
+      "canonical": "https://erazahan.info/%D5%A8/",
+      "ogUrl": "https://erazahan.info/%D5%A8/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "թ/index.html",
+      "h1Count": 1,
+      "title": "Թ",
+      "desc": "Թեվավոր թռչուն եղար եվ շատ թափառեցար,բայց առանց հեռատեսութեան եվ լուրջ խորհուրդի,անհաստատ ճիվղերու վրայ թառեցար,անել ճամբարներու մէջ մտար,միամիտ գտնուեցար եվ շա…",
+      "canonical": "https://erazahan.info/%D5%A9/",
+      "ogUrl": "https://erazahan.info/%D5%A9/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "ժ/index.html",
+      "h1Count": 1,
+      "title": "Ժ",
+      "desc": "Կեանքդ զուր անցավ,ցավալի է.բայց ճակատագիրդ այդպէս էր որ քեզ խաբեն օտարներ,որոնց անտրտունջ համակերպեցար:Սակայն տխուր օրերեդ անցնելով պիտի գան բարի եվ երջանիկ օրե…",
+      "canonical": "https://erazahan.info/%D5%AA/",
+      "ogUrl": "https://erazahan.info/%D5%AA/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "abdal-anvan-nshanakutyuny/index.html",
+      "h1Count": 1,
+      "title": "Աբդալ Անվան Նշանակությունը",
+      "desc": "Աբդալ - արաբ. նշանակում է &amp;lt;ճգնավոր&amp;gt; կամ &amp;lt;դերվիշ&amp;gt;:",
+      "canonical": "https://erazahan.info/abdal-anvan-nshanakutyuny/",
+      "ogUrl": "https://erazahan.info/abdal-anvan-nshanakutyuny/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "abel-anvan-nshanakutyuny/index.html",
+      "h1Count": 1,
+      "title": "Աբել Անվան Նշանակությունը",
+      "desc": "Աբել (Հաբել) - եբր. նշանակում է &amp;lt;սուգ&amp;gt;, &amp;lt;սգո երկիր&amp;gt; կամ &amp;lt;գոլորշի&amp;gt;: (Աբելը ըստ Աստվածաշնչի Ադամի երկրորդ որդու անունն էր, ում սպանեց ավագ եղբայ…",
+      "canonical": "https://erazahan.info/abel-anvan-nshanakutyuny/",
+      "ogUrl": "https://erazahan.info/abel-anvan-nshanakutyuny/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "abgar-anvan-nshanakutyuny/index.html",
+      "h1Count": 1,
+      "title": "Աբգար Անվան Նշանակությունը",
+      "desc": "Աբգար Անվան Նշանակությունը Աբգար - ասոր. նշանակում է &amp;lt;ավագ այր>: (Աբգարը Հայոց առաջին թագաորն էր , ով Հիսուսին որպես Աստծո որդի եվ ճշմարիտ Աստված ընդունեց: Ն…",
+      "canonical": "https://erazahan.info/abgar-anvan-nshanakutyuny/",
+      "ogUrl": "https://erazahan.info/abgar-anvan-nshanakutyuny/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "abia-anvan-nshanakutyuny/index.html",
+      "h1Count": 1,
+      "title": "Աբիել Անվան Նշանակությունը",
+      "desc": "Աբիել - եբր. նշանակում է &amp;lt;զորության հայր&amp;gt; կամ &amp;lt;զորություն Աստծո&amp;gt;:",
+      "canonical": "https://erazahan.info/abia-anvan-nshanakutyuny/",
+      "ogUrl": "https://erazahan.info/abia-anvan-nshanakutyuny/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "abig-anvan-nshanakutyuny/index.html",
+      "h1Count": 1,
+      "title": "Աբիգ Անվան Նշանակությունը",
+      "desc": "Աբիգ - արաբ. նշանակում է &amp;lt;երգող&amp;gt;:",
+      "canonical": "https://erazahan.info/abig-anvan-nshanakutyuny/",
+      "ogUrl": "https://erazahan.info/abig-anvan-nshanakutyuny/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "abigea-anvan-nshanakutyuny/index.html",
+      "h1Count": 1,
+      "title": "Աբիգեա Անվան Նշանակությունը",
+      "desc": "Աբիգեա Անվան Նշանակությունը Աբիգեա անունը եբր. նշանակում է &amp;lt;բերկրանքի աղբյուր&amp;gt; կամ &amp;lt;հոր ուրախություն&amp;gt;:",
+      "canonical": "https://erazahan.info/abigea-anvan-nshanakutyuny/",
+      "ogUrl": "https://erazahan.info/abigea-anvan-nshanakutyuny/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "abraham-anvan-nshanakutyuny/index.html",
+      "h1Count": 1,
+      "title": "Աբրահամ Անվան Նշանակությունը",
+      "desc": "Աբրահամ - եբր. նշանակում է &amp;lt;բազմության հայր&amp;gt;, &amp;lt;բարձր հայր&amp;gt; կամ &amp;lt;մեծարգո հայր&amp;gt;:",
+      "canonical": "https://erazahan.info/abraham-anvan-nshanakutyuny/",
+      "ogUrl": "https://erazahan.info/abraham-anvan-nshanakutyuny/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "ada-anvan-nshanakutyuny/index.html",
+      "h1Count": 1,
+      "title": "Ադա Անվան Նշանակությունը",
+      "desc": "Ադա (Ադդա) Անվան Նշանակությունը Ադա (Ադդա) - եբր. նշանակում է &amp;lt;զարդարանք&amp;gt; կամ &amp;lt;բարետոհմիկ կին&amp;gt;:",
+      "canonical": "https://erazahan.info/ada-anvan-nshanakutyuny/",
+      "ogUrl": "https://erazahan.info/ada-anvan-nshanakutyuny/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "adam-anvan-nshanakutyuny/index.html",
+      "h1Count": 1,
+      "title": "Ադամ Անվան Նշանակությունը",
+      "desc": "Ադամ - եբր. նշանակում է &amp;lt;երկրային>, &amp;lt;հողեղեն մարդ> կամ &amp;lt;շիկահողից շինված>:",
+      "canonical": "https://erazahan.info/adam-anvan-nshanakutyuny/",
+      "ogUrl": "https://erazahan.info/adam-anvan-nshanakutyuny/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "adar-anvan-nshanakutyuny/index.html",
+      "h1Count": 1,
+      "title": "Ադար Անվան Նշանակությունը",
+      "desc": "Ադար - եբր։ նշաբնակում է &amp;lt;թխպոտ> կամ &amp;lt;փառաոր>․",
+      "canonical": "https://erazahan.info/adar-anvan-nshanakutyuny/",
+      "ogUrl": "https://erazahan.info/adar-anvan-nshanakutyuny/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "adassa-anvan-nshanakutyuny/index.html",
+      "h1Count": 1,
+      "title": "Ադասսա Անվան Նշանակությունը",
+      "desc": "Ադասսա Անվան Նշանակությունը Ադասսա - եբր. նշանակում է &amp;lt;մրտենի&amp;gt; (Աստվածաշնչային Ասուրեոս թագավորի կնոջը ՝ Էսթեր թագուհի աղջկական նախկին անունն էր:)",
+      "canonical": "https://erazahan.info/adassa-anvan-nshanakutyuny/",
+      "ogUrl": "https://erazahan.info/adassa-anvan-nshanakutyuny/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "adelaida-anvan-nshanakutyuny/index.html",
+      "h1Count": 1,
+      "title": "Ադելաիդա Անվան Նշանակութունը",
+      "desc": "Ադելաիդա (Ադելինա) Անվան Նշանակութունը Ադելաիդա (Ադելինա) - գերմաներեն նշանակում է &amp;lt;ազնվազարմ&amp;gt;:",
+      "canonical": "https://erazahan.info/adelaida-anvan-nshanakutyuny/",
+      "ogUrl": "https://erazahan.info/adelaida-anvan-nshanakutyuny/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "adin-anvan-nshanakutyuny/index.html",
+      "h1Count": 1,
+      "title": "Ադին Անվան Նշանակությունը",
+      "desc": "Ադին - եբր․ նշանակում է &amp;lt;զարդարուն> կամ &amp;lt;նախշուն>։",
+      "canonical": "https://erazahan.info/adin-anvan-nshanakutyuny/",
+      "ogUrl": "https://erazahan.info/adin-anvan-nshanakutyuny/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "adina-anvan-nshanakutyuny/index.html",
+      "h1Count": 1,
+      "title": "Ադինա Անվան Նշանակությունը",
+      "desc": "Ադինա Անվան Նշանակությունը Ադինա - եբր. նշանակում է &amp;lt;գեղեցիկ&amp;gt; կամ &amp;lt;պերճ&amp;gt;:",
+      "canonical": "https://erazahan.info/adina-anvan-nshanakutyuny/",
+      "ogUrl": "https://erazahan.info/adina-anvan-nshanakutyuny/",
+      "lang": "hy",
+      "robotsMeta": null
+    },
+    {
+      "file": "adonia-anvan-nshanakutyuny/index.html",
+      "h1Count": 1,
+      "title": "Ադոնիա Անվան Նշանակությունը",
+      "desc": "Ադոնիա - եբր. նշանակում է &amp;lt;Տերն աստված է>:",
+      "canonical": "https://erazahan.info/adonia-anvan-nshanakutyuny/",
+      "ogUrl": "https://erazahan.info/adonia-anvan-nshanakutyuny/",
+      "lang": "hy",
+      "robotsMeta": null
+    }
+  ],
+  "noindexCheck": [
+    {
+      "file": "index.html",
+      "robotsMeta": "noindex, nofollow",
+      "canonical": "https://erazahan.info/"
+    },
+    {
+      "file": "erazahan-ez/index.html",
+      "robotsMeta": "noindex, nofollow",
+      "canonical": "https://erazahan.info/erazahan-ez/"
+    }
+  ],
+  "brokenInternalLinksSample": [
+    {
+      "file": "404.html",
+      "link": "https://erazahan.info/404/",
+      "reason": "no matching route in dist"
+    }
+  ],
+  "wpTechnicalLinksSample": [],
+  "pagesDevLinksSample": []
+}

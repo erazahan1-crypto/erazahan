@@ -111,7 +111,13 @@ export const letterPathByLetter = new Map(
 );
 
 export const stripHtml = (h: string) =>
-  h.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+  h
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, ' ')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 // ===== Внутренние ссылки =====
 
@@ -630,4 +636,3 @@ export const fixAnatomyPage = (html: string): string =>
       return `<a href="${href}" class="anatomy-card"><div class="anatomy-icon-box">${icon}</div><span class="anatomy-name">${name}</span></a>`;
     }
   );
-
