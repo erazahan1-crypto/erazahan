@@ -1,0 +1,130 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="Сны пользователей — Админка">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="text-sm font-medium text-violet-300">Չգտնված երազներ</p>
+      <h1 class="mt-1 font-display text-3xl font-bold text-white">Сны пользователей</h1>
+      <p class="mt-2 text-sm text-slate-400">Новые записи показываются первыми. Максимум 100 записей за запрос.</p>
+    </div>
+    <button type="button" data-refresh class="min-h-11 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-semibold text-slate-200 transition hover:bg-white/10">Обновить</button>
+  </div>
+
+  <div class="mt-7 flex gap-2 overflow-x-auto pb-2" role="group" aria-label="Фильтр по статусу">
+    <button type="button" data-filter="all" class="min-h-11 shrink-0 rounded-xl border border-violet-400/50 bg-violet-500/20 px-4 text-sm font-semibold text-white">Все</button>
+    <button type="button" data-filter="pending" class="min-h-11 shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-semibold text-slate-300">Новые</button>
+    <button type="button" data-filter="answered" class="min-h-11 shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-semibold text-slate-300">Отвеченные</button>
+    <button type="button" data-filter="rejected" class="min-h-11 shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-semibold text-slate-300">Отклонённые</button>
+  </div>
+
+  <div class="mt-4 rounded-2xl border border-white/10 bg-white/[0.035]">
+    <p class="p-6 text-sm text-slate-400" data-list-status role="status">Загрузка записей…</p>
+    <div class="divide-y divide-white/10" data-dream-list></div>
+  </div>
+
+  <script>
+    type Status = 'pending' | 'answered' | 'rejected';
+    interface DreamItem {
+      id: string;
+      name: string | null;
+      dream_excerpt: string;
+      status: Status;
+      created_at: string;
+    }
+
+    const labels: Record<Status, string> = {
+      pending: 'Новый',
+      answered: 'Отвечен',
+      rejected: 'Отклонён',
+    };
+    const list = document.querySelector<HTMLElement>('[data-dream-list]');
+    const listStatus = document.querySelector<HTMLElement>('[data-list-status]');
+    const filterButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-filter]')];
+    const refresh = document.querySelector<HTMLButtonElement>('[data-refresh]');
+    let currentFilter = 'all';
+
+    function setActiveFilter(value: string) {
+      filterButtons.forEach((button) => {
+        const active = button.dataset.filter === value;
+        button.className = active
+          ? 'min-h-11 shrink-0 rounded-xl border border-violet-400/50 bg-violet-500/20 px-4 text-sm font-semibold text-white'
+          : 'min-h-11 shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-semibold text-slate-300';
+        button.setAttribute('aria-pressed', String(active));
+      });
+    }
+
+    async function loadDreams() {
+      if (!list || !listStatus) return;
+      list.replaceChildren();
+      listStatus.hidden = false;
+      listStatus.textContent = 'Загрузка записей…';
+      refresh?.setAttribute('disabled', '');
+      try {
+        const response = await fetch(`/api/admin/dreams?status=${encodeURIComponent(currentFilter)}`);
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || 'Не удалось загрузить список.');
+        const dreams = result.dreams as DreamItem[];
+        if (!dreams.length) {
+          listStatus.textContent = 'В этой категории пока нет записей.';
+          return;
+        }
+        listStatus.hidden = true;
+        dreams.forEach(renderDream);
+      } catch (error) {
+        listStatus.textContent = error instanceof Error ? error.message : 'Не удалось загрузить список.';
+        listStatus.className = 'p-6 text-sm text-rose-300';
+      } finally {
+        refresh?.removeAttribute('disabled');
+      }
+    }
+
+    function renderDream(dream: DreamItem) {
+      if (!list) return;
+      const article = document.createElement('article');
+      article.className = 'grid gap-4 p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center';
+
+      const content = document.createElement('div');
+      const meta = document.createElement('div');
+      meta.className = 'flex flex-wrap items-center gap-2 text-sm text-slate-400';
+      const status = document.createElement('span');
+      status.className = dream.status === 'pending' ? 'font-semibold text-amber-300' : dream.status === 'answered' ? 'font-semibold text-emerald-300' : 'font-semibold text-rose-300';
+      status.textContent = labels[dream.status];
+      const author = document.createElement('span');
+      author.textContent = dream.name || 'Без имени';
+      const separator = document.createElement('span');
+      separator.textContent = '·';
+      const time = document.createElement('time');
+      time.dateTime = dream.created_at;
+      time.textContent = formatDate(dream.created_at);
+      meta.append(status, separator, author, time);
+
+      const excerpt = document.createElement('p');
+      excerpt.className = 'mt-2 line-clamp-2 leading-6 text-slate-200';
+      excerpt.textContent = dream.dream_excerpt;
+      content.append(meta, excerpt);
+
+      const link = document.createElement('a');
+      link.href = `/admin/dreams/${encodeURIComponent(dream.id)}`;
+      link.className = 'inline-flex min-h-11 items-center justify-center rounded-xl bg-violet-600 px-4 text-sm font-semibold text-white transition hover:bg-violet-500';
+      link.textContent = dream.status === 'pending' ? 'Ответить' : 'Открыть';
+      article.append(content, link);
+      list.append(article);
+    }
+
+    function formatDate(value: string) {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? value : date.toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' });
+    }
+
+    filterButtons.forEach((button) => button.addEventListener('click', () => {
+      currentFilter = button.dataset.filter || 'all';
+      setActiveFilter(currentFilter);
+      loadDreams();
+    }));
+    refresh?.addEventListener('click', loadDreams);
+    setActiveFilter(currentFilter);
+    loadDreams();
+  </script>
+</AdminLayout>

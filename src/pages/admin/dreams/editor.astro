@@ -1,0 +1,255 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="Ответ на сон — Админка">
+  <a href="/admin/dreams/" class="inline-flex min-h-11 items-center text-sm font-semibold text-violet-300 hover:text-white">← К списку снов</a>
+
+  <div class="mt-4" data-loading role="status">Загрузка записи…</div>
+  <div class="hidden" data-editor>
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <p class="text-sm text-slate-400">Запись <span class="font-mono" data-id></span></p>
+        <h1 class="mt-1 font-display text-3xl font-bold text-white">Сон пользователя</h1>
+      </div>
+      <span class="rounded-lg border px-3 py-1.5 text-sm font-semibold" data-status></span>
+    </div>
+
+    <section class="mt-6 grid gap-4 rounded-2xl border border-white/10 bg-white/[0.035] p-5 sm:grid-cols-3">
+      <div><p class="text-xs uppercase tracking-wide text-slate-500">Имя</p><p class="mt-1 text-white" data-name></p></div>
+      <div><p class="text-xs uppercase tracking-wide text-slate-500">Email</p><p class="mt-1 break-all text-white" data-email></p></div>
+      <div><p class="text-xs uppercase tracking-wide text-slate-500">Дата</p><time class="mt-1 block text-white" data-date></time></div>
+    </section>
+
+    <section class="mt-5 rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+      <h2 class="font-display text-xl font-bold text-white">Текст сна</h2>
+      <p class="mt-4 whitespace-pre-wrap leading-7 text-slate-200" data-dream-text></p>
+    </section>
+
+    <section class="mt-5 rounded-2xl border border-white/10 bg-white/[0.035] p-5 sm:p-6">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="font-display text-xl font-bold text-white">Ответ</h2>
+          <p class="mt-1 text-sm text-slate-400">Простой Markdown. HTML не допускается.</p>
+        </div>
+        <span class="text-sm tabular-nums text-slate-400"><span data-answer-count>0</span>/20000</span>
+      </div>
+
+      <div class="mt-4 flex flex-wrap gap-2" role="toolbar" aria-label="Форматирование ответа">
+        <button type="button" data-format="bold" class="min-h-10 rounded-lg border border-white/10 bg-white/5 px-3 text-sm font-semibold hover:bg-white/10">Жирный</button>
+        <button type="button" data-format="list" class="min-h-10 rounded-lg border border-white/10 bg-white/5 px-3 text-sm font-semibold hover:bg-white/10">Список</button>
+        <button type="button" data-link-toggle class="min-h-10 rounded-lg border border-violet-400/30 bg-violet-500/10 px-3 text-sm font-semibold text-violet-200 hover:bg-violet-500/20">Добавить ссылку на пост</button>
+      </div>
+
+      <div class="mt-3 hidden rounded-xl border border-white/10 bg-night-950/60 p-4" data-link-panel>
+        <label for="post-search" class="text-sm font-semibold text-white">Поиск существующего поста</label>
+        <input id="post-search" type="search" placeholder="Название или адрес поста" class="mt-2 min-h-11 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-base text-white outline-none focus:border-violet-400" data-post-search />
+        <p class="mt-2 text-xs text-slate-400">Выбранный пост будет вставлен в редактор как внутренняя Markdown-ссылка.</p>
+        <div class="mt-3 max-h-64 space-y-2 overflow-y-auto" data-post-results></div>
+      </div>
+
+      <textarea data-answer rows="16" maxlength="20000" class="mt-4 min-h-80 w-full resize-y rounded-xl border border-white/10 bg-night-950/70 p-4 font-sans text-base leading-7 text-white outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-500/20" placeholder="Напишите ответ пользователю…"></textarea>
+
+      <div class="mt-4 hidden rounded-xl border px-4 py-3 text-sm" data-message role="status" aria-live="polite"></div>
+
+      <div class="mt-5 flex flex-wrap gap-3">
+        <button type="button" data-action="draft" class="min-h-12 rounded-xl border border-white/15 bg-white/5 px-5 font-semibold text-white hover:bg-white/10">Сохранить черновик</button>
+        <button type="button" data-action="publish" class="min-h-12 rounded-xl bg-emerald-600 px-5 font-semibold text-white hover:bg-emerald-500">Опубликовать ответ</button>
+        <button type="button" data-action="reject" class="min-h-12 rounded-xl border border-rose-400/30 px-5 font-semibold text-rose-300 hover:bg-rose-500/10">Отклонить</button>
+        <button type="button" data-action="reopen" class="hidden min-h-12 rounded-xl border border-amber-400/30 px-5 font-semibold text-amber-200 hover:bg-amber-500/10">Вернуть в новые</button>
+      </div>
+      <p class="mt-4 text-xs text-slate-500">AI-черновик зарезервирован в структуре данных, но генерация AI на этом этапе отключена.</p>
+    </section>
+  </div>
+
+  <script>
+    type Status = 'pending' | 'answered' | 'rejected';
+    interface DreamRecord {
+      id: string;
+      name: string | null;
+      email: string;
+      dream_text: string;
+      status: Status;
+      answer_text: string | null;
+      created_at: string;
+      answered_at: string | null;
+    }
+    interface SearchItem { slug: string; title: string; text?: string }
+
+    const loading = document.querySelector<HTMLElement>('[data-loading]');
+    const editor = document.querySelector<HTMLElement>('[data-editor]');
+    const answer = document.querySelector<HTMLTextAreaElement>('[data-answer]');
+    const count = document.querySelector<HTMLElement>('[data-answer-count]');
+    const message = document.querySelector<HTMLElement>('[data-message]');
+    const actionButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-action]')];
+    const linkPanel = document.querySelector<HTMLElement>('[data-link-panel]');
+    const postSearch = document.querySelector<HTMLInputElement>('[data-post-search]');
+    const postResults = document.querySelector<HTMLElement>('[data-post-results]');
+    const id = decodeURIComponent(location.pathname.replace(/\/$/, '').split('/').pop() || '');
+    let searchIndex: SearchItem[] | null = null;
+
+    async function loadDream() {
+      try {
+        const response = await fetch(`/api/admin/dreams/${encodeURIComponent(id)}`);
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || 'Не удалось загрузить запись.');
+        fillEditor(result.dream as DreamRecord);
+        if (loading) loading.hidden = true;
+        editor?.classList.remove('hidden');
+      } catch (error) {
+        if (loading) {
+          loading.textContent = error instanceof Error ? error.message : 'Не удалось загрузить запись.';
+          loading.className = 'rounded-xl border border-rose-400/30 bg-rose-500/10 p-4 text-rose-200';
+        }
+      }
+    }
+
+    function fillEditor(dream: DreamRecord) {
+      setText('[data-id]', dream.id);
+      setText('[data-name]', dream.name || 'Без имени');
+      setText('[data-email]', dream.email);
+      setText('[data-dream-text]', dream.dream_text);
+      const date = document.querySelector<HTMLTimeElement>('[data-date]');
+      if (date) {
+        date.dateTime = dream.created_at;
+        date.textContent = formatDate(dream.created_at);
+      }
+      if (answer) answer.value = dream.answer_text || '';
+      updateCount();
+      updateStatus(dream.status);
+    }
+
+    function updateStatus(status: Status) {
+      const element = document.querySelector<HTMLElement>('[data-status]');
+      if (element) {
+        element.textContent = status === 'pending' ? 'Новый' : status === 'answered' ? 'Отвечен' : 'Отклонён';
+        element.className = status === 'pending'
+          ? 'rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-1.5 text-sm font-semibold text-amber-200'
+          : status === 'answered'
+            ? 'rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-1.5 text-sm font-semibold text-emerald-200'
+            : 'rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-1.5 text-sm font-semibold text-rose-200';
+      }
+      const reopen = document.querySelector<HTMLButtonElement>('[data-action="reopen"]');
+      reopen?.classList.toggle('hidden', status === 'pending');
+    }
+
+    async function save(action: string) {
+      if (!answer) return;
+      if (action === 'reject' && !confirm('Отклонить эту запись? Она не будет опубликована.')) return;
+      if (action === 'publish' && !confirm('Опубликовать ответ и отметить запись отвеченной?')) return;
+      setBusy(true);
+      showMessage('Сохранение…', 'neutral');
+      try {
+        const response = await fetch(`/api/admin/dreams/${encodeURIComponent(id)}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action, answer_text: answer.value }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || 'Не удалось сохранить изменения.');
+        fillEditor(result.dream as DreamRecord);
+        showMessage(action === 'draft' ? 'Черновик сохранён.' : action === 'publish' ? 'Ответ опубликован.' : action === 'reject' ? 'Запись отклонена.' : 'Запись возвращена в новые.', 'success');
+      } catch (error) {
+        showMessage(error instanceof Error ? error.message : 'Не удалось сохранить изменения.', 'error');
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function setBusy(busy: boolean) {
+      actionButtons.forEach((button) => { button.disabled = busy; });
+    }
+
+    function showMessage(text: string, kind: 'success' | 'error' | 'neutral') {
+      if (!message) return;
+      message.textContent = text;
+      message.className = kind === 'success'
+        ? 'mt-4 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200'
+        : kind === 'error'
+          ? 'mt-4 rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200'
+          : 'mt-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300';
+    }
+
+    function insertText(before: string, after = '') {
+      if (!answer) return;
+      const start = answer.selectionStart;
+      const end = answer.selectionEnd;
+      const selected = answer.value.slice(start, end);
+      answer.setRangeText(`${before}${selected}${after}`, start, end, 'end');
+      answer.focus();
+      updateCount();
+    }
+
+    document.querySelector('[data-format="bold"]')?.addEventListener('click', () => insertText('**', '**'));
+    document.querySelector('[data-format="list"]')?.addEventListener('click', () => insertText('- '));
+    document.querySelector('[data-link-toggle]')?.addEventListener('click', async () => {
+      linkPanel?.classList.toggle('hidden');
+      if (!linkPanel?.classList.contains('hidden')) {
+        postSearch?.focus();
+        if (!searchIndex) {
+          const response = await fetch('/search-index.json');
+          searchIndex = response.ok ? await response.json() : [];
+        }
+        renderPostResults();
+      }
+    });
+
+    function renderPostResults() {
+      if (!postResults || !searchIndex) return;
+      postResults.replaceChildren();
+      const term = (postSearch?.value || '').trim().toLowerCase();
+      if (term.length < 2) {
+        const hint = document.createElement('p');
+        hint.className = 'text-sm text-slate-400';
+        hint.textContent = 'Введите минимум два символа.';
+        postResults.append(hint);
+        return;
+      }
+      const matches = searchIndex.filter((item) => item.title.toLowerCase().includes(term) || item.slug.toLowerCase().includes(term) || (item.text || '').toLowerCase().includes(term)).slice(0, 12);
+      matches.forEach((item) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'block w-full rounded-lg border border-white/10 bg-white/5 p-3 text-left hover:border-violet-400/40 hover:bg-white/10';
+        const title = document.createElement('span');
+        title.className = 'block font-semibold text-white';
+        title.textContent = item.title;
+        const path = document.createElement('span');
+        path.className = 'mt-1 block break-all text-xs text-slate-400';
+        path.textContent = `/${item.slug}/`;
+        button.append(title, path);
+        button.addEventListener('click', () => {
+          if (!answer) return;
+          const start = answer.selectionStart;
+          const end = answer.selectionEnd;
+          const label = answer.value.slice(start, end) || item.title;
+          answer.setRangeText(`[${label}](/${item.slug}/)`, start, end, 'end');
+          answer.focus();
+          updateCount();
+          linkPanel?.classList.add('hidden');
+        });
+        postResults.append(button);
+      });
+      if (!matches.length) {
+        const empty = document.createElement('p');
+        empty.className = 'text-sm text-slate-400';
+        empty.textContent = 'Подходящие посты не найдены.';
+        postResults.append(empty);
+      }
+    }
+
+    function setText(selector: string, value: string) {
+      const element = document.querySelector<HTMLElement>(selector);
+      if (element) element.textContent = value;
+    }
+    function updateCount() { if (answer && count) count.textContent = String(answer.value.length); }
+    function formatDate(value: string) {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? value : date.toLocaleString('ru-RU', { dateStyle: 'long', timeStyle: 'short' });
+    }
+
+    answer?.addEventListener('input', updateCount);
+    postSearch?.addEventListener('input', renderPostResults);
+    actionButtons.forEach((button) => button.addEventListener('click', () => save(button.dataset.action || '')));
+    loadDream();
+  </script>
+</AdminLayout>
