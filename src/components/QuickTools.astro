@@ -68,7 +68,7 @@ const topMenu = menu.filter((m) => m.parent === "0");
     class="hidden max-h-[85vh] w-full max-w-sm flex-col overflow-y-auto rounded-2xl border border-white/10 bg-night-900 p-5 shadow-2xl shadow-black/60"
   >
     <div class="flex items-center justify-between gap-4">
-      <h3 class="font-display text-xl font-bold text-white">Մենյու</h3>
+      <h2 class="font-display text-xl font-bold text-white">Մենյու</h2>
       <button type="button" class="quick-close grid size-9 place-items-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition hover:border-violet-400/60 hover:text-white" aria-label="Փակել">
         <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>
       </button>
@@ -88,7 +88,7 @@ const topMenu = menu.filter((m) => m.parent === "0");
     class="hidden max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-night-900 shadow-2xl shadow-black/60"
   >
     <div class="flex items-center justify-between gap-4 border-b border-white/10 p-5">
-      <h3 class="font-display text-xl font-bold text-white">Որոնում</h3>
+      <h2 class="font-display text-xl font-bold text-white">Որոնում</h2>
       <button type="button" class="quick-close grid size-9 place-items-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition hover:border-violet-400/60 hover:text-white" aria-label="Փակել">
         <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>
       </button>
@@ -96,7 +96,7 @@ const topMenu = menu.filter((m) => m.parent === "0");
     <div class="p-5">
       <div class="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 transition focus-within:border-violet-400/60 focus-within:ring-2 focus-within:ring-violet-500/30">
         <svg class="ml-2 size-5 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.35-4.35"></path></svg>
-        <input id="quick-search-input" type="search" placeholder="Փնտրել երազ…" autocomplete="off" class="w-full bg-transparent px-2 py-2.5 text-white placeholder:text-slate-500 outline-none" />
+        <input id="quick-search-input" type="search" placeholder="Փնտրել երազ…" autocomplete="off" class="w-full bg-transparent px-2 py-2.5 text-white placeholder:text-slate-400 outline-none" />
       </div>
       <div id="quick-search-results" class="mt-4 max-h-[55vh] overflow-y-auto"></div>
     </div>
@@ -107,7 +107,7 @@ const topMenu = menu.filter((m) => m.parent === "0");
     class="hidden max-h-[85vh] w-full max-w-lg flex-col overflow-y-auto rounded-2xl border border-white/10 bg-night-900 p-5 shadow-2xl shadow-black/60"
   >
     <div class="flex items-center justify-between gap-4">
-      <h3 class="font-display text-xl font-bold text-white">Այբուբեն</h3>
+      <h2 class="font-display text-xl font-bold text-white">Այբուբեն</h2>
       <button type="button" class="quick-close grid size-9 place-items-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition hover:border-violet-400/60 hover:text-white" aria-label="Փակել">
         <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>
       </button>
@@ -223,12 +223,12 @@ const topMenu = menu.filter((m) => m.parent === "0");
   function runQuickSearch() {
     if (!searchResults) return;
     if (!searchIndex) {
-      searchResults.innerHTML = '<p class="text-sm text-slate-500">Բեռնում…</p>';
+      searchResults.innerHTML = '<p class="text-sm text-slate-400">Բեռնում…</p>';
       return;
     }
     const term = (searchInput.value || '').trim().toLowerCase();
     if (!term) {
-      searchResults.innerHTML = '<p class="text-sm text-slate-500">Մուտքագրեք որոնման բառը:</p>';
+      searchResults.innerHTML = '<p class="text-sm text-slate-400">Մուտքագրեք որոնման բառը:</p>';
       return;
     }
     const matches = searchIndex

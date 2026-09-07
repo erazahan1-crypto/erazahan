@@ -130,6 +130,28 @@
 .dream-content h3 { font-size: 1.2rem; }
 .dream-content h4 { font-size: 1.1rem; }
 
+/* Уровень тега может быть скорректирован normalizeHeadings() (без пропуска уровней в аутлайне
+   документа), поэтому визуальный размер задаём по классу dream-hN — по исходному уровню WordPress. */
+.dream-content .dream-h1,
+.dream-content .dream-h2,
+.dream-content .dream-h3,
+.dream-content .dream-h4,
+.dream-content .dream-h5,
+.dream-content .dream-h6 {
+  font-family: var(--font-display);
+  color: #ffffff;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 1.5em 0 0.5em;
+}
+
+.dream-content .dream-h1 { font-size: 1.6rem; }
+.dream-content .dream-h2 { font-size: 1.4rem; }
+.dream-content .dream-h3 { font-size: 1.2rem; }
+.dream-content .dream-h4 { font-size: 1.1rem; }
+.dream-content .dream-h5 { font-size: 0.83em; }
+.dream-content .dream-h6 { font-size: 0.67em; }
+
 .dream-content p {
   margin: 0.75em 0;
 }

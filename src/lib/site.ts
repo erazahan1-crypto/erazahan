@@ -404,6 +404,25 @@ export const excerptOf = (p: Post, len = 180) => {
   return t.length > len ? t.slice(0, len) + '…' : t;
 };
 
+// Импортированный из WordPress контент использует произвольные уровни заголовков (h1/h3/h4 подряд),
+// из-за чего на странице получаются "прыжки" уровней (h1 -> h3, h1 -> h4 и т.п.). Приводим их к
+// последовательной иерархии, не меняя визуальный размер: исходный уровень сохраняется в классе
+// dream-hN, а CSS в global.css рисует по классу, а не по тегу.
+// startLevel — уровень заголовка, уже присутствующего на странице до этого блока контента
+// (1, если перед блоком уже есть настоящий <h1>; 0, если первый заголовок в контенте сам играет роль <h1>).
+export const normalizeHeadings = (html: string, startLevel = 1): string => {
+  let prevLevel = startLevel;
+  return html.replace(/<h([1-6])((?:\s[^>]*)?)>([\s\S]*?)<\/h\1>/gi, (_match, levelStr, attrs, inner) => {
+    const originalLevel = Number(levelStr);
+    const targetLevel = Math.min(Math.max(originalLevel, startLevel + 1), prevLevel + 1);
+    prevLevel = targetLevel;
+    const classMatch = attrs.match(/\sclass="([^"]*)"/i);
+    const mergedClass = classMatch ? `${classMatch[1]} dream-h${originalLevel}` : `dream-h${originalLevel}`;
+    const restAttrs = classMatch ? attrs.replace(classMatch[0], '') : attrs;
+    return `<h${targetLevel}${restAttrs} class="${mergedClass}">${inner}</h${targetLevel}>`;
+  });
+};
+
 // ===== Имена: страницы букв, генерируемые из постов =====
 
 const BOYS_NAME_CAT = 'Արական Անունների Նշանակությունը';

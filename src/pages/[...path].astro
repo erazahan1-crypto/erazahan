@@ -20,6 +20,7 @@ import {
   relatedForPost,
   LEGACY_PATH_ALIASES,
   coverDimensions,
+  normalizeHeadings,
 } from '../lib/site';
 import type { Comment } from '../lib/site';
 import { excerptOf } from '../lib/site';
@@ -155,7 +156,7 @@ const crumbs = [
         ) : null}
 
         {post.content ? (
-            <div class="dream-content mt-6" set:html={fixBrokenInternalLinks(addInternalLinks(stripBrokenImages(post.content), post.slug))} />
+            <div class="dream-content mt-6" set:html={fixBrokenInternalLinks(addInternalLinks(normalizeHeadings(stripBrokenImages(post.content)), post.slug))} />
         ) : null}
 
         {related.length > 0 ? (
@@ -195,7 +196,7 @@ const crumbs = [
                 >
                   <div class="flex flex-wrap items-center gap-2 text-sm">
                     <span class="font-semibold text-white">{c.author || 'Անանուն'}</span>
-                    {c.date ? <span class="text-slate-500">{c.date}</span> : null}
+                    {c.date ? <span class="text-slate-400">{c.date}</span> : null}
                   </div>
                   <p class="mt-2 text-sm leading-relaxed text-slate-300">{c.content}</p>
                 </li>
@@ -221,7 +222,7 @@ const crumbs = [
                 type="search"
                 placeholder={`Փնտրել «${page.letter}» տառում…`}
                 autocomplete="off"
-                class="w-full rounded-full border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 outline-none transition focus:border-violet-400/60 focus:bg-white/10 focus:ring-2 focus:ring-violet-500/30"
+                class="w-full rounded-full border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white placeholder:text-slate-400 outline-none transition focus:border-violet-400/60 focus:bg-white/10 focus:ring-2 focus:ring-violet-500/30"
               />
               <svg class="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.35-4.35"></path></svg>
             </div>
@@ -246,7 +247,7 @@ const crumbs = [
               <div class="rounded-2xl border border-white/5 bg-white/5 p-4" data-word={`${w.wordText} ${w.wordTranslit}`.toLowerCase()}>
                 <div class="font-semibold text-slate-300">{w.wordText}</div>
                 {w.wordTranslit ? (
-                  <div class="mt-1 text-xs text-slate-500">{w.wordTranslit}</div>
+                  <div class="mt-1 text-xs text-slate-400">{w.wordTranslit}</div>
                 ) : null}
               </div>
             );
@@ -290,7 +291,7 @@ const crumbs = [
       </div>
     ) : isHub ? (
       <div class="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-        {hubContent ? <div class="dream-content" set:html={fixBrokenInternalLinks(stripBrokenImages(hubContent))} /> : null}
+        {hubContent ? <div class="dream-content" set:html={fixBrokenInternalLinks(normalizeHeadings(stripBrokenImages(hubContent), 0))} /> : null}
         <div class="mt-10 border-t border-white/10 pt-8">
           <div class="flex flex-wrap justify-center gap-2.5">
             {ALPHABET.map((letter) => {
@@ -316,7 +317,7 @@ const crumbs = [
         {page.content ? (
           <div
             class="dream-content mt-6"
-            set:html={fixBrokenInternalLinks(stripBrokenImages(isNamesHub ? namesHubContent : isAnatomy ? anatomyContent : page.content))}
+            set:html={fixBrokenInternalLinks(normalizeHeadings(stripBrokenImages(isNamesHub ? namesHubContent : isAnatomy ? anatomyContent : page.content)))}
           />
         ) : null}
 
@@ -337,7 +338,7 @@ const crumbs = [
                     name="name"
                     type="text"
                     autocomplete="name"
-                    class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder:text-slate-500 outline-none transition focus:border-violet-400/60 focus:ring-2 focus:ring-violet-500/30"
+                    class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder:text-slate-400 outline-none transition focus:border-violet-400/60 focus:ring-2 focus:ring-violet-500/30"
                     placeholder="Ձեր անունը (պարտադիր չէ)"
                   />
                 </div>
@@ -350,7 +351,7 @@ const crumbs = [
                     name="dream"
                     rows="5"
                     required
-                    class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder:text-slate-500 outline-none transition focus:border-violet-400/60 focus:ring-2 focus:ring-violet-500/30"
+                    class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder:text-slate-400 outline-none transition focus:border-violet-400/60 focus:ring-2 focus:ring-violet-500/30"
                     placeholder="Գրեք ձեր երազը…"
                   ></textarea>
                 </div>
@@ -407,7 +408,7 @@ const crumbs = [
                   <div class="rounded-2xl border border-white/5 bg-white/5 p-4">
                     <div class="flex flex-wrap items-center gap-2 text-sm">
                       <span class="font-semibold text-white">{t.question.author || 'Անանուն'}</span>
-                      {t.question.date ? <span class="text-slate-500">{t.question.date}</span> : null}
+                      {t.question.date ? <span class="text-slate-400">{t.question.date}</span> : null}
                     </div>
                     <p class="mt-2 text-sm leading-relaxed text-slate-200">{t.question.content}</p>
                     {t.answers.length > 0 ? (
@@ -416,7 +417,7 @@ const crumbs = [
                           <div class="rounded-xl border border-white/5 bg-white/5 p-3">
                             <div class="flex flex-wrap items-center gap-2 text-xs">
                               <span class="font-semibold text-violet-300">{a.author || 'Erazahan'}</span>
-                              {a.date ? <span class="text-slate-500">{a.date}</span> : null}
+                              {a.date ? <span class="text-slate-400">{a.date}</span> : null}
                             </div>
                             <p class="mt-1.5 text-sm leading-relaxed whitespace-pre-line text-slate-300">
                               {a.content}
@@ -435,7 +436,7 @@ const crumbs = [
                   <div class="rounded-xl border border-white/5 bg-white/5 p-4">
                     <div class="flex flex-wrap items-center gap-2 text-sm">
                       <span class="font-semibold text-violet-300">{c.author || 'Erazahan'}</span>
-                      {c.date ? <span class="text-slate-500">{c.date}</span> : null}
+                      {c.date ? <span class="text-slate-400">{c.date}</span> : null}
                     </div>
                     <p class="mt-2 text-sm leading-relaxed whitespace-pre-line text-slate-300">{c.content}</p>
                   </div>
@@ -453,7 +454,7 @@ const crumbs = [
                 <li class="rounded-xl border border-white/5 bg-white/5 p-4">
                   <div class="flex flex-wrap items-center gap-2 text-sm">
                     <span class="font-semibold text-white">{c.author || 'Անանուն'}</span>
-                    {c.date ? <span class="text-slate-500">{c.date}</span> : null}
+                    {c.date ? <span class="text-slate-400">{c.date}</span> : null}
                   </div>
                   <p class="mt-2 text-sm leading-relaxed text-slate-300">{c.content}</p>
                 </li>
