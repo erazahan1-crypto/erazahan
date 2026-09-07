@@ -21,6 +21,8 @@ interface Context {
 }
 
 const MAX_ANSWER_LENGTH = 20_000;
+const MIN_DREAM_LENGTH = 20;
+const MAX_DREAM_LENGTH = 5_000;
 const RAW_HTML = /<\/?[a-z][^>]*>/i;
 const MARKDOWN_LINK = /\]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g;
 
@@ -51,7 +53,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
     return json({ ok: false, error: 'Ожидается JSON-запрос.' }, 415);
   }
 
-  let body: { action?: unknown; answer_text?: unknown };
+  let body: { action?: unknown; answer_text?: unknown; dream_text?: unknown };
   try {
     body = await context.request.json();
   } catch {
@@ -60,8 +62,20 @@ export async function onRequestPost(context: Context): Promise<Response> {
 
   const action = typeof body.action === 'string' ? body.action : '';
   const answerText = typeof body.answer_text === 'string' ? body.answer_text.trim() : '';
-  if (!['draft', 'publish', 'reject', 'reopen'].includes(action)) {
+  const dreamText = typeof body.dream_text === 'string' ? body.dream_text.trim() : '';
+  if (!['draft', 'publish', 'reject', 'reopen', 'update_dream'].includes(action)) {
     return json({ ok: false, error: 'Неизвестное действие.' }, 400);
+  }
+  if (action === 'update_dream') {
+    if (dreamText.length < MIN_DREAM_LENGTH) {
+      return json({ ok: false, error: 'Текст сна должен содержать не менее 20 символов.' }, 400);
+    }
+    if (dreamText.length > MAX_DREAM_LENGTH) {
+      return json({ ok: false, error: 'Текст сна не должен превышать 5000 символов.' }, 400);
+    }
+    if (RAW_HTML.test(dreamText)) {
+      return json({ ok: false, error: 'HTML в тексте сна не допускается.' }, 400);
+    }
   }
   if (answerText.length > MAX_ANSWER_LENGTH) {
     return json({ ok: false, error: 'Ответ не должен превышать 20 000 символов.' }, 400);
@@ -82,7 +96,12 @@ export async function onRequestPost(context: Context): Promise<Response> {
     }
 
     const now = new Date().toISOString();
-    if (action === 'draft') {
+    if (action === 'update_dream') {
+      await context.env.DREAMS_DB
+        .prepare('UPDATE dream_submissions SET dream_text = ?, updated_at = ? WHERE id = ?')
+        .bind(dreamText, now, id)
+        .run();
+    } else if (action === 'draft') {
       await context.env.DREAMS_DB
         .prepare('UPDATE dream_submissions SET answer_text = ?, updated_at = ? WHERE id = ?')
         .bind(answerText || null, now, id)

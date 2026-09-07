@@ -21,9 +21,17 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       <div><p class="text-xs uppercase tracking-wide text-slate-500">Дата</p><time class="mt-1 block text-white" data-date></time></div>
     </section>
 
-    <section class="mt-5 rounded-2xl border border-white/10 bg-white/[0.035] p-5">
-      <h2 class="font-display text-xl font-bold text-white">Текст сна</h2>
-      <p class="mt-4 whitespace-pre-wrap leading-7 text-slate-200" data-dream-text></p>
+    <section class="mt-5 rounded-2xl border border-white/10 bg-white/[0.035] p-5 sm:p-6">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <label for="dream-text" class="font-display text-xl font-bold text-white">Текст сна</label>
+          <p class="mt-1 text-sm text-slate-400">Исправьте орфографию или замените латиницу армянским текстом.</p>
+        </div>
+        <span class="text-sm tabular-nums text-slate-400"><span data-dream-count>0</span>/5000</span>
+      </div>
+      <textarea id="dream-text" data-dream-text rows="10" minlength="20" maxlength="5000" class="mt-4 min-h-56 w-full resize-y rounded-xl border border-white/10 bg-night-950/70 p-4 text-base leading-7 text-white outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-500/20"></textarea>
+      <div class="mt-4 hidden rounded-xl border px-4 py-3 text-sm" data-dream-message role="status" aria-live="polite"></div>
+      <button type="button" data-dream-save class="mt-4 min-h-12 rounded-xl bg-violet-600 px-5 font-semibold text-white transition hover:bg-violet-500 disabled:cursor-wait disabled:opacity-60">Сохранить текст сна</button>
     </section>
 
     <section class="mt-5 rounded-2xl border border-white/10 bg-white/[0.035] p-5 sm:p-6">
@@ -78,6 +86,10 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
 
     const loading = document.querySelector<HTMLElement>('[data-loading]');
     const editor = document.querySelector<HTMLElement>('[data-editor]');
+    const dreamText = document.querySelector<HTMLTextAreaElement>('[data-dream-text]');
+    const dreamCount = document.querySelector<HTMLElement>('[data-dream-count]');
+    const dreamMessage = document.querySelector<HTMLElement>('[data-dream-message]');
+    const dreamSave = document.querySelector<HTMLButtonElement>('[data-dream-save]');
     const answer = document.querySelector<HTMLTextAreaElement>('[data-answer]');
     const count = document.querySelector<HTMLElement>('[data-answer-count]');
     const message = document.querySelector<HTMLElement>('[data-message]');
@@ -108,7 +120,8 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       setText('[data-id]', dream.id);
       setText('[data-name]', dream.name || 'Без имени');
       setText('[data-email]', dream.email);
-      setText('[data-dream-text]', dream.dream_text);
+      if (dreamText) dreamText.value = dream.dream_text;
+      updateDreamCount();
       const date = document.querySelector<HTMLTimeElement>('[data-date]');
       if (date) {
         date.dateTime = dream.created_at;
@@ -117,6 +130,34 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       if (answer) answer.value = dream.answer_text || '';
       updateCount();
       updateStatus(dream.status);
+    }
+
+    async function saveDreamText() {
+      if (!dreamText || !dreamSave) return;
+      const value = dreamText.value.trim();
+      if (value.length < 20) {
+        showDreamMessage('Текст сна должен содержать не менее 20 символов.', 'error');
+        return;
+      }
+
+      dreamSave.disabled = true;
+      showDreamMessage('Сохранение…', 'neutral');
+      try {
+        const response = await fetch(`/api/admin/dreams/${encodeURIComponent(id)}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action: 'update_dream', dream_text: value }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || 'Не удалось сохранить текст сна.');
+        dreamText.value = result.dream.dream_text;
+        updateDreamCount();
+        showDreamMessage('Текст сна сохранён', 'success');
+      } catch (error) {
+        showDreamMessage(error instanceof Error ? error.message : 'Не удалось сохранить текст сна.', 'error');
+      } finally {
+        dreamSave.disabled = false;
+      }
     }
 
     function updateStatus(status: Status) {
@@ -164,6 +205,16 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       if (!message) return;
       message.textContent = text;
       message.className = kind === 'success'
+        ? 'mt-4 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200'
+        : kind === 'error'
+          ? 'mt-4 rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200'
+          : 'mt-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300';
+    }
+
+    function showDreamMessage(text: string, kind: 'success' | 'error' | 'neutral') {
+      if (!dreamMessage) return;
+      dreamMessage.textContent = text;
+      dreamMessage.className = kind === 'success'
         ? 'mt-4 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200'
         : kind === 'error'
           ? 'mt-4 rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200'
@@ -241,12 +292,15 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       const element = document.querySelector<HTMLElement>(selector);
       if (element) element.textContent = value;
     }
+    function updateDreamCount() { if (dreamText && dreamCount) dreamCount.textContent = String(dreamText.value.length); }
     function updateCount() { if (answer && count) count.textContent = String(answer.value.length); }
     function formatDate(value: string) {
       const date = new Date(value);
       return Number.isNaN(date.getTime()) ? value : date.toLocaleString('ru-RU', { dateStyle: 'long', timeStyle: 'short' });
     }
 
+    dreamText?.addEventListener('input', updateDreamCount);
+    dreamSave?.addEventListener('click', saveDreamText);
     answer?.addEventListener('input', updateCount);
     postSearch?.addEventListener('input', renderPostResults);
     actionButtons.forEach((button) => button.addEventListener('click', () => save(button.dataset.action || '')));
