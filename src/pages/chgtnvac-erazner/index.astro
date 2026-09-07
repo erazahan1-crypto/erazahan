@@ -1,41 +1,5 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-
-const examples = [
-  {
-    title: 'Ծովի վրայով քայլելը',
-    author: 'Անի',
-    date: '4 սեպտեմբերի, 2026',
-    dream: 'Երազում հանգիստ ծովի վրայով քայլում էի, իսկ հեռվում լուսավոր քաղաք էր երևում։',
-    answer: 'Հանգիստ ջուրը հաճախ ներքին հավասարակշռության նշան է, իսկ հեռավոր լույսը կարող է նոր նպատակի մասին հուշել։',
-    status: 'Պատասխանված է',
-    useful: 12,
-    interesting: 7,
-    comments: 3,
-  },
-  {
-    title: 'Բաց պատուհան հին տանը',
-    author: 'Լուսինե',
-    date: '2 սեպտեմբերի, 2026',
-    dream: 'Մանկությանս տանն էի։ Բոլոր դռները փակ էին, բայց մի պատուհան բաց էր և վարագույրը շարժվում էր։',
-    answer: 'Բաց պատուհանը կարող է ցույց տալ, որ անցյալի հետ կապված նոր հնարավորություն կամ թարմ հայացք է հայտնվում։',
-    status: 'Պատասխանված է',
-    useful: 9,
-    interesting: 11,
-    comments: 2,
-  },
-  {
-    title: 'Գտած ոսկե բանալին',
-    author: 'Արամ',
-    date: '31 օգոստոսի, 2026',
-    dream: 'Այգու ճանապարհին փոքր ոսկե բանալի գտա, բայց չէի հասկանում, թե որ դուռն է այն բացում։',
-    answer: 'Պատասխանը պատրաստվում է։ Երազը շուտով կդիտարկվի կայքի խմբագրի կողմից։',
-    status: 'Սպասում է պատասխանի',
-    useful: 5,
-    interesting: 8,
-    comments: 0,
-  },
-];
 ---
 
 <Layout
@@ -166,44 +130,13 @@ const examples = [
   <section class="border-t border-white/5 bg-night-900/25">
     <div class="mx-auto max-w-5xl px-3 py-10 sm:px-6 sm:py-14">
       <div class="max-w-2xl">
-        <p class="text-sm font-semibold text-violet-300">Օրինակներ</p>
         <h2 class="mt-1.5 font-display text-2xl font-bold leading-tight text-white sm:text-3xl">Վերջին երազներն ու պատասխանները</h2>
-        <p class="mt-2 text-sm leading-6 text-slate-400 sm:text-base">Այս պատմությունները ցուցադրում են բաժնի ապագա տեսքը և առայժմ իրական հրապարակումներ չեն։</p>
       </div>
 
-      <div class="mt-6 grid gap-5 lg:grid-cols-2">
-        {examples.map((example) => (
-          <article class="flex flex-col rounded-2xl border border-white/10 bg-white/[0.055] p-4 sm:p-6">
-            <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-400">
-              <span class:list={[
-                'inline-flex items-center gap-1.5',
-                example.status === 'Պատասխանված է' ? 'text-emerald-300' : 'text-amber-300',
-              ]}>
-                <span class="size-1.5 rounded-full bg-current" aria-hidden="true"></span>{example.status}
-              </span>
-              <span aria-hidden="true">·</span>
-              <time>{example.date}</time>
-            </div>
-            <h3 class="mt-3 font-display text-xl font-bold leading-snug text-white sm:text-2xl">{example.title}</h3>
-            <p class="mt-1 text-sm font-medium text-violet-200">Պատմել է՝ {example.author}</p>
-            <p class="mt-4 text-base leading-7 text-slate-200">{example.dream}</p>
-            <div class="mt-5 rounded-xl border border-violet-300/10 bg-violet-500/10 p-4">
-              <p class="text-sm font-semibold text-violet-200">Պատասխան</p>
-              <p class="mt-2 text-base leading-7 text-slate-300">{example.answer}</p>
-            </div>
-            <div class="mt-auto pt-5">
-              <div class="grid grid-cols-2 gap-2 sm:grid-cols-3" aria-label="Արձագանքներ և մեկնաբանություններ">
-                <button type="button" aria-disabled="true" class="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-slate-200">👍 <span>Օգտակար՝ {example.useful}</span></button>
-                <button type="button" aria-disabled="true" class="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-slate-200">❤️ <span>Հետաքրքիր՝ {example.interesting}</span></button>
-                <button type="button" aria-disabled="true" class="col-span-2 flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-slate-200 sm:col-span-1">💬 <span>Մեկնաբանություններ՝ {example.comments}</span></button>
-              </div>
-              <button type="button" class="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-violet-400/35 bg-violet-500/15 px-4 text-base font-semibold text-violet-100 transition hover:border-violet-300/60 hover:bg-violet-500/25" aria-disabled="true">
-                Կարդալ ամբողջությամբ <span aria-hidden="true">→</span>
-              </button>
-            </div>
-          </article>
-        ))}
-      </div>
+      <p data-published-status class="mt-6 rounded-xl border border-white/10 bg-white/[0.055] px-4 py-4 text-sm leading-6 text-slate-300">
+        Հրապարակված պատասխանները բեռնվում են…
+      </p>
+      <div data-published-list class="mt-6 grid gap-5 lg:grid-cols-2" aria-live="polite"></div>
     </div>
   </section>
 
@@ -232,6 +165,23 @@ const examples = [
   </style>
 
   <script>
+    interface PublishedDream {
+      id: string;
+      name: string | null;
+      dream_text: string;
+      answer_text: string;
+      created_at: string;
+      answered_at: string | null;
+      updated_at: string;
+      status: string;
+    }
+
+    interface PublishedDreamsResponse {
+      ok: boolean;
+      dreams?: PublishedDream[];
+      error?: string;
+    }
+
     const form = document.querySelector<HTMLFormElement>('[data-dream-form]');
     const dream = form?.querySelector<HTMLTextAreaElement>('[name="dream_text"]');
     const count = form?.querySelector<HTMLElement>('[data-dream-count]');
@@ -316,5 +266,192 @@ const examples = [
         submitLabel.textContent = 'Ուղարկել երազը';
       }
     });
+
+    const publishedList = document.querySelector<HTMLElement>('[data-published-list]');
+    const publishedStatus = document.querySelector<HTMLElement>('[data-published-status]');
+
+    const appendInlineMarkdown = (parent: HTMLElement, value: string) => {
+      const tokenPattern = /\*\*([^*\n]+)\*\*|\[([^\]\n]+)\]\((\/(?!\/)[^)\s\\]+)\)/g;
+      let cursor = 0;
+
+      for (const match of value.matchAll(tokenPattern)) {
+        const index = match.index ?? 0;
+        parent.append(document.createTextNode(value.slice(cursor, index)));
+
+        if (match[1]) {
+          const strong = document.createElement('strong');
+          strong.textContent = match[1];
+          parent.append(strong);
+        } else if (match[2] && match[3]) {
+          const link = document.createElement('a');
+          link.href = match[3];
+          link.textContent = match[2];
+          link.className = 'font-semibold text-violet-200 underline decoration-violet-400 underline-offset-2 hover:text-white';
+          parent.append(link);
+        }
+
+        cursor = index + match[0].length;
+      }
+
+      parent.append(document.createTextNode(value.slice(cursor)));
+    };
+
+    const renderMarkdown = (markdown: string): HTMLElement => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'mt-2 space-y-3 text-base leading-7 text-slate-300';
+      const lines = markdown.replace(/\r\n?/g, '\n').split('\n');
+      let paragraphLines: string[] = [];
+      let currentList: HTMLUListElement | HTMLOListElement | null = null;
+      let currentListType = '';
+
+      const flushParagraph = () => {
+        if (paragraphLines.length === 0) return;
+        const paragraph = document.createElement('p');
+        appendInlineMarkdown(paragraph, paragraphLines.join(' '));
+        wrapper.append(paragraph);
+        paragraphLines = [];
+      };
+
+      for (const line of lines) {
+        if (!line.trim()) {
+          flushParagraph();
+          currentList = null;
+          currentListType = '';
+          continue;
+        }
+
+        const unorderedItem = line.match(/^\s*[-*]\s+(.+)$/);
+        const orderedItem = line.match(/^\s*\d+[.)]\s+(.+)$/);
+        const listItem = unorderedItem?.[1] ?? orderedItem?.[1];
+        const listType = unorderedItem ? 'ul' : orderedItem ? 'ol' : '';
+
+        if (listItem && listType) {
+          flushParagraph();
+          if (!currentList || currentListType !== listType) {
+            currentList = document.createElement(listType) as HTMLUListElement | HTMLOListElement;
+            currentList.className = listType === 'ul' ? 'list-disc space-y-1 pl-5' : 'list-decimal space-y-1 pl-5';
+            wrapper.append(currentList);
+            currentListType = listType;
+          }
+          const item = document.createElement('li');
+          appendInlineMarkdown(item, listItem);
+          currentList.append(item);
+          continue;
+        }
+
+        currentList = null;
+        currentListType = '';
+        paragraphLines.push(line.trim());
+      }
+
+      flushParagraph();
+      return wrapper;
+    };
+
+    const formatPublishedDate = (dream: PublishedDream): string => {
+      const value = dream.answered_at || dream.updated_at || dream.created_at;
+      const date = new Date(value);
+      return Number.isNaN(date.getTime())
+        ? ''
+        : date.toLocaleDateString('hy-AM', { year: 'numeric', month: 'long', day: 'numeric' });
+    };
+
+    const createReactionButton = (label: string): HTMLButtonElement => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.disabled = true;
+      button.textContent = label;
+      button.className = 'flex min-h-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-slate-300 disabled:cursor-default disabled:opacity-75';
+      return button;
+    };
+
+    const createPublishedCard = (dream: PublishedDream): HTMLElement => {
+      const article = document.createElement('article');
+      article.className = 'flex flex-col rounded-2xl border border-white/10 bg-white/[0.055] p-4 sm:p-6';
+
+      const meta = document.createElement('div');
+      meta.className = 'flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-400';
+      const answered = document.createElement('span');
+      answered.className = 'inline-flex items-center gap-1.5 text-emerald-300';
+      const dot = document.createElement('span');
+      dot.className = 'size-1.5 rounded-full bg-current';
+      dot.setAttribute('aria-hidden', 'true');
+      answered.append(dot, document.createTextNode('Պատասխանված է'));
+      meta.append(answered);
+
+      const formattedDate = formatPublishedDate(dream);
+      if (formattedDate) {
+        const separator = document.createElement('span');
+        separator.textContent = '·';
+        separator.setAttribute('aria-hidden', 'true');
+        const time = document.createElement('time');
+        time.dateTime = dream.answered_at || dream.updated_at || dream.created_at;
+        time.textContent = formattedDate;
+        meta.append(separator, time);
+      }
+
+      const title = document.createElement('h3');
+      title.className = 'mt-3 font-display text-xl font-bold leading-snug text-white sm:text-2xl';
+      title.textContent = 'Օգտատիրոջ երազը';
+
+      const author = document.createElement('p');
+      author.className = 'mt-1 text-sm font-medium text-violet-200';
+      author.textContent = `Պատմել է՝ ${dream.name?.trim() || 'Անանուն'}`;
+
+      const dreamText = document.createElement('p');
+      dreamText.className = 'mt-4 whitespace-pre-line text-base leading-7 text-slate-200';
+      dreamText.textContent = dream.dream_text;
+
+      const answerBox = document.createElement('div');
+      answerBox.className = 'mt-5 rounded-xl border border-violet-300/10 bg-violet-500/10 p-4';
+      const answerLabel = document.createElement('p');
+      answerLabel.className = 'text-sm font-semibold text-violet-200';
+      answerLabel.textContent = 'Պատասխան';
+      answerBox.append(answerLabel, renderMarkdown(dream.answer_text));
+
+      const footer = document.createElement('div');
+      footer.className = 'mt-auto pt-5';
+      const reactions = document.createElement('div');
+      reactions.className = 'grid grid-cols-2 gap-2 sm:grid-cols-3';
+      reactions.setAttribute('aria-label', 'Արձագանքներ և մեկնաբանություններ');
+      const useful = createReactionButton('👍 Օգտակար');
+      const interesting = createReactionButton('❤️ Հետաքրքիր');
+      const comments = createReactionButton('💬 Մեկնաբանություններ');
+      comments.classList.add('col-span-2', 'sm:col-span-1');
+      reactions.append(useful, interesting, comments);
+      footer.append(reactions);
+
+      article.append(meta, title, author, dreamText, answerBox, footer);
+      return article;
+    };
+
+    const loadPublishedDreams = async () => {
+      if (!publishedList || !publishedStatus) return;
+
+      try {
+        const response = await fetch('/api/published-dreams', {
+          headers: { Accept: 'application/json' },
+        });
+        const result = (await response.json()) as PublishedDreamsResponse;
+
+        if (!response.ok || !result.ok || !Array.isArray(result.dreams)) {
+          throw new Error(result.error || 'Failed to load published dreams');
+        }
+
+        publishedList.replaceChildren(...result.dreams.map(createPublishedCard));
+        if (result.dreams.length === 0) {
+          publishedStatus.textContent = 'Հրապարակված պատասխաններ դեռ չկան։';
+          publishedStatus.hidden = false;
+        } else {
+          publishedStatus.hidden = true;
+        }
+      } catch {
+        publishedList.replaceChildren();
+        publishedStatus.textContent = 'Չհաջողվեց բեռնել հրապարակված պատասխանները։ Խնդրում ենք փորձել մի փոքր ուշ։';
+        publishedStatus.hidden = false;
+      }
+    };
+
+    void loadPublishedDreams();
   </script>
 </Layout>
