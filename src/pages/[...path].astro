@@ -255,12 +255,12 @@ const crumbs = [
         </div>
 
         <script>
-          const letterFilter = document.getElementById('letter-filter');
-          const letterGrid = document.getElementById('letter-grid');
+          const letterFilter = document.getElementById('letter-filter') as HTMLInputElement | null;
+          const letterGrid = document.getElementById('letter-grid') as HTMLElement | null;
           if (letterFilter && letterGrid) {
             letterFilter.addEventListener('input', () => {
               const term = letterFilter.value.trim().toLowerCase();
-              letterGrid.querySelectorAll('[data-word]').forEach((card) => {
+              letterGrid.querySelectorAll<HTMLElement>('[data-word]').forEach((card) => {
                 card.style.display = !term || (card.dataset.word || '').includes(term) ? '' : 'none';
               });
             });

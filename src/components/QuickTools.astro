@@ -126,43 +126,53 @@ const topMenu = menu.filter((m) => m.parent === "0");
 </div>
 
 <script>
-  const toTop = document.getElementById('to-top');
-  const overlay = document.getElementById('quick-overlay');
-  const panels = {
+  type PanelKey = 'menu' | 'search' | 'alpha';
+  type SearchIndexItem = {
+    title: string;
+    text: string;
+    slug: string;
+  };
+  type SearchIndex = SearchIndexItem[];
+
+  const panelKeys: PanelKey[] = ['menu', 'search', 'alpha'];
+  const toTop = document.getElementById('to-top') as HTMLElement | null;
+  const overlay = document.getElementById('quick-overlay') as HTMLElement | null;
+  const panels: Record<PanelKey, HTMLElement | null> = {
     menu: document.getElementById('panel-menu'),
     search: document.getElementById('panel-search'),
     alpha: document.getElementById('panel-alpha'),
   };
-  const quickButtons = {
+  const quickButtons: Record<PanelKey, HTMLElement | null> = {
     menu: document.getElementById('quick-menu'),
     search: document.getElementById('quick-search'),
     alpha: document.getElementById('quick-alpha'),
   };
-  const searchInput = document.getElementById('quick-search-input');
-  const searchResults = document.getElementById('quick-search-results');
+  const searchInput = document.getElementById('quick-search-input') as HTMLInputElement | null;
+  const searchResults = document.getElementById('quick-search-results') as HTMLElement | null;
 
-  let searchIndex = null;
+  let searchIndex: SearchIndex | null = null;
   let searchIndexLoaded = false;
 
   function closePanels() {
-    overlay.classList.add('hidden');
-    overlay.classList.remove('flex');
-    Object.values(panels).forEach((p) => {
-      p.classList.add('hidden');
-      p.classList.remove('flex');
+    overlay?.classList.add('hidden');
+    overlay?.classList.remove('flex');
+    panelKeys.forEach((key) => {
+      const panel = panels[key];
+      panel?.classList.add('hidden');
+      panel?.classList.remove('flex');
+      quickButtons[key]?.setAttribute('aria-expanded', 'false');
     });
-    Object.values(quickButtons).forEach((b) => b.setAttribute('aria-expanded', 'false'));
   }
 
-  function openPanel(name) {
-    Object.entries(panels).forEach(([key, p]) => {
+  function openPanel(name: PanelKey) {
+    panelKeys.forEach((key) => {
       const open = key === name;
-      p.classList.toggle('hidden', !open);
-      p.classList.toggle('flex', open);
-      quickButtons[key].setAttribute('aria-expanded', String(open));
+      panels[key]?.classList.toggle('hidden', !open);
+      panels[key]?.classList.toggle('flex', open);
+      quickButtons[key]?.setAttribute('aria-expanded', String(open));
     });
-    overlay.classList.remove('hidden');
-    overlay.classList.add('flex');
+    overlay?.classList.remove('hidden');
+    overlay?.classList.add('flex');
 
     if (name === 'search') {
       loadSearchIndex();
@@ -171,14 +181,16 @@ const topMenu = menu.filter((m) => m.parent === "0");
     }
   }
 
-  Object.entries(quickButtons).forEach(([name, btn]) => {
+  panelKeys.forEach((name) => {
+    const btn = quickButtons[name];
+    if (!btn) return;
     btn.addEventListener('click', () => {
-      if (panels[name].classList.contains('flex')) closePanels();
+      if (panels[name]?.classList.contains('flex')) closePanels();
       else openPanel(name);
     });
   });
 
-  overlay.addEventListener('click', (e) => {
+  overlay?.addEventListener('click', (e) => {
     if (e.target === overlay) closePanels();
   });
 
@@ -192,17 +204,17 @@ const topMenu = menu.filter((m) => m.parent === "0");
     'scroll',
     () => {
       if (window.scrollY > 400) {
-        toTop.classList.remove('hidden');
-        toTop.classList.add('grid');
+        toTop?.classList.remove('hidden');
+        toTop?.classList.add('grid');
       } else {
-        toTop.classList.add('hidden');
-        toTop.classList.remove('grid');
+        toTop?.classList.add('hidden');
+        toTop?.classList.remove('grid');
       }
     },
     { passive: true }
   );
 
-  toTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+  toTop?.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
   async function loadSearchIndex() {
     if (searchIndexLoaded) return;
@@ -210,18 +222,18 @@ const topMenu = menu.filter((m) => m.parent === "0");
     try {
       const res = await fetch('/search-index.json');
       searchIndex = await res.json();
-    } catch (err) {
+    } catch {
       searchIndex = [];
     }
     runQuickSearch();
   }
 
-  function escapeHtml(s) {
+  function escapeHtml(s: string) {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
   function runQuickSearch() {
-    if (!searchResults) return;
+    if (!searchResults || !searchInput) return;
     if (!searchIndex) {
       searchResults.innerHTML = '<p class="text-sm text-slate-400">Բեռնում…</p>';
       return;
@@ -254,5 +266,5 @@ const topMenu = menu.filter((m) => m.parent === "0");
       .join('');
   }
 
-  searchInput.addEventListener('input', runQuickSearch);
+  searchInput?.addEventListener('input', runQuickSearch);
 </script>
