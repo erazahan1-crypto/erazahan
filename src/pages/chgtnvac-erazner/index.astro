@@ -16,7 +16,7 @@ import Layout from '../../layouts/Layout.astro';
       <span class="inline-flex size-10 items-center justify-center rounded-xl border border-violet-300/20 bg-violet-500/15 text-xl" aria-hidden="true">☾</span>
       <h1 class="mt-3 font-display text-3xl font-bold leading-tight text-white sm:text-4xl">Չգտնված երազներ</h1>
       <p class="mx-auto mt-3 max-w-2xl text-base leading-7 text-slate-300">
-        Եթե կայքում չգտաք ձեր երազի մեկնաբանությունը, նկարագրեք այն այստեղ։ Պատասխանը չի հայտնվում անմիջապես․ կայքի խմբագիրը կդիտարկի այն և կհրապարակի ավելի ուշ։ Էլփոստով ծանուցումը կգործի ապագայում, իսկ ձեր հասցեն երբեք չի հրապարակվի։
+        Չգտա՞ք ձեր երազի մեկնաբանությունը։ Ուղարկեք այն այստեղ, և պատասխանը կհրապարակվի ավելի ուշ։
       </p>
     </div>
   </section>
@@ -27,7 +27,7 @@ import Layout from '../../layouts/Layout.astro';
         <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-violet-500 to-indigo-700 text-lg" aria-hidden="true">✦</span>
         <div>
           <h2 class="font-display text-xl font-bold leading-tight text-white sm:text-2xl">Ուղարկեք ձեր երազը</h2>
-          <p class="mt-1 text-sm leading-6 text-slate-300">Նկարագրեք հիշվող մանրամասները, մարդկանց, վայրերը և ձեր զգացողությունները։</p>
+          <p class="mt-1 text-sm leading-6 text-slate-300">Նկարագրեք ձեր երազը հնարավորինս մանրամասն։</p>
         </div>
       </div>
 
@@ -128,7 +128,7 @@ import Layout from '../../layouts/Layout.astro';
   </section>
 
   <section class="border-t border-white/5 bg-night-900/25">
-    <div class="mx-auto max-w-5xl px-3 py-10 sm:px-6 sm:py-14">
+    <div class="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-14">
       <div class="max-w-2xl">
         <h2 class="mt-1.5 font-display text-2xl font-bold leading-tight text-white sm:text-3xl">Վերջին երազներն ու պատասխանները</h2>
       </div>
@@ -136,7 +136,7 @@ import Layout from '../../layouts/Layout.astro';
       <p data-published-status class="mt-6 rounded-xl border border-white/10 bg-white/[0.055] px-4 py-4 text-sm leading-6 text-slate-300">
         Հրապարակված պատասխանները բեռնվում են…
       </p>
-      <div data-published-list class="mt-6 grid gap-5 lg:grid-cols-2" aria-live="polite"></div>
+      <div data-published-list class="mt-6 grid gap-6" aria-live="polite"></div>
     </div>
   </section>
 
@@ -356,28 +356,47 @@ import Layout from '../../layouts/Layout.astro';
         : date.toLocaleDateString('hy-AM', { year: 'numeric', month: 'long', day: 'numeric' });
     };
 
-    const createReactionButton = (label: string): HTMLButtonElement => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.disabled = true;
-      button.textContent = label;
-      button.className = 'flex min-h-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-slate-300 disabled:cursor-default disabled:opacity-75';
-      return button;
+    const createDreamTitle = (value: string): string => {
+      const text = value.replace(/\s+/g, ' ').trim();
+      const characters = Array.from(text);
+      const maximumLength = 70;
+      const minimumLength = 45;
+
+      if (characters.length <= maximumLength) return text;
+
+      let end = -1;
+      for (let index = maximumLength; index >= minimumLength; index -= 1) {
+        if (characters[index] === ' ') {
+          end = index;
+          break;
+        }
+      }
+
+      if (end === -1) {
+        end = characters.lastIndexOf(' ', minimumLength - 1);
+      }
+      if (end === -1) {
+        end = characters.indexOf(' ', maximumLength + 1);
+      }
+      if (end === -1) return text;
+
+      return `${characters.slice(0, end).join('').trimEnd()}…`;
     };
 
     const createPublishedCard = (dream: PublishedDream): HTMLElement => {
       const article = document.createElement('article');
-      article.className = 'flex flex-col rounded-2xl border border-white/10 bg-white/[0.055] p-4 sm:p-6';
+      article.className = 'flex flex-col rounded-3xl border border-white/10 bg-white/[0.055] p-5 shadow-xl shadow-night-950/20 sm:p-7';
+
+      const title = document.createElement('h3');
+      title.className = 'font-display text-xl font-bold leading-snug text-white sm:text-2xl';
+      title.textContent = createDreamTitle(dream.dream_text);
 
       const meta = document.createElement('div');
-      meta.className = 'flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-400';
-      const answered = document.createElement('span');
-      answered.className = 'inline-flex items-center gap-1.5 text-emerald-300';
-      const dot = document.createElement('span');
-      dot.className = 'size-1.5 rounded-full bg-current';
-      dot.setAttribute('aria-hidden', 'true');
-      answered.append(dot, document.createTextNode('Պատասխանված է'));
-      meta.append(answered);
+      meta.className = 'mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm leading-6 text-slate-400';
+      const author = document.createElement('span');
+      author.className = 'font-medium text-violet-200';
+      author.textContent = dream.name?.trim() || 'Անանուն';
+      meta.append(author);
 
       const formattedDate = formatPublishedDate(dream);
       if (formattedDate) {
@@ -390,38 +409,24 @@ import Layout from '../../layouts/Layout.astro';
         meta.append(separator, time);
       }
 
-      const title = document.createElement('h3');
-      title.className = 'mt-3 font-display text-xl font-bold leading-snug text-white sm:text-2xl';
-      title.textContent = 'Օգտատիրոջ երազը';
-
-      const author = document.createElement('p');
-      author.className = 'mt-1 text-sm font-medium text-violet-200';
-      author.textContent = `Պատմել է՝ ${dream.name?.trim() || 'Անանուն'}`;
-
+      const dreamBox = document.createElement('div');
+      dreamBox.className = 'mt-6 border-l-2 border-violet-300/25 pl-4 sm:pl-5';
+      const dreamLabel = document.createElement('p');
+      dreamLabel.className = 'text-sm font-semibold tracking-wide text-violet-200';
+      dreamLabel.textContent = 'Երազը';
       const dreamText = document.createElement('p');
-      dreamText.className = 'mt-4 whitespace-pre-line text-base leading-7 text-slate-200';
+      dreamText.className = 'mt-2 whitespace-pre-line text-[1.0625rem] leading-8 text-slate-100';
       dreamText.textContent = dream.dream_text;
+      dreamBox.append(dreamLabel, dreamText);
 
       const answerBox = document.createElement('div');
-      answerBox.className = 'mt-5 rounded-xl border border-violet-300/10 bg-violet-500/10 p-4';
+      answerBox.className = 'mt-6 rounded-2xl bg-violet-400/[0.08] p-4 sm:p-5';
       const answerLabel = document.createElement('p');
-      answerLabel.className = 'text-sm font-semibold text-violet-200';
+      answerLabel.className = 'text-sm font-semibold tracking-wide text-violet-200';
       answerLabel.textContent = 'Պատասխան';
       answerBox.append(answerLabel, renderMarkdown(dream.answer_text));
 
-      const footer = document.createElement('div');
-      footer.className = 'mt-auto pt-5';
-      const reactions = document.createElement('div');
-      reactions.className = 'grid grid-cols-2 gap-2 sm:grid-cols-3';
-      reactions.setAttribute('aria-label', 'Արձագանքներ և մեկնաբանություններ');
-      const useful = createReactionButton('👍 Օգտակար');
-      const interesting = createReactionButton('❤️ Հետաքրքիր');
-      const comments = createReactionButton('💬 Մեկնաբանություններ');
-      comments.classList.add('col-span-2', 'sm:col-span-1');
-      reactions.append(useful, interesting, comments);
-      footer.append(reactions);
-
-      article.append(meta, title, author, dreamText, answerBox, footer);
+      article.append(title, meta, dreamBox, answerBox);
       return article;
     };
 

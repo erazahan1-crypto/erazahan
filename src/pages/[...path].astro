@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import UnmatchedDreamCTA from '../components/UnmatchedDreamCTA.astro';
 import {
   posts,
   pages,
@@ -160,6 +161,8 @@ const crumbs = [
         {post.content ? (
             <div class="dream-content mt-6" set:html={fixBrokenInternalLinks(addInternalLinks(normalizeHeadings(stripBrokenImages(post.content)), post.slug))} />
         ) : null}
+
+        {post.letter ? <UnmatchedDreamCTA /> : null}
 
         {related.length > 0 ? (
           <section class="mt-12 border-t border-white/10 pt-8">
