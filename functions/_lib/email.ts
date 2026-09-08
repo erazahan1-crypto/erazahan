@@ -56,16 +56,40 @@ export async function sendDreamAnswerNotification(
   const text = `${greeting}\n\nՁեր ուղարկած երազի պատասխանը հրապարակվել է։\n\nԿարդալ պատասխանը՝ ${dreamUrl}\n\nԵրազահան`;
   const html = `<!doctype html>
 <html lang="hy">
-  <body style="margin:0;background:#0a0817;color:#e2e8f0;font-family:Arial,sans-serif;">
-    <div style="max-width:560px;margin:0 auto;padding:24px 16px;">
-      <div style="border:1px solid rgba(255,255,255,.12);border-radius:16px;background:#131029;padding:24px;">
-        <p style="margin:0 0 16px;font-size:17px;line-height:1.6;">${escapeHtml(greeting)}</p>
-        <p style="margin:0 0 22px;font-size:16px;line-height:1.7;color:#cbd5e1;">Ձեր ուղարկած երազի պատասխանը հրապարակվել է։</p>
-        <a href="${escapeHtml(dreamUrl)}" style="display:inline-block;min-height:48px;box-sizing:border-box;border-radius:12px;background:#7c3aed;padding:14px 22px;color:#fff;font-size:16px;font-weight:700;text-decoration:none;">Կարդալ պատասխանը</a>
-        <p style="margin:22px 0 0;font-size:13px;line-height:1.6;color:#94a3b8;word-break:break-all;">${escapeHtml(dreamUrl)}</p>
-      </div>
-      <p style="margin:16px 0 0;text-align:center;font-size:13px;color:#94a3b8;">Երազահան</p>
-    </div>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  </head>
+  <body bgcolor="#f5f5f7" style="margin:0;padding:0;background-color:#f5f5f7;color:#18181b;font-family:Arial,'Noto Sans Armenian',sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f5f5f7" style="width:100%;background-color:#f5f5f7;">
+      <tr>
+        <td align="center" style="padding:24px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="width:100%;max-width:600px;background-color:#ffffff;border:1px solid #e4e4e7;border-radius:16px;">
+            <tr>
+              <td bgcolor="#ffffff" style="padding:24px;background-color:#ffffff;border-radius:16px;">
+                <p style="margin:0 0 24px;color:#6d28d9;font-size:15px;line-height:22px;font-weight:700;">Երազահան</p>
+                <p style="margin:0 0 14px;color:#18181b;font-size:17px;line-height:26px;font-weight:600;">${escapeHtml(greeting)}</p>
+                <p style="margin:0 0 24px;color:#27272a;font-size:16px;line-height:24px;">Ձեր ուղարկած երազի պատասխանը պատրաստ է։</p>
+
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td align="center" bgcolor="#7c3aed" style="background-color:#7c3aed;border-radius:12px;">
+                      <a href="${escapeHtml(dreamUrl)}" style="display:inline-block;padding:14px 22px;color:#ffffff!important;background-color:#7c3aed;border-radius:12px;font-size:16px;line-height:20px;font-weight:700;text-decoration:none;">Կարդալ պատասխանը</a>
+                    </td>
+                  </tr>
+                </table>
+
+                <p style="margin:22px 0 0;color:#52525b;font-size:14px;line-height:21px;">Կոճակը ձեզ կտանի ձեր երազի ամբողջական պատասխանին։</p>
+                <p style="margin:10px 0 0;color:#71717a;font-size:13px;line-height:20px;">
+                  <a href="${escapeHtml(dreamUrl)}" style="color:#6d28d9!important;text-decoration:underline;">Եթե կոճակը չի աշխատում, բացեք պատասխանի էջը</a>
+                </p>
+                <p style="margin:24px 0 0;padding-top:18px;border-top:1px solid #e4e4e7;color:#71717a;font-size:13px;line-height:20px;">Երազահան</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
   </body>
 </html>`;
 
