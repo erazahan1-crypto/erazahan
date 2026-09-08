@@ -22,6 +22,21 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       <div><p class="text-xs uppercase tracking-wide text-slate-500">Уведомление</p><p class="mt-1 text-white" data-notification-status></p></div>
     </section>
 
+    <section class="mt-5 rounded-2xl border border-violet-400/20 bg-violet-500/[0.06] p-5 sm:p-6">
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 class="font-display text-xl font-bold text-white">SEO</h2>
+          <p class="mt-1 max-w-2xl text-sm leading-6 text-slate-400">Включайте только для содержательных и уникальных снов с хорошим ответом.</p>
+        </div>
+        <label class="inline-flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold text-slate-200">
+          <input type="checkbox" data-seo-index class="size-5 accent-violet-500" />
+          <span>Индексировать страницу в поиске</span>
+        </label>
+      </div>
+      <div class="mt-4 hidden rounded-xl border px-4 py-3 text-sm" data-seo-message role="status" aria-live="polite"></div>
+      <button type="button" data-seo-save class="mt-4 min-h-12 rounded-xl bg-violet-600 px-5 font-semibold text-white transition hover:bg-violet-500 disabled:cursor-wait disabled:opacity-60">Сохранить SEO</button>
+    </section>
+
     <section class="mt-5 rounded-2xl border border-white/10 bg-white/[0.035] p-5 sm:p-6">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -90,6 +105,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       created_at: string;
       answered_at: string | null;
       notification_sent_at: string | null;
+      seo_index: number | null;
     }
     interface SearchItem { slug: string; title: string; text?: string }
 
@@ -99,6 +115,9 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     const dreamCount = document.querySelector<HTMLElement>('[data-dream-count]');
     const dreamMessage = document.querySelector<HTMLElement>('[data-dream-message]');
     const dreamSave = document.querySelector<HTMLButtonElement>('[data-dream-save]');
+    const seoIndex = document.querySelector<HTMLInputElement>('[data-seo-index]');
+    const seoSave = document.querySelector<HTMLButtonElement>('[data-seo-save]');
+    const seoMessage = document.querySelector<HTMLElement>('[data-seo-message]');
     const answer = document.querySelector<HTMLTextAreaElement>('[data-answer]');
     const count = document.querySelector<HTMLElement>('[data-answer-count]');
     const message = document.querySelector<HTMLElement>('[data-message]');
@@ -129,6 +148,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
 
     function fillEditor(dream: DreamRecord) {
       currentStatus = dream.status;
+      if (seoIndex) seoIndex.checked = dream.seo_index === 1;
       setText('[data-id]', dream.id);
       setText('[data-name]', dream.name || 'Без имени');
       setText('[data-email]', dream.email);
@@ -170,6 +190,36 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         showDreamMessage(error instanceof Error ? error.message : 'Не удалось сохранить текст сна.', 'error');
       } finally {
         dreamSave.disabled = false;
+      }
+    }
+
+    async function saveSeoIndex() {
+      if (!seoIndex || !seoSave) return;
+      seoSave.disabled = true;
+      if (seoMessage) {
+        seoMessage.textContent = 'Сохранение…';
+        seoMessage.className = 'mt-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300';
+      }
+      try {
+        const response = await fetch(`/api/admin/dreams/${encodeURIComponent(id)}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action: 'update_seo_index', seo_index: seoIndex.checked }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || 'Не удалось сохранить SEO-настройку.');
+        if (seoIndex) seoIndex.checked = result.dream.seo_index === 1;
+        if (seoMessage) {
+          seoMessage.textContent = 'SEO-настройка сохранена.';
+          seoMessage.className = 'mt-4 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200';
+        }
+      } catch (error) {
+        if (seoMessage) {
+          seoMessage.textContent = error instanceof Error ? error.message : 'Не удалось сохранить SEO-настройку.';
+          seoMessage.className = 'mt-4 rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200';
+        }
+      } finally {
+        seoSave.disabled = false;
       }
     }
 
@@ -363,6 +413,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
 
     dreamText?.addEventListener('input', updateDreamCount);
     dreamSave?.addEventListener('click', saveDreamText);
+    seoSave?.addEventListener('click', saveSeoIndex);
     answer?.addEventListener('input', updateCount);
     postSearch?.addEventListener('input', renderPostResults);
     actionButtons.forEach((button) => button.addEventListener('click', () => save(button.dataset.action || '')));

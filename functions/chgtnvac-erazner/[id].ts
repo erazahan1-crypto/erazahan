@@ -30,6 +30,7 @@ interface PublishedDream {
   created_at: string;
   answered_at: string | null;
   updated_at: string;
+  seo_index: number | null;
 }
 
 const getId = (value?: string | string[]): string | null => {
@@ -147,8 +148,8 @@ const pageNotFound = (): Response =>
 const findDream = (env: Env, id: string): Promise<PublishedDream | null> =>
   env.DREAMS_DB
     .prepare(
-      `SELECT id, name, dream_text, answer_text, created_at, answered_at, updated_at
-       FROM dream_submissions
+      `SELECT id, name, dream_text, answer_text, created_at, answered_at, updated_at, seo_index
+      FROM dream_submissions
        WHERE id = ?
          AND status = 'answered'
          AND answer_text IS NOT NULL
@@ -164,6 +165,7 @@ const buildPage = (baseHtml: string, dream: PublishedDream, requestUrl: URL): st
   const date = formatDate(dream);
   const canonical = new URL(`/chgtnvac-erazner/${encodeURIComponent(dream.id)}/`, requestUrl).toString();
   const author = dream.name?.trim() || 'Անանուն';
+  const robots = dream.seo_index === 1 ? 'index,follow' : 'noindex,follow';
   const detailMain = `
     <article class="reveal mx-auto max-w-3xl min-w-0 px-4 py-8 sm:px-6 sm:py-12" style="overflow-wrap:anywhere" data-dream-id="${escapeHtml(dream.id)}">
       <nav class="text-sm text-slate-400"><a href="/chgtnvac-erazner/" class="transition hover:text-white">Չգտնված երազներ</a></nav>
@@ -371,7 +373,11 @@ const buildPage = (baseHtml: string, dream: PublishedDream, requestUrl: URL): st
       })();
     </script>`;
 
-  return baseHtml
+  const withRobots = /<meta\s+name=["']robots["'][^>]*>/i.test(baseHtml)
+    ? baseHtml.replace(/<meta\s+name=["']robots["'][^>]*>/i, `<meta name="robots" content="${robots}" />`)
+    : baseHtml.replace(/<\/head>/i, `<meta name="robots" content="${robots}" /></head>`);
+
+  return withRobots
     .replace(/<title>[\s\S]*?<\/title>/i, `<title>${escapeHtml(title)} — Երազահան</title>`)
     .replace(/<meta name="description" content="[^"]*"\s*\/>/i, `<meta name="description" content="${escapeHtml(description)}" />`)
     .replace(/<link rel="canonical" href="[^"]*"\s*\/>/i, `<link rel="canonical" href="${escapeHtml(canonical)}" />`)

@@ -14,6 +14,7 @@ interface DreamRecord {
   updated_at: string;
   answered_at: string | null;
   notification_sent_at: string | null;
+  seo_index: number;
 }
 
 interface Context {
@@ -55,7 +56,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
     return json({ ok: false, error: 'Ожидается JSON-запрос.' }, 415);
   }
 
-  let body: { action?: unknown; answer_text?: unknown; dream_text?: unknown };
+  let body: { action?: unknown; answer_text?: unknown; dream_text?: unknown; seo_index?: unknown };
   try {
     body = await context.request.json();
   } catch {
@@ -65,8 +66,16 @@ export async function onRequestPost(context: Context): Promise<Response> {
   const action = typeof body.action === 'string' ? body.action : '';
   const answerText = typeof body.answer_text === 'string' ? body.answer_text.trim() : '';
   const dreamText = typeof body.dream_text === 'string' ? body.dream_text.trim() : '';
-  if (!['draft', 'publish', 'reject', 'reopen', 'update_dream', 'resend_notification', 'delete_dream'].includes(action)) {
+  const seoIndex = body.seo_index === true || body.seo_index === 1
+    ? 1
+    : body.seo_index === false || body.seo_index === 0
+      ? 0
+      : null;
+  if (!['draft', 'publish', 'reject', 'reopen', 'update_dream', 'resend_notification', 'delete_dream', 'update_seo_index'].includes(action)) {
     return json({ ok: false, error: 'Неизвестное действие.' }, 400);
+  }
+  if (action === 'update_seo_index' && seoIndex === null) {
+    return json({ ok: false, error: 'seo_index должен быть boolean или 0/1.' }, 400);
   }
   if (action === 'update_dream') {
     if (dreamText.length < MIN_DREAM_LENGTH) {
@@ -116,7 +125,12 @@ export async function onRequestPost(context: Context): Promise<Response> {
 
     const now = new Date().toISOString();
     let warning = '';
-    if (action === 'update_dream') {
+    if (action === 'update_seo_index') {
+      await context.env.DREAMS_DB
+        .prepare('UPDATE dream_submissions SET seo_index = ?, updated_at = ? WHERE id = ?')
+        .bind(seoIndex, new Date().toISOString(), id)
+        .run();
+    } else if (action === 'update_dream') {
       await context.env.DREAMS_DB
         .prepare('UPDATE dream_submissions SET dream_text = ?, updated_at = ? WHERE id = ?')
         .bind(dreamText, now, id)
@@ -213,7 +227,7 @@ function findDream(env: AdminEnv, id: string): Promise<DreamRecord | null> {
   return env.DREAMS_DB
     .prepare(`
       SELECT id, name, email, dream_text, status, answer_text, ai_draft,
-             created_at, updated_at, answered_at, notification_sent_at
+             created_at, updated_at, answered_at, notification_sent_at, seo_index
       FROM dream_submissions
       WHERE id = ?
       LIMIT 1
