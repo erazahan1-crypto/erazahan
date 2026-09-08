@@ -393,12 +393,26 @@ import Layout from '../../layouts/Layout.astro';
       return `${characters.slice(0, end).join('').trimEnd()}…`;
     };
 
+    const createTextPreview = (value: string, maximumLength = 180): string => {
+      const text = value.replace(/\s+/g, ' ').trim();
+      const characters = Array.from(text);
+      if (characters.length <= maximumLength) return text;
+
+      const excerpt = characters.slice(0, maximumLength + 1).join('');
+      const boundary = excerpt.lastIndexOf(' ');
+      if (boundary <= 0) return text;
+      return `${excerpt.slice(0, boundary).trimEnd()}…`;
+    };
+
+    const answerPreview = (value: string): string =>
+      createTextPreview(value.replace(/\*\*/g, '').replace(/\[([^\]\n]+)\]\((\/(?!\/)[^)\s\\]+)\)/g, '$1'));
+
     const createPublishedCard = (dream: PublishedDream): HTMLElement => {
       const article = document.createElement('article');
       article.className = 'flex min-w-0 max-w-full flex-col rounded-3xl border border-white/10 bg-white/[0.055] p-5 shadow-xl shadow-night-950/20 sm:p-7';
 
       const title = document.createElement('h3');
-      title.className = 'min-w-0 font-display text-xl font-bold leading-snug text-white [overflow-wrap:anywhere] sm:text-2xl';
+      title.className = 'line-clamp-2 min-w-0 font-display text-xl font-bold leading-snug text-white [overflow-wrap:anywhere] sm:text-2xl';
       title.textContent = createDreamTitle(dream.dream_text);
 
       const meta = document.createElement('div');
@@ -420,23 +434,32 @@ import Layout from '../../layouts/Layout.astro';
       }
 
       const dreamBox = document.createElement('div');
-      dreamBox.className = 'mt-6 min-w-0 border-l-2 border-violet-300/25 pl-4 sm:pl-5';
+      dreamBox.className = 'mt-4 min-w-0 border-l-2 border-violet-300/25 pl-4 sm:mt-5 sm:pl-5';
       const dreamLabel = document.createElement('p');
       dreamLabel.className = 'text-sm font-semibold tracking-wide text-violet-200';
       dreamLabel.textContent = 'Երազը';
       const dreamText = document.createElement('p');
-      dreamText.className = 'mt-2 whitespace-pre-line text-[1.0625rem] leading-8 text-slate-100 [overflow-wrap:anywhere]';
-      dreamText.textContent = dream.dream_text;
+      dreamText.className = 'mt-1.5 line-clamp-3 text-base leading-7 text-slate-200 [overflow-wrap:anywhere]';
+      dreamText.textContent = createTextPreview(dream.dream_text);
       dreamBox.append(dreamLabel, dreamText);
 
       const answerBox = document.createElement('div');
-      answerBox.className = 'mt-6 min-w-0 max-w-full rounded-2xl bg-violet-400/[0.08] p-4 sm:p-5';
+      answerBox.className = 'mt-4 min-w-0 max-w-full rounded-2xl bg-violet-400/[0.08] p-4 sm:mt-5 sm:p-5';
       const answerLabel = document.createElement('p');
       answerLabel.className = 'text-sm font-semibold tracking-wide text-violet-200';
       answerLabel.textContent = 'Պատասխան';
-      answerBox.append(answerLabel, renderMarkdown(dream.answer_text));
+      const answerText = document.createElement('p');
+      answerText.className = 'mt-1.5 line-clamp-3 text-base leading-7 text-slate-300 [overflow-wrap:anywhere]';
+      answerText.textContent = answerPreview(dream.answer_text);
+      answerBox.append(answerLabel, answerText);
 
       article.append(title, meta, dreamBox, answerBox);
+
+      const readLink = document.createElement('a');
+      readLink.href = `/chgtnvac-erazner/${encodeURIComponent(dream.id)}/`;
+      readLink.className = 'mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-violet-300/25 bg-violet-500/15 px-5 py-3 text-base font-semibold text-violet-100 transition hover:border-violet-300/45 hover:bg-violet-500/25 focus:outline-none focus:ring-2 focus:ring-violet-300 focus:ring-offset-2 focus:ring-offset-night-950 sm:mt-6 sm:w-auto';
+      readLink.textContent = 'Կարդալ ամբողջությամբ';
+      article.append(readLink);
       return article;
     };
 
