@@ -1,0 +1,182 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="Комментарии к снам — Админка">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="text-sm font-medium text-violet-300">Модерация</p>
+      <h1 class="mt-1 font-display text-3xl font-bold text-white">Комментарии</h1>
+      <p class="mt-2 text-sm text-slate-400">Новые комментарии публикуются только после одобрения.</p>
+    </div>
+    <button type="button" data-refresh class="min-h-11 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-semibold text-slate-200 transition hover:bg-white/10 disabled:opacity-60">Обновить</button>
+  </div>
+
+  <div class="mt-7 flex gap-2 overflow-x-auto pb-2" role="group" aria-label="Фильтр по статусу">
+    <button type="button" data-filter="all" class="min-h-11 shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-semibold text-slate-300">Все</button>
+    <button type="button" data-filter="pending" class="min-h-11 shrink-0 rounded-xl border border-violet-400/50 bg-violet-500/20 px-4 text-sm font-semibold text-white">Новые</button>
+    <button type="button" data-filter="approved" class="min-h-11 shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-semibold text-slate-300">Одобренные</button>
+    <button type="button" data-filter="rejected" class="min-h-11 shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-semibold text-slate-300">Отклонённые</button>
+  </div>
+
+  <div class="mt-4 hidden rounded-xl border px-4 py-3 text-sm" data-message role="status" aria-live="polite"></div>
+  <div class="mt-4 rounded-2xl border border-white/10 bg-white/[0.035]">
+    <p class="p-6 text-sm text-slate-400" data-list-status role="status">Загрузка комментариев…</p>
+    <div class="divide-y divide-white/10" data-comment-list></div>
+  </div>
+
+  <script>
+    type CommentStatus = 'pending' | 'approved' | 'rejected';
+    interface AdminComment {
+      id: string;
+      dream_id: string;
+      name: string | null;
+      comment_text: string;
+      status: CommentStatus;
+      created_at: string;
+      is_dream_published: number;
+    }
+
+    const labels: Record<CommentStatus, string> = { pending: 'Новый', approved: 'Одобрен', rejected: 'Отклонён' };
+    const list = document.querySelector<HTMLElement>('[data-comment-list]');
+    const listStatus = document.querySelector<HTMLElement>('[data-list-status]');
+    const message = document.querySelector<HTMLElement>('[data-message]');
+    const refresh = document.querySelector<HTMLButtonElement>('[data-refresh]');
+    const filterButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-filter]')];
+    let currentFilter = 'pending';
+
+    function setActiveFilter(value: string) {
+      filterButtons.forEach((button) => {
+        const active = button.dataset.filter === value;
+        button.className = active
+          ? 'min-h-11 shrink-0 rounded-xl border border-violet-400/50 bg-violet-500/20 px-4 text-sm font-semibold text-white'
+          : 'min-h-11 shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-semibold text-slate-300';
+        button.setAttribute('aria-pressed', String(active));
+      });
+    }
+
+    async function loadComments() {
+      if (!list || !listStatus) return;
+      list.replaceChildren();
+      listStatus.hidden = false;
+      listStatus.className = 'p-6 text-sm text-slate-400';
+      listStatus.textContent = 'Загрузка комментариев…';
+      refresh?.setAttribute('disabled', '');
+      try {
+        const response = await fetch(`/api/admin/comments?status=${encodeURIComponent(currentFilter)}`);
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || 'Не удалось загрузить комментарии.');
+        const comments = result.comments as AdminComment[];
+        if (!comments.length) {
+          listStatus.textContent = 'В этой категории пока нет комментариев.';
+          return;
+        }
+        listStatus.hidden = true;
+        comments.forEach(renderComment);
+      } catch (error) {
+        listStatus.textContent = error instanceof Error ? error.message : 'Не удалось загрузить комментарии.';
+        listStatus.className = 'p-6 text-sm text-rose-300';
+      } finally {
+        refresh?.removeAttribute('disabled');
+      }
+    }
+
+    function renderComment(comment: AdminComment) {
+      if (!list) return;
+      const article = document.createElement('article');
+      article.className = 'min-w-0 p-5 sm:p-6';
+
+      const meta = document.createElement('div');
+      meta.className = 'flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-400';
+      const status = document.createElement('span');
+      status.className = comment.status === 'pending' ? 'font-semibold text-amber-300' : comment.status === 'approved' ? 'font-semibold text-emerald-300' : 'font-semibold text-rose-300';
+      status.textContent = labels[comment.status];
+      const author = document.createElement('span');
+      author.className = 'font-medium text-white';
+      author.textContent = comment.name || 'Без имени';
+      const date = document.createElement('time');
+      date.dateTime = comment.created_at;
+      date.textContent = formatDate(comment.created_at);
+      meta.append(status, author, date);
+
+      const text = document.createElement('p');
+      text.className = 'mt-3 whitespace-pre-wrap break-words leading-7 text-slate-200 [overflow-wrap:anywhere]';
+      text.textContent = comment.comment_text;
+
+      const links = document.createElement('div');
+      links.className = 'mt-4 flex flex-wrap gap-3 text-sm';
+      links.append(makeLink(`/admin/dreams/${encodeURIComponent(comment.dream_id)}`, 'Открыть сон'));
+      if (comment.is_dream_published) links.append(makeLink(`/chgtnvac-erazner/${encodeURIComponent(comment.dream_id)}/`, 'Публичная страница', true));
+
+      const actions = document.createElement('div');
+      actions.className = 'mt-5 flex flex-wrap gap-3';
+      if (comment.status !== 'approved') actions.append(makeAction('approve', 'Одобрить', 'border-emerald-400/30 text-emerald-200 hover:bg-emerald-500/10'));
+      if (comment.status !== 'rejected') actions.append(makeAction('reject', 'Отклонить', 'border-amber-400/30 text-amber-200 hover:bg-amber-500/10'));
+      actions.append(makeAction('delete_comment', 'Удалить навсегда', 'border-rose-400/40 text-rose-200 hover:bg-rose-500/10'));
+      actions.querySelectorAll<HTMLButtonElement>('button').forEach((button) => button.addEventListener('click', () => mutateComment(comment.id, button.dataset.action || '', actions)));
+
+      article.append(meta, text, links, actions);
+      list.append(article);
+    }
+
+    function makeLink(href: string, label: string, external = false) {
+      const link = document.createElement('a');
+      link.href = href;
+      link.className = 'font-semibold text-violet-300 hover:text-white';
+      link.textContent = label;
+      if (external) { link.target = '_blank'; link.rel = 'noopener'; }
+      return link;
+    }
+
+    function makeAction(action: string, label: string, colors: string) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.action = action;
+      button.className = `min-h-11 rounded-xl border px-4 text-sm font-semibold disabled:opacity-60 ${colors}`;
+      button.textContent = label;
+      return button;
+    }
+
+    async function mutateComment(id: string, action: string, actions: HTMLElement) {
+      if (action === 'delete_comment' && !confirm('Удалить этот комментарий навсегда? Это действие нельзя отменить.')) return;
+      const buttons = [...actions.querySelectorAll<HTMLButtonElement>('button')];
+      buttons.forEach((button) => { button.disabled = true; });
+      try {
+        const response = await fetch(`/api/admin/comments/${encodeURIComponent(id)}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || 'Не удалось изменить комментарий.');
+        showMessage(action === 'approve' ? 'Комментарий одобрен.' : action === 'reject' ? 'Комментарий отклонён.' : 'Комментарий удалён навсегда.', 'success');
+        await loadComments();
+      } catch (error) {
+        buttons.forEach((button) => { button.disabled = false; });
+        showMessage(error instanceof Error ? error.message : 'Не удалось изменить комментарий.', 'error');
+      }
+    }
+
+    function showMessage(text: string, kind: 'success' | 'error') {
+      if (!message) return;
+      message.textContent = text;
+      message.className = kind === 'success'
+        ? 'mt-4 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200'
+        : 'mt-4 rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200';
+    }
+
+    function formatDate(value: string) {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? value : date.toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' });
+    }
+
+    filterButtons.forEach((button) => button.addEventListener('click', () => {
+      currentFilter = button.dataset.filter || 'pending';
+      setActiveFilter(currentFilter);
+      loadComments();
+    }));
+    refresh?.addEventListener('click', loadComments);
+    setActiveFilter(currentFilter);
+    loadComments();
+  </script>
+</AdminLayout>
