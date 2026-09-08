@@ -70,6 +70,12 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       </div>
       <p class="mt-4 text-xs text-slate-500">AI-черновик зарезервирован в структуре данных, но генерация AI на этом этапе отключена.</p>
     </section>
+
+    <section class="mt-8 rounded-2xl border border-rose-400/30 bg-rose-500/[0.06] p-5 sm:p-6">
+      <h2 class="font-display text-xl font-bold text-rose-100">Опасная зона</h2>
+      <p class="mt-2 max-w-2xl text-sm leading-6 text-rose-200/80">Удаление навсегда стирает запись и все связанные с ней данные. Это действие нельзя отменить.</p>
+      <button type="button" data-delete-dream class="mt-5 min-h-12 rounded-xl border border-rose-400/50 bg-rose-600 px-5 font-semibold text-white hover:bg-rose-500 disabled:cursor-wait disabled:opacity-60">Удалить навсегда</button>
+    </section>
   </div>
 
   <script>
@@ -97,11 +103,13 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     const count = document.querySelector<HTMLElement>('[data-answer-count]');
     const message = document.querySelector<HTMLElement>('[data-message]');
     const actionButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-action]')];
+    const deleteDreamButton = document.querySelector<HTMLButtonElement>('[data-delete-dream]');
     const linkPanel = document.querySelector<HTMLElement>('[data-link-panel]');
     const postSearch = document.querySelector<HTMLInputElement>('[data-post-search]');
     const postResults = document.querySelector<HTMLElement>('[data-post-results]');
     const id = decodeURIComponent(location.pathname.replace(/\/$/, '').split('/').pop() || '');
     let searchIndex: SearchItem[] | null = null;
+    let currentStatus: Status | null = null;
 
     async function loadDream() {
       try {
@@ -120,6 +128,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     }
 
     function fillEditor(dream: DreamRecord) {
+      currentStatus = dream.status;
       setText('[data-id]', dream.id);
       setText('[data-name]', dream.name || 'Без имени');
       setText('[data-email]', dream.email);
@@ -221,6 +230,30 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         showMessage(error instanceof Error ? error.message : 'Не удалось сохранить изменения.', 'error');
       } finally {
         setBusy(false);
+      }
+    }
+
+    async function deleteDream() {
+      const warning = currentStatus === 'answered'
+        ? 'Удалить этот сон и все связанные с ним данные навсегда? Это действие нельзя отменить.\n\nОпубликованная страница этого сна также перестанет быть доступна.'
+        : 'Удалить этот сон и все связанные с ним данные навсегда? Это действие нельзя отменить.';
+      if (!confirm(warning)) return;
+
+      setBusy(true);
+      if (deleteDreamButton) deleteDreamButton.disabled = true;
+      try {
+        const response = await fetch(`/api/admin/dreams/${encodeURIComponent(id)}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action: 'delete_dream' }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok || !result.deleted) throw new Error(result.error || 'Не удалось удалить запись.');
+        window.location.assign('/admin/dreams/?deleted=1');
+      } catch (error) {
+        if (deleteDreamButton) deleteDreamButton.disabled = false;
+        setBusy(false);
+        showMessage(error instanceof Error ? error.message : 'Не удалось удалить запись.', 'error');
       }
     }
 
@@ -333,6 +366,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     answer?.addEventListener('input', updateCount);
     postSearch?.addEventListener('input', renderPostResults);
     actionButtons.forEach((button) => button.addEventListener('click', () => save(button.dataset.action || '')));
+    deleteDreamButton?.addEventListener('click', deleteDream);
     loadDream();
   </script>
 </AdminLayout>

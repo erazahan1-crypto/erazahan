@@ -65,7 +65,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
   const action = typeof body.action === 'string' ? body.action : '';
   const answerText = typeof body.answer_text === 'string' ? body.answer_text.trim() : '';
   const dreamText = typeof body.dream_text === 'string' ? body.dream_text.trim() : '';
-  if (!['draft', 'publish', 'reject', 'reopen', 'update_dream', 'resend_notification'].includes(action)) {
+  if (!['draft', 'publish', 'reject', 'reopen', 'update_dream', 'resend_notification', 'delete_dream'].includes(action)) {
     return json({ ok: false, error: 'Неизвестное действие.' }, 400);
   }
   if (action === 'update_dream') {
@@ -96,6 +96,14 @@ export async function onRequestPost(context: Context): Promise<Response> {
     const existingDream = await findDream(context.env, id);
     if (!existingDream) {
       return json({ ok: false, error: 'Запись не найдена.' }, 404);
+    }
+
+    if (action === 'delete_dream') {
+      await context.env.DREAMS_DB
+        .prepare('DELETE FROM dream_submissions WHERE id = ?')
+        .bind(id)
+        .run();
+      return json({ ok: true, deleted: true });
     }
 
     const now = new Date().toISOString();

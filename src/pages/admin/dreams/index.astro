@@ -20,6 +20,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
   </div>
 
   <div class="mt-4 rounded-2xl border border-white/10 bg-white/[0.035]">
+    <div class="hidden border-b border-emerald-400/20 bg-emerald-500/10 px-6 py-4 text-sm text-emerald-200" data-delete-notice role="status">Запись удалена навсегда.</div>
     <p class="p-6 text-sm text-slate-400" data-list-status role="status">Загрузка записей…</p>
     <div class="divide-y divide-white/10" data-dream-list></div>
   </div>
@@ -41,9 +42,12 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     };
     const list = document.querySelector<HTMLElement>('[data-dream-list]');
     const listStatus = document.querySelector<HTMLElement>('[data-list-status]');
+    const deleteNotice = document.querySelector<HTMLElement>('[data-delete-notice]');
     const filterButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-filter]')];
     const refresh = document.querySelector<HTMLButtonElement>('[data-refresh]');
     let currentFilter = 'all';
+
+    if (new URLSearchParams(location.search).get('deleted') === '1') deleteNotice?.classList.remove('hidden');
 
     function setActiveFilter(value: string) {
       filterButtons.forEach((button) => {
