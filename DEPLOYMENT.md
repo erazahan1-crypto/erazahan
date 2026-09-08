@@ -71,14 +71,21 @@ After the Pages project is created, open **Settings** > **Bindings** > **Add** >
 
 Add the same binding for Preview if you use preview deployments. The variable name must remain exactly `DREAMS_DB`.
 
-## H. Environment variables and secrets
+## H. Answer notification email
 
-No secret is required for D1. Optionally, to request a notification email for each submitted dream, add this encrypted secret in **Settings** > **Variables and Secrets**:
+Answer notifications use the Resend HTTPS API. Apply the email-tracking migration before deploying the notification code:
 
-- Name: `DREAMS_EMAIL`
-- Value: destination email address
+```powershell
+npx wrangler d1 execute erazahan-dreams --remote --file migrations/0004_add_dream_email_tracking.sql
+```
 
-Leave it unset if email notifications are not needed. D1 storage still works.
+In **Settings** > **Variables and Secrets**, add:
+
+- Encrypted secret `RESEND_API_KEY` — a Resend API key with sending access.
+- Variable `EMAIL_FROM` — for example, `Erazahan <noreply@erazahan.info>` after the domain is verified. A provider test sender can be used temporarily.
+- Variable `PUBLIC_SITE_URL` — for example, `https://erazahan.info`.
+
+Do not commit the API key. If these values are missing or Resend is unavailable, an answer is still published; the admin UI reports that its email was not sent.
 
 ## I. First deploy
 

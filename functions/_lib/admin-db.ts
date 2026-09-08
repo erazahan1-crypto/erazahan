@@ -18,6 +18,9 @@ export interface AdminEnv {
   CF_ACCESS_TEAM_DOMAIN?: string;
   CF_ACCESS_AUD?: string;
   ADMIN_EMAILS?: string;
+  RESEND_API_KEY?: string;
+  EMAIL_FROM?: string;
+  PUBLIC_SITE_URL?: string;
 }
 
 export function json(body: unknown, status = 200): Response {

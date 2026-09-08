@@ -1,5 +1,6 @@
 import { json } from '../../../_lib/admin-db';
 import type { AdminEnv } from '../../../_lib/admin-db';
+import { sendDreamAnswerNotification } from '../../../_lib/email';
 
 interface DreamRecord {
   id: string;
@@ -12,6 +13,7 @@ interface DreamRecord {
   created_at: string;
   updated_at: string;
   answered_at: string | null;
+  notification_sent_at: string | null;
 }
 
 interface Context {
@@ -63,7 +65,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
   const action = typeof body.action === 'string' ? body.action : '';
   const answerText = typeof body.answer_text === 'string' ? body.answer_text.trim() : '';
   const dreamText = typeof body.dream_text === 'string' ? body.dream_text.trim() : '';
-  if (!['draft', 'publish', 'reject', 'reopen', 'update_dream'].includes(action)) {
+  if (!['draft', 'publish', 'reject', 'reopen', 'update_dream', 'resend_notification'].includes(action)) {
     return json({ ok: false, error: 'Неизвестное действие.' }, 400);
   }
   if (action === 'update_dream') {
@@ -77,13 +79,13 @@ export async function onRequestPost(context: Context): Promise<Response> {
       return json({ ok: false, error: 'HTML в тексте сна не допускается.' }, 400);
     }
   }
-  if (answerText.length > MAX_ANSWER_LENGTH) {
+  if (action !== 'resend_notification' && answerText.length > MAX_ANSWER_LENGTH) {
     return json({ ok: false, error: 'Ответ не должен превышать 20 000 символов.' }, 400);
   }
-  if (answerText && RAW_HTML.test(answerText)) {
+  if (action !== 'resend_notification' && answerText && RAW_HTML.test(answerText)) {
     return json({ ok: false, error: 'Используйте Markdown вместо HTML.' }, 400);
   }
-  if (hasUnsafeMarkdownLink(answerText)) {
+  if (action !== 'resend_notification' && hasUnsafeMarkdownLink(answerText)) {
     return json({ ok: false, error: 'Разрешены только внутренние ссылки, начинающиеся с /.' }, 400);
   }
   if (action === 'publish' && !answerText) {
@@ -91,11 +93,13 @@ export async function onRequestPost(context: Context): Promise<Response> {
   }
 
   try {
-    if (!await findDream(context.env, id)) {
+    const existingDream = await findDream(context.env, id);
+    if (!existingDream) {
       return json({ ok: false, error: 'Запись не найдена.' }, 404);
     }
 
     const now = new Date().toISOString();
+    let warning = '';
     if (action === 'update_dream') {
       await context.env.DREAMS_DB
         .prepare('UPDATE dream_submissions SET dream_text = ?, updated_at = ? WHERE id = ?')
@@ -111,6 +115,52 @@ export async function onRequestPost(context: Context): Promise<Response> {
         .prepare("UPDATE dream_submissions SET answer_text = ?, status = 'answered', answered_at = ?, updated_at = ? WHERE id = ?")
         .bind(answerText, now, now, id)
         .run();
+
+      if (!existingDream.notification_sent_at) {
+        if (!existingDream.email.trim()) {
+          warning = 'Ответ опубликован, но email не отправлен: адрес отсутствует.';
+        } else {
+          const emailResult = await sendDreamAnswerNotification(context.env, {
+            recipient: existingDream.email,
+            dreamId: id,
+            name: existingDream.name,
+            idempotencyKey: `dream-answer-${id}`,
+          });
+          if (emailResult.ok) {
+            try {
+              await markNotificationSent(context.env, id, new Date().toISOString());
+            } catch {
+              console.error('admin dreams: notification tracking update failed');
+              warning = 'Ответ опубликован и email отправлен, но статус отправки не удалось сохранить.';
+            }
+          } else {
+            warning = 'Ответ опубликован, но email не отправлен.';
+          }
+        }
+      }
+    } else if (action === 'resend_notification') {
+      if (existingDream.status !== 'answered' || !existingDream.answer_text?.trim()) {
+        return json({ ok: false, error: 'Уведомление можно отправить только для опубликованного ответа.' }, 409);
+      }
+      if (!existingDream.email.trim()) {
+        return json({ ok: false, error: 'У записи нет email для уведомления.' }, 400);
+      }
+
+      const emailResult = await sendDreamAnswerNotification(context.env, {
+        recipient: existingDream.email,
+        dreamId: id,
+        name: existingDream.name,
+        idempotencyKey: `dream-answer-manual-${id}-${crypto.randomUUID()}`,
+      });
+      if (!emailResult.ok) {
+        return json({ ok: false, error: 'Не удалось отправить email. Ответ остаётся опубликованным.' }, 502);
+      }
+      try {
+        await markNotificationSent(context.env, id, new Date().toISOString());
+      } catch {
+        console.error('admin dreams: notification tracking update failed');
+        warning = 'Email отправлен, но статус отправки не удалось сохранить.';
+      }
     } else if (action === 'reject') {
       await context.env.DREAMS_DB
         .prepare("UPDATE dream_submissions SET status = 'rejected', answered_at = NULL, updated_at = ? WHERE id = ?")
@@ -123,7 +173,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
         .run();
     }
 
-    return json({ ok: true, dream: await findDream(context.env, id) });
+    return json({ ok: true, dream: await findDream(context.env, id), ...(warning ? { warning } : {}) });
   } catch {
     console.error('admin dreams: update failed');
     return json({ ok: false, error: 'Не удалось сохранить изменения.' }, 503);
@@ -147,11 +197,18 @@ function findDream(env: AdminEnv, id: string): Promise<DreamRecord | null> {
   return env.DREAMS_DB
     .prepare(`
       SELECT id, name, email, dream_text, status, answer_text, ai_draft,
-             created_at, updated_at, answered_at
+             created_at, updated_at, answered_at, notification_sent_at
       FROM dream_submissions
       WHERE id = ?
       LIMIT 1
     `)
     .bind(id)
     .first<DreamRecord>();
+}
+
+function markNotificationSent(env: AdminEnv, id: string, sentAt: string): Promise<unknown> {
+  return env.DREAMS_DB
+    .prepare('UPDATE dream_submissions SET notification_sent_at = ? WHERE id = ?')
+    .bind(sentAt, id)
+    .run();
 }

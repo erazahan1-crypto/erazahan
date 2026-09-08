@@ -15,10 +15,11 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       <span class="rounded-lg border px-3 py-1.5 text-sm font-semibold" data-status></span>
     </div>
 
-    <section class="mt-6 grid gap-4 rounded-2xl border border-white/10 bg-white/[0.035] p-5 sm:grid-cols-3">
+    <section class="mt-6 grid gap-4 rounded-2xl border border-white/10 bg-white/[0.035] p-5 sm:grid-cols-2 lg:grid-cols-4">
       <div><p class="text-xs uppercase tracking-wide text-slate-500">Имя</p><p class="mt-1 text-white" data-name></p></div>
       <div><p class="text-xs uppercase tracking-wide text-slate-500">Email</p><p class="mt-1 break-all text-white" data-email></p></div>
       <div><p class="text-xs uppercase tracking-wide text-slate-500">Дата</p><time class="mt-1 block text-white" data-date></time></div>
+      <div><p class="text-xs uppercase tracking-wide text-slate-500">Уведомление</p><p class="mt-1 text-white" data-notification-status></p></div>
     </section>
 
     <section class="mt-5 rounded-2xl border border-white/10 bg-white/[0.035] p-5 sm:p-6">
@@ -65,6 +66,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         <button type="button" data-action="publish" class="min-h-12 rounded-xl bg-emerald-600 px-5 font-semibold text-white hover:bg-emerald-500">Опубликовать ответ</button>
         <button type="button" data-action="reject" class="min-h-12 rounded-xl border border-rose-400/30 px-5 font-semibold text-rose-300 hover:bg-rose-500/10">Отклонить</button>
         <button type="button" data-action="reopen" class="hidden min-h-12 rounded-xl border border-amber-400/30 px-5 font-semibold text-amber-200 hover:bg-amber-500/10">Вернуть в новые</button>
+        <button type="button" data-action="resend_notification" class="hidden min-h-12 rounded-xl border border-sky-400/30 bg-sky-500/10 px-5 font-semibold text-sky-200 hover:bg-sky-500/20">Отправить уведомление</button>
       </div>
       <p class="mt-4 text-xs text-slate-500">AI-черновик зарезервирован в структуре данных, но генерация AI на этом этапе отключена.</p>
     </section>
@@ -81,6 +83,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       answer_text: string | null;
       created_at: string;
       answered_at: string | null;
+      notification_sent_at: string | null;
     }
     interface SearchItem { slug: string; title: string; text?: string }
 
@@ -130,6 +133,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       if (answer) answer.value = dream.answer_text || '';
       updateCount();
       updateStatus(dream.status);
+      updateNotificationStatus(dream);
     }
 
     async function saveDreamText() {
@@ -174,10 +178,29 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       reopen?.classList.toggle('hidden', status === 'pending');
     }
 
+    function updateNotificationStatus(dream: DreamRecord) {
+      const element = document.querySelector<HTMLElement>('[data-notification-status]');
+      if (element) {
+        element.textContent = dream.notification_sent_at
+          ? `Email отправлен: ${formatDate(dream.notification_sent_at)}`
+          : 'Email не отправлен';
+        element.className = dream.notification_sent_at
+          ? 'mt-1 text-emerald-300'
+          : 'mt-1 text-amber-200';
+      }
+
+      const resend = document.querySelector<HTMLButtonElement>('[data-action="resend_notification"]');
+      if (resend) {
+        resend.classList.toggle('hidden', dream.status !== 'answered' || !dream.email.trim());
+        resend.textContent = dream.notification_sent_at ? 'Отправить email повторно' : 'Отправить уведомление';
+      }
+    }
+
     async function save(action: string) {
       if (!answer) return;
       if (action === 'reject' && !confirm('Отклонить эту запись? Она не будет опубликована.')) return;
       if (action === 'publish' && !confirm('Опубликовать ответ и отметить запись отвеченной?')) return;
+      if (action === 'resend_notification' && !confirm('Отправить пользователю email со ссылкой на опубликованный ответ?')) return;
       setBusy(true);
       showMessage('Сохранение…', 'neutral');
       try {
@@ -189,7 +212,11 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         const result = await response.json();
         if (!response.ok || !result.ok) throw new Error(result.error || 'Не удалось сохранить изменения.');
         fillEditor(result.dream as DreamRecord);
-        showMessage(action === 'draft' ? 'Черновик сохранён.' : action === 'publish' ? 'Ответ опубликован.' : action === 'reject' ? 'Запись отклонена.' : 'Запись возвращена в новые.', 'success');
+        if (result.warning) {
+          showMessage(result.warning, 'warning');
+        } else {
+          showMessage(action === 'draft' ? 'Черновик сохранён.' : action === 'publish' ? 'Ответ опубликован.' : action === 'resend_notification' ? 'Email отправлен.' : action === 'reject' ? 'Запись отклонена.' : 'Запись возвращена в новые.', 'success');
+        }
       } catch (error) {
         showMessage(error instanceof Error ? error.message : 'Не удалось сохранить изменения.', 'error');
       } finally {
@@ -201,12 +228,14 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       actionButtons.forEach((button) => { button.disabled = busy; });
     }
 
-    function showMessage(text: string, kind: 'success' | 'error' | 'neutral') {
+    function showMessage(text: string, kind: 'success' | 'warning' | 'error' | 'neutral') {
       if (!message) return;
       message.textContent = text;
       message.className = kind === 'success'
         ? 'mt-4 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200'
-        : kind === 'error'
+        : kind === 'warning'
+          ? 'mt-4 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200'
+          : kind === 'error'
           ? 'mt-4 rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200'
           : 'mt-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300';
     }
