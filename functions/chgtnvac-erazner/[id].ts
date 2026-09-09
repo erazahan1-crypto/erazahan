@@ -1,6 +1,5 @@
 interface D1Statement {
   bind(...values: string[]): D1Statement;
-  all<T>(): Promise<{ results: T[] }>;
   first<T>(): Promise<T | null>;
 }
 
@@ -34,8 +33,6 @@ interface PublishedDream {
   seo_index: number | null;
 }
 
-interface RelatedDream { symbol_text: string; post_slug: string; post_title: string; }
-
 const getId = (value?: string | string[]): string | null => {
   const id = Array.isArray(value) ? value[0] : value;
   return id && /^[a-zA-Z0-9-]{1,100}$/.test(id) ? id : null;
@@ -50,8 +47,6 @@ const escapeHtml = (value: string): string =>
     .replace(/'/g, '&#39;');
 
 const normalizeText = (value: string): string => value.replace(/\s+/g, ' ').trim();
-
-const renderRelatedDreams = (related: RelatedDream[]): string => related.length ? `<section class="mt-8 min-w-0" aria-labelledby="related-dreams-title"><h2 id="related-dreams-title" class="font-display text-xl font-bold text-white">Կապված մեկնաբանություններ</h2><div class="mt-3 grid min-w-0 gap-3 sm:grid-cols-2">${related.map((item) => `<a href="/${escapeHtml(encodeURI(item.post_slug))}/" class="block min-w-0 rounded-2xl border border-white/10 bg-white/[0.035] p-4 transition hover:border-violet-300/40 hover:bg-white/[0.07]" style="overflow-wrap:anywhere"><span class="block text-xs font-semibold uppercase tracking-wide text-slate-400">${escapeHtml(item.symbol_text)}</span><h3 class="mt-1 font-semibold leading-6 text-violet-100">${escapeHtml(item.post_title)}</h3></a>`).join('')}</div></section>` : '';
 
 const excerpt = (value: string, maximumLength: number): string => {
   const text = normalizeText(value);
@@ -164,14 +159,7 @@ const findDream = (env: Env, id: string): Promise<PublishedDream | null> =>
     .bind(id)
     .first<PublishedDream>();
 
-const findRelatedDreams = (env: Env, id: string): Promise<RelatedDream[]> =>
-  env.DREAMS_DB
-    .prepare('SELECT symbol_text, post_slug, post_title FROM dream_symbol_links WHERE dream_id = ? ORDER BY created_at ASC')
-    .bind(id)
-    .all<RelatedDream>()
-    .then(({ results }) => results);
-
-const buildPage = (baseHtml: string, dream: PublishedDream, requestUrl: URL, related: RelatedDream[]): string => {
+const buildPage = (baseHtml: string, dream: PublishedDream, requestUrl: URL): string => {
   const title = dreamTitle(dream.dream_text);
   const description = excerpt(`${dream.dream_text} ${dream.answer_text.replace(/[*\[\]()]/g, '')}`, 160);
   const date = formatDate(dream);
@@ -225,7 +213,6 @@ const buildPage = (baseHtml: string, dream: PublishedDream, requestUrl: URL, rel
           <p class="mt-3 hidden rounded-xl border px-4 py-3 text-sm" data-comment-message role="status" aria-live="polite"></p>
         </form>
       </section>
-      ${renderRelatedDreams(related)}
       <a href="/chgtnvac-erazner/" class="mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-base font-semibold text-slate-200 transition hover:bg-white/10 sm:w-auto">Չգտնված երազներ</a>
     </article>
     <script>
@@ -415,13 +402,10 @@ export async function onRequestGet({ request, env, params }: Context): Promise<R
   if (!dream) return pageNotFound();
 
   const baseUrl = new URL('/chgtnvac-erazner/', request.url);
-  const [baseResponse, related] = await Promise.all([
-    env.ASSETS.fetch(new Request(baseUrl, request)),
-    findRelatedDreams(env, id).catch(() => []),
-  ]);
+  const baseResponse = await env.ASSETS.fetch(new Request(baseUrl, request));
   if (!baseResponse.ok) return new Response('Չհաջողվեց բեռնել երազը։', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' } });
 
-  const html = buildPage(await baseResponse.text(), dream, new URL(request.url), related);
+  const html = buildPage(await baseResponse.text(), dream, new URL(request.url));
   return new Response(html, {
     status: 200,
     headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },

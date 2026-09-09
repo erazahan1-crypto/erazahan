@@ -45,7 +45,7 @@ const STOP_WORDS = new Set([
 ].flatMap(tokenize));
 
 const normalizedPhrase = (value: string): string => tokenize(value).join(' ');
-const significantTitleTokens = (title: string): string[] => tokenize(title).filter((token) => token !== 'երազահան');
+const significantTitleTokens = (title: string): string[] => tokenize(title.split(':', 1)[0]).filter((token) => token !== 'երազահան');
 const containsPhrase = (tokens: string[], query: string[]): boolean => {
   if (!query.length || query.length > tokens.length) return false;
   return tokens.some((_, start) => query.every((token, offset) => tokens[start + offset] === token));
@@ -65,6 +65,7 @@ const rankItem = (query: string, item: SearchIndexItem): RankedPost | null => {
   const exactBase = containsPhrase(baseTokens, queryTokens);
   const startsTitle = titlePhrase.startsWith(`${queryPhrase} `);
   const exactMetadata = containsPhrase(metadataTokens, queryTokens);
+  const morphologicalTitle = queryTokens.length === 1 && titleTokens.some((token) => token.startsWith(queryPhrase));
   const partialTitle = titleTokens.some((token) => token.includes(queryPhrase));
   const textMatch = normalizedPhrase(item.text || '').includes(queryPhrase);
   const slugMatch = normalizedPhrase(item.slug.replace(/[-_]/g, ' ')).includes(queryPhrase);
@@ -74,6 +75,7 @@ const rankItem = (query: string, item: SearchIndexItem): RankedPost | null => {
   if (exactBase) return { ...item, match: 'exact', score: 800 };
   if (startsTitle) return { ...item, match: 'close', score: 700 };
   if (exactMetadata) return { ...item, match: 'close', score: 600 };
+  if (morphologicalTitle) return { ...item, match: 'close', score: 500 };
   if (partialTitle) return { ...item, match: 'partial', score: 400 };
   if (textMatch) return { ...item, match: 'partial', score: 200 };
   if (slugMatch) return { ...item, match: 'partial', score: 100 };
