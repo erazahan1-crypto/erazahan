@@ -1,5 +1,8 @@
 import type { GetStaticPaths } from 'astro';
-import { posts } from '../../../../lib/site';
+import postsJson from '../../../../data/posts.json';
+import type { Post } from '../../../../lib/site';
+
+const posts = postsJson as Post[];
 
 export const getStaticPaths = (() => posts.map((post, id) => ({
   params: { id: String(id) },

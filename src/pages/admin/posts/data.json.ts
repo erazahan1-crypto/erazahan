@@ -1,4 +1,7 @@
-import { posts } from '../../../lib/site';
+import postsJson from '../../../data/posts.json';
+import type { Post } from '../../../lib/site';
+
+const posts = postsJson as Post[];
 
 export function GET() {
   const index = posts.map((post, id) => ({
