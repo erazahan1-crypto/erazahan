@@ -109,6 +109,10 @@ export async function onRequestPost(context: Context): Promise<Response> {
 
     if (action === 'delete_dream') {
       await context.env.DREAMS_DB
+        .prepare('DELETE FROM dream_symbol_links WHERE dream_id = ?')
+        .bind(id)
+        .run();
+      await context.env.DREAMS_DB
         .prepare('DELETE FROM dream_reactions WHERE dream_id = ?')
         .bind(id)
         .run();

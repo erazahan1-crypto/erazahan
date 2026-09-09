@@ -1,5 +1,6 @@
 interface D1Statement {
   bind(...values: string[]): D1Statement;
+  all<T>(): Promise<{ results: T[] }>;
   first<T>(): Promise<T | null>;
 }
 
@@ -33,8 +34,7 @@ interface PublishedDream {
   seo_index: number | null;
 }
 
-interface SearchIndexItem { slug?: unknown; title?: unknown; text?: unknown; }
-interface RelatedDream { slug: string; title: string; description: string; }
+interface RelatedDream { symbol_text: string; post_slug: string; post_title: string; }
 
 const getId = (value?: string | string[]): string | null => {
   const id = Array.isArray(value) ? value[0] : value;
@@ -51,28 +51,7 @@ const escapeHtml = (value: string): string =>
 
 const normalizeText = (value: string): string => value.replace(/\s+/g, ' ').trim();
 
-const relatedStopWords = new Set(['երազ', 'երազի', 'երազում', 'երազներ', 'երազահան', 'տեսնել', 'տեսա', 'տեսնում', 'նշանակում', 'նշանակությունը', 'ինչ', 'ինչպես', 'այս', 'դա', 'իմ', 'մի', 'որ', 'և', 'ու', 'է', 'եմ', 'են', 'the', 'dream', 'dreams', 'what', 'this', 'that', 'and', 'with']);
-const relatedTokens = (value: string): string[] => Array.from(new Set((value.toLocaleLowerCase('hy-AM').normalize('NFKC').match(/[\p{L}\p{N}]{3,}/gu) || []).filter((token) => !relatedStopWords.has(token))));
-const findRelatedDreams = (dream: PublishedDream, index: unknown): RelatedDream[] => {
-  if (!Array.isArray(index)) return [];
-  const source = new Set(relatedTokens(`${dream.dream_text} ${dream.answer_text}`));
-  if (!source.size) return [];
-  const scored = index.flatMap((raw, order) => {
-    if (!raw || typeof raw !== 'object') return [];
-    const item = raw as SearchIndexItem;
-    const slug = typeof item.slug === 'string' ? item.slug.trim().replace(/^\/+|\/+$/g, '') : '';
-    const title = typeof item.title === 'string' ? normalizeText(item.title) : '';
-    const text = typeof item.text === 'string' ? normalizeText(item.text) : '';
-    if (!slug || slug === dream.id || !title || slug.includes('/') || /(?:^|[-_])(admin|api|search|sitemap)(?:[-_]|$)/i.test(slug)) return [];
-    const titleMatches = relatedTokens(title).filter((token) => source.has(token));
-    const textMatches = relatedTokens(`${text} ${slug.replace(/[-_]/g, ' ')}`).filter((token) => source.has(token));
-    if (!titleMatches.length && textMatches.length < 2) return [];
-    return [{ item: { slug, title, description: excerpt(text, 140) }, score: titleMatches.length * 8 + textMatches.length * 1.5, order }];
-  });
-  const seen = new Set<string>();
-  return scored.sort((a, b) => b.score - a.score || a.order - b.order).map(({ item }) => item).filter((item) => !seen.has(item.slug) && seen.add(item.slug)).slice(0, 5);
-};
-const renderRelatedDreams = (related: RelatedDream[]): string => related.length ? `<section class="mt-8 min-w-0" aria-labelledby="related-dreams-title"><h2 id="related-dreams-title" class="font-display text-xl font-bold text-white">Կապված երազների մեկնաբանություններ</h2><div class="mt-3 grid min-w-0 gap-3 sm:grid-cols-2">${related.map((item) => `<a href="/${escapeHtml(encodeURI(item.slug))}/" class="block min-w-0 rounded-2xl border border-white/10 bg-white/[0.035] p-4 transition hover:border-violet-300/40 hover:bg-white/[0.07]" style="overflow-wrap:anywhere"><h3 class="font-semibold leading-6 text-violet-100">${escapeHtml(item.title)}</h3>${item.description ? `<p class="mt-1 text-sm leading-6 text-slate-400">${escapeHtml(item.description)}</p>` : ''}</a>`).join('')}</div></section>` : '';
+const renderRelatedDreams = (related: RelatedDream[]): string => related.length ? `<section class="mt-8 min-w-0" aria-labelledby="related-dreams-title"><h2 id="related-dreams-title" class="font-display text-xl font-bold text-white">Կապված մեկնաբանություններ</h2><div class="mt-3 grid min-w-0 gap-3 sm:grid-cols-2">${related.map((item) => `<a href="/${escapeHtml(encodeURI(item.post_slug))}/" class="block min-w-0 rounded-2xl border border-white/10 bg-white/[0.035] p-4 transition hover:border-violet-300/40 hover:bg-white/[0.07]" style="overflow-wrap:anywhere"><span class="block text-xs font-semibold uppercase tracking-wide text-slate-400">${escapeHtml(item.symbol_text)}</span><h3 class="mt-1 font-semibold leading-6 text-violet-100">${escapeHtml(item.post_title)}</h3></a>`).join('')}</div></section>` : '';
 
 const excerpt = (value: string, maximumLength: number): string => {
   const text = normalizeText(value);
@@ -184,6 +163,13 @@ const findDream = (env: Env, id: string): Promise<PublishedDream | null> =>
     )
     .bind(id)
     .first<PublishedDream>();
+
+const findRelatedDreams = (env: Env, id: string): Promise<RelatedDream[]> =>
+  env.DREAMS_DB
+    .prepare('SELECT symbol_text, post_slug, post_title FROM dream_symbol_links WHERE dream_id = ? ORDER BY created_at ASC')
+    .bind(id)
+    .all<RelatedDream>()
+    .then(({ results }) => results);
 
 const buildPage = (baseHtml: string, dream: PublishedDream, requestUrl: URL, related: RelatedDream[]): string => {
   const title = dreamTitle(dream.dream_text);
@@ -429,21 +415,12 @@ export async function onRequestGet({ request, env, params }: Context): Promise<R
   if (!dream) return pageNotFound();
 
   const baseUrl = new URL('/chgtnvac-erazner/', request.url);
-  const indexUrl = new URL('/search-index.json', request.url);
-  const [baseResponse, indexResponse] = await Promise.all([
+  const [baseResponse, related] = await Promise.all([
     env.ASSETS.fetch(new Request(baseUrl, request)),
-    env.ASSETS.fetch(new Request(indexUrl, request)),
+    findRelatedDreams(env, id).catch(() => []),
   ]);
   if (!baseResponse.ok) return new Response('Չհաջողվեց բեռնել երազը։', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' } });
 
-  let related: RelatedDream[] = [];
-  if (indexResponse.ok) {
-    try {
-      related = findRelatedDreams(dream, await indexResponse.json());
-    } catch {
-      related = [];
-    }
-  }
   const html = buildPage(await baseResponse.text(), dream, new URL(request.url), related);
   return new Response(html, {
     status: 200,

@@ -50,6 +50,34 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       <button type="button" data-dream-save class="mt-4 min-h-12 rounded-xl bg-violet-600 px-5 font-semibold text-white transition hover:bg-violet-500 disabled:cursor-wait disabled:opacity-60">Сохранить текст сна</button>
     </section>
 
+    <section class="mt-5 min-w-0 rounded-2xl border border-violet-400/20 bg-violet-500/[0.06] p-5 sm:p-6">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 class="font-display text-xl font-bold text-white">Символы сна</h2>
+          <p class="mt-1 max-w-2xl text-sm leading-6 text-slate-400">Свяжите каждый ключевой символ с точной существующей статьёй сонника. Предложения сохраняются только после вашего подтверждения.</p>
+        </div>
+        <button type="button" data-symbol-suggest class="min-h-11 rounded-xl border border-violet-400/30 bg-violet-500/10 px-4 text-sm font-semibold text-violet-200 hover:bg-violet-500/20 disabled:opacity-60">Предложить символы</button>
+      </div>
+
+      <div class="mt-5 grid min-w-0 gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+        <div class="min-w-0">
+          <label for="symbol-text" class="text-sm font-semibold text-white">Символ</label>
+          <input id="symbol-text" data-symbol-text maxlength="120" placeholder="Например: օձ" class="mt-2 min-h-11 w-full max-w-full rounded-lg border border-white/10 bg-night-950/70 px-3 text-base text-white outline-none focus:border-violet-400" />
+        </div>
+        <div class="min-w-0">
+          <label for="symbol-search" class="text-sm font-semibold text-white">Найти статью</label>
+          <input id="symbol-search" data-symbol-search type="search" placeholder="Введите название символа" class="mt-2 min-h-11 w-full max-w-full rounded-lg border border-white/10 bg-night-950/70 px-3 text-base text-white outline-none focus:border-violet-400" />
+        </div>
+      </div>
+      <div class="mt-3 hidden max-h-80 min-w-0 space-y-2 overflow-y-auto rounded-xl border border-white/10 bg-night-950/60 p-3" data-symbol-results></div>
+      <div class="mt-3 hidden min-w-0 rounded-xl border border-violet-400/20 bg-violet-500/10 p-4" data-symbol-selection></div>
+      <button type="button" data-symbol-add disabled class="mt-3 min-h-11 rounded-xl bg-violet-600 px-4 text-sm font-semibold text-white hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50">Добавить символ</button>
+      <p class="mt-3 hidden rounded-xl border px-4 py-3 text-sm" data-symbol-message role="status" aria-live="polite"></p>
+
+      <h3 class="mt-6 font-semibold text-white">Подтверждённые символы</h3>
+      <div class="mt-3 min-w-0 space-y-3" data-symbol-links></div>
+    </section>
+
     <section class="mt-5 rounded-2xl border border-white/10 bg-white/[0.035] p-5 sm:p-6">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -107,7 +135,8 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       notification_sent_at: string | null;
       seo_index: number | null;
     }
-    interface SearchItem { slug: string; title: string; text?: string }
+    interface SearchItem { slug: string; title: string; text?: string; match?: 'exact' | 'close' | 'partial'; score?: number }
+    interface SymbolLink { id: string; symbol_text: string; post_slug: string; post_title: string; created_at: string }
 
     const loading = document.querySelector<HTMLElement>('[data-loading]');
     const editor = document.querySelector<HTMLElement>('[data-editor]');
@@ -123,12 +152,23 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     const message = document.querySelector<HTMLElement>('[data-message]');
     const actionButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-action]')];
     const deleteDreamButton = document.querySelector<HTMLButtonElement>('[data-delete-dream]');
+    const symbolText = document.querySelector<HTMLInputElement>('[data-symbol-text]');
+    const symbolSearch = document.querySelector<HTMLInputElement>('[data-symbol-search]');
+    const symbolResults = document.querySelector<HTMLElement>('[data-symbol-results]');
+    const symbolSelection = document.querySelector<HTMLElement>('[data-symbol-selection]');
+    const symbolAdd = document.querySelector<HTMLButtonElement>('[data-symbol-add]');
+    const symbolSuggest = document.querySelector<HTMLButtonElement>('[data-symbol-suggest]');
+    const symbolMessage = document.querySelector<HTMLElement>('[data-symbol-message]');
+    const symbolLinks = document.querySelector<HTMLElement>('[data-symbol-links]');
     const linkPanel = document.querySelector<HTMLElement>('[data-link-panel]');
     const postSearch = document.querySelector<HTMLInputElement>('[data-post-search]');
     const postResults = document.querySelector<HTMLElement>('[data-post-results]');
     const id = decodeURIComponent(location.pathname.replace(/\/$/, '').split('/').pop() || '');
     let searchIndex: SearchItem[] | null = null;
     let currentStatus: Status | null = null;
+    let selectedSymbolPost: SearchItem | null = null;
+    let symbolSearchTimer = 0;
+    let symbolSearchSequence = 0;
 
     async function loadDream() {
       try {
@@ -136,6 +176,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         const result = await response.json();
         if (!response.ok || !result.ok) throw new Error(result.error || 'Не удалось загрузить запись.');
         fillEditor(result.dream as DreamRecord);
+        await loadSymbolLinks();
         if (loading) loading.hidden = true;
         editor?.classList.remove('hidden');
       } catch (error) {
@@ -163,6 +204,210 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       updateCount();
       updateStatus(dream.status);
       updateNotificationStatus(dream);
+    }
+
+    async function symbolRequest(query = '') {
+      const response = await fetch(`/api/admin/dream-symbols/${encodeURIComponent(id)}${query}`);
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.error || 'Не удалось загрузить символы сна.');
+      return result;
+    }
+
+    async function loadSymbolLinks() {
+      try {
+        const result = await symbolRequest();
+        renderSymbolLinks(result.links as SymbolLink[]);
+      } catch (error) {
+        showSymbolMessage(error instanceof Error ? error.message : 'Не удалось загрузить символы сна.', 'error');
+      }
+    }
+
+    function renderSymbolLinks(links: SymbolLink[]) {
+      if (!symbolLinks) return;
+      symbolLinks.replaceChildren();
+      if (!links.length) {
+        const empty = document.createElement('p');
+        empty.className = 'text-sm text-slate-400';
+        empty.textContent = 'Подтверждённых символов пока нет.';
+        symbolLinks.append(empty);
+        return;
+      }
+      links.forEach((link) => {
+        const card = document.createElement('article');
+        card.className = 'min-w-0 rounded-xl border border-white/10 bg-white/[0.035] p-4';
+        const symbol = document.createElement('p');
+        symbol.className = 'break-words text-sm font-semibold text-violet-200';
+        symbol.textContent = `Символ: ${link.symbol_text}`;
+        const title = document.createElement('p');
+        title.className = 'mt-1 break-words font-semibold text-white';
+        title.textContent = link.post_title;
+        const path = document.createElement('a');
+        path.href = `/${encodeURIComponent(link.post_slug)}/`;
+        path.target = '_blank';
+        path.rel = 'noopener';
+        path.className = 'mt-1 block break-all text-sm text-slate-400 underline hover:text-white';
+        path.textContent = `/${link.post_slug}/`;
+        const actions = document.createElement('div');
+        actions.className = 'mt-3 flex flex-wrap gap-2';
+        const preview = makeButton('Показать толкование', 'border-violet-400/30 text-violet-200');
+        const remove = makeButton('Удалить', 'border-rose-400/30 text-rose-200');
+        const previewBox = document.createElement('div');
+        previewBox.className = 'mt-3 hidden whitespace-pre-wrap break-words rounded-lg border border-white/10 bg-night-950/60 p-3 text-sm leading-6 text-slate-300';
+        preview.addEventListener('click', () => togglePreview(link.post_slug, previewBox, preview));
+        remove.addEventListener('click', () => deleteSymbolLink(link.id));
+        actions.append(preview, remove);
+        card.append(symbol, title, path, actions, previewBox);
+        symbolLinks.append(card);
+      });
+    }
+
+    function makeButton(label: string, colors: string) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `min-h-11 rounded-lg border px-3 text-sm font-semibold hover:bg-white/10 ${colors}`;
+      button.textContent = label;
+      return button;
+    }
+
+    async function searchSymbols() {
+      const query = symbolSearch?.value.trim() || '';
+      const sequence = ++symbolSearchSequence;
+      if (query.length < 2) {
+        symbolResults?.classList.add('hidden');
+        return;
+      }
+      try {
+        const result = await symbolRequest(`?action=search&q=${encodeURIComponent(query)}`);
+        if (sequence !== symbolSearchSequence) return;
+        renderSymbolResults(result.results as SearchItem[]);
+      } catch (error) {
+        if (sequence !== symbolSearchSequence) return;
+        showSymbolMessage(error instanceof Error ? error.message : 'Не удалось выполнить поиск.', 'error');
+      }
+    }
+
+    function renderSymbolResults(items: SearchItem[], suggestedSymbols?: Map<string, string>) {
+      if (!symbolResults) return;
+      symbolResults.replaceChildren();
+      symbolResults.classList.remove('hidden');
+      if (!items.length) {
+        const empty = document.createElement('p');
+        empty.className = 'text-sm text-slate-400';
+        empty.textContent = 'Подходящие статьи не найдены.';
+        symbolResults.append(empty);
+        return;
+      }
+      items.forEach((item) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'block min-h-11 w-full min-w-0 rounded-lg border border-white/10 bg-white/5 p-3 text-left hover:border-violet-400/40 hover:bg-white/10';
+        const heading = document.createElement('span');
+        heading.className = 'flex min-w-0 flex-wrap items-center gap-2';
+        const title = document.createElement('span');
+        title.className = 'min-w-0 break-words font-semibold text-white';
+        title.textContent = item.title;
+        const badge = document.createElement('span');
+        badge.className = item.match === 'exact' ? 'rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-200' : 'rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-200';
+        badge.textContent = item.match === 'exact' ? 'Точное совпадение' : item.match === 'close' ? 'Близкое совпадение' : 'Частичное совпадение';
+        const path = document.createElement('span');
+        path.className = 'mt-1 block break-all text-xs text-slate-400';
+        path.textContent = `/${item.slug}/`;
+        heading.append(title, badge);
+        button.append(heading, path);
+        button.addEventListener('click', () => selectSymbolPost(item, suggestedSymbols?.get(item.slug)));
+        symbolResults.append(button);
+      });
+    }
+
+    function selectSymbolPost(item: SearchItem, suggestedSymbol?: string) {
+      selectedSymbolPost = item;
+      if (suggestedSymbol && symbolText) symbolText.value = suggestedSymbol;
+      if (symbolSelection) {
+        symbolSelection.replaceChildren();
+        const title = document.createElement('p');
+        title.className = 'break-words font-semibold text-white';
+        title.textContent = item.title;
+        const path = document.createElement('p');
+        path.className = 'mt-1 break-all text-xs text-slate-400';
+        path.textContent = `/${item.slug}/`;
+        const preview = makeButton('Показать толкование', 'mt-3 border-violet-400/30 text-violet-200');
+        const previewBox = document.createElement('div');
+        previewBox.className = 'mt-3 hidden whitespace-pre-wrap break-words text-sm leading-6 text-slate-300';
+        preview.addEventListener('click', () => togglePreview(item.slug, previewBox, preview));
+        symbolSelection.append(title, path, preview, previewBox);
+        symbolSelection.classList.remove('hidden');
+      }
+      if (symbolAdd) symbolAdd.disabled = !(symbolText?.value.trim());
+      symbolResults?.classList.add('hidden');
+    }
+
+    async function togglePreview(slug: string, box: HTMLElement, button: HTMLButtonElement) {
+      if (box.dataset.loaded === '1') {
+        box.classList.toggle('hidden');
+        button.textContent = box.classList.contains('hidden') ? 'Показать толкование' : 'Скрыть толкование';
+        return;
+      }
+      button.disabled = true;
+      button.textContent = 'Загрузка…';
+      try {
+        const result = await symbolRequest(`?action=preview&slug=${encodeURIComponent(slug)}`);
+        box.textContent = result.article.interpretation;
+        box.dataset.loaded = '1';
+        box.classList.remove('hidden');
+        button.textContent = 'Скрыть толкование';
+      } catch (error) {
+        box.textContent = error instanceof Error ? error.message : 'Не удалось загрузить толкование.';
+        box.classList.remove('hidden');
+        button.textContent = 'Повторить';
+      } finally { button.disabled = false; }
+    }
+
+    async function addSymbolLink() {
+      const symbol = symbolText?.value.trim() || '';
+      if (!symbol || !selectedSymbolPost || !symbolAdd) return;
+      symbolAdd.disabled = true;
+      try {
+        const response = await fetch(`/api/admin/dream-symbols/${encodeURIComponent(id)}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'add', symbol_text: symbol, post_slug: selectedSymbolPost.slug }) });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || 'Не удалось добавить символ.');
+        renderSymbolLinks(result.links as SymbolLink[]);
+        if (symbolText) symbolText.value = '';
+        if (symbolSearch) symbolSearch.value = '';
+        selectedSymbolPost = null;
+        symbolSelection?.classList.add('hidden');
+        showSymbolMessage('Символ и статья подтверждены.', 'success');
+      } catch (error) {
+        showSymbolMessage(error instanceof Error ? error.message : 'Не удалось добавить символ.', 'error');
+      } finally { symbolAdd.disabled = !selectedSymbolPost || !(symbolText?.value.trim()); }
+    }
+
+    async function deleteSymbolLink(linkId: string) {
+      if (!confirm('Удалить эту связь символа со статьёй?')) return;
+      try {
+        const response = await fetch(`/api/admin/dream-symbols/${encodeURIComponent(id)}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'delete', link_id: linkId }) });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || 'Не удалось удалить связь.');
+        renderSymbolLinks(result.links as SymbolLink[]);
+        showSymbolMessage('Связь удалена.', 'success');
+      } catch (error) { showSymbolMessage(error instanceof Error ? error.message : 'Не удалось удалить связь.', 'error'); }
+    }
+
+    async function suggestSymbols() {
+      if (!symbolSuggest) return;
+      symbolSuggest.disabled = true;
+      try {
+        const result = await symbolRequest('?action=suggest');
+        const suggestions = result.suggestions as Array<{ symbol: string; post: SearchItem }>;
+        renderSymbolResults(suggestions.map((item) => item.post), new Map(suggestions.map((item) => [item.post.slug, item.symbol])));
+        showSymbolMessage(suggestions.length ? 'Предложения показаны ниже. Выберите статью и подтвердите связь вручную.' : 'Подходящие символы не найдены. Используйте поиск вручную.', 'neutral');
+      } catch (error) { showSymbolMessage(error instanceof Error ? error.message : 'Не удалось предложить символы.', 'error'); }
+      finally { symbolSuggest.disabled = false; }
+    }
+
+    function showSymbolMessage(text: string, kind: 'success' | 'error' | 'neutral') {
+      if (!symbolMessage) return;
+      symbolMessage.textContent = text;
+      symbolMessage.className = kind === 'success' ? 'mt-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200' : kind === 'error' ? 'mt-3 rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200' : 'mt-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300';
     }
 
     async function saveDreamText() {
@@ -413,6 +658,16 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
 
     dreamText?.addEventListener('input', updateDreamCount);
     dreamSave?.addEventListener('click', saveDreamText);
+    symbolSearch?.addEventListener('input', () => {
+      window.clearTimeout(symbolSearchTimer);
+      selectedSymbolPost = null;
+      symbolSelection?.classList.add('hidden');
+      if (symbolAdd) symbolAdd.disabled = true;
+      symbolSearchTimer = window.setTimeout(searchSymbols, 250);
+    });
+    symbolText?.addEventListener('input', () => { if (symbolAdd) symbolAdd.disabled = !selectedSymbolPost || !symbolText.value.trim(); });
+    symbolAdd?.addEventListener('click', addSymbolLink);
+    symbolSuggest?.addEventListener('click', suggestSymbols);
     seoSave?.addEventListener('click', saveSeoIndex);
     answer?.addEventListener('input', updateCount);
     postSearch?.addEventListener('input', renderPostResults);
