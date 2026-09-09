@@ -126,11 +126,17 @@ const topMenu = menu.filter((m) => m.parent === "0");
 </div>
 
 <script>
+  import { prepareSearchIndex, rankPreparedSearch } from '../lib/public-search.mjs';
+
   type PanelKey = 'menu' | 'search' | 'alpha';
   type SearchIndexItem = {
     title: string;
-    text: string;
+    text?: string;
     slug: string;
+    baseWord?: string;
+    symbol?: string;
+    keywords?: string[] | string;
+    tags?: string[] | string;
   };
   type SearchIndex = SearchIndexItem[];
 
@@ -151,6 +157,7 @@ const topMenu = menu.filter((m) => m.parent === "0");
   const searchResults = document.getElementById('quick-search-results') as HTMLElement | null;
 
   let searchIndex: SearchIndex | null = null;
+  let preparedSearchIndex: ReturnType<typeof prepareSearchIndex> | null = null;
   let searchIndexLoaded = false;
 
   function closePanels() {
@@ -222,8 +229,10 @@ const topMenu = menu.filter((m) => m.parent === "0");
     try {
       const res = await fetch('/search-index.json');
       searchIndex = await res.json();
+      preparedSearchIndex = prepareSearchIndex(searchIndex || []);
     } catch {
       searchIndex = [];
+      preparedSearchIndex = [];
     }
     runQuickSearch();
   }
@@ -234,22 +243,16 @@ const topMenu = menu.filter((m) => m.parent === "0");
 
   function runQuickSearch() {
     if (!searchResults || !searchInput) return;
-    if (!searchIndex) {
+    if (!searchIndex || !preparedSearchIndex) {
       searchResults.innerHTML = '<p class="text-sm text-slate-400">Բեռնում…</p>';
       return;
     }
-    const term = (searchInput.value || '').trim().toLowerCase();
-    if (!term) {
+    const term = searchInput.value || '';
+    if (!term.trim()) {
       searchResults.innerHTML = '<p class="text-sm text-slate-400">Մուտքագրեք որոնման բառը:</p>';
       return;
     }
-    const matches = searchIndex
-      .filter(
-        (item) =>
-          (item.title || '').toLowerCase().includes(term) ||
-          (item.text || '').toLowerCase().includes(term)
-      )
-      .slice(0, 30);
+    const matches = rankPreparedSearch(term, preparedSearchIndex, 30) as SearchIndexItem[];
     if (!matches.length) {
       searchResults.innerHTML = '<p class="text-sm text-slate-400">Ոչինչ չի գտնվել:</p>';
       return;

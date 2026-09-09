@@ -36,31 +36,37 @@ import Layout from '../layouts/Layout.astro';
 </Layout>
 
 <script>
+  import { prepareSearchIndex, rankPreparedSearch } from '../lib/public-search.mjs';
+
+  type SearchIndexItem = {
+    slug: string;
+    title: string;
+    text?: string;
+    baseWord?: string;
+    symbol?: string;
+    keywords?: string[] | string;
+    tags?: string[] | string;
+  };
+
   const input = document.getElementById('search-input') as HTMLInputElement;
   const results = document.getElementById('search-results') as HTMLDivElement;
   const params = new URLSearchParams(window.location.search);
   const initialQ = params.get('q') || '';
   input.value = initialQ;
 
-  let index: { slug: string; title: string; text: string }[] = [];
+  let preparedIndex: ReturnType<typeof prepareSearchIndex> = [];
 
   function escapeHtml(s: string) {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
   function run() {
-    const term = (input.value || '').trim().toLowerCase();
-    if (!term) {
+    const term = input.value || '';
+    if (!term.trim()) {
       results.innerHTML = '<p class="text-slate-400">Մուտքագրեք որոնման բառը:</p>';
       return;
     }
-    const matches = index
-      .filter(
-        (item) =>
-          (item.title || '').toLowerCase().includes(term) ||
-          (item.text || '').toLowerCase().includes(term)
-      )
-      .slice(0, 60);
+    const matches = rankPreparedSearch(term, preparedIndex, 60) as SearchIndexItem[];
 
     if (!matches.length) {
       results.innerHTML = '<p class="text-slate-400">Ոչինչ չի գտնվել:</p>';
@@ -84,7 +90,7 @@ import Layout from '../layouts/Layout.astro';
   fetch('/search-index.json')
     .then((r) => r.json())
     .then((d) => {
-      index = d;
+      preparedIndex = prepareSearchIndex(d);
       if (initialQ) run();
     });
 </script>
