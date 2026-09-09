@@ -1,0 +1,738 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="Редактор статьи — Админка">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <a href="/admin/posts/" class="text-sm font-semibold text-violet-300 hover:text-violet-200">← Все статьи</a>
+      <h1 class="mt-2 font-display text-3xl font-bold text-white">Редактор статьи</h1>
+    </div>
+    <a data-open-site href="/" target="_blank" rel="noopener" class="inline-flex min-h-11 items-center rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-semibold text-slate-200 hover:bg-white/10">Открыть на сайте</a>
+  </div>
+
+  <p data-status class="mt-6 rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300" role="status">Загрузка статьи…</p>
+
+  <form data-form hidden class="mt-6" novalidate>
+    <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+      <div class="space-y-5">
+        <label class="block">
+          <span class="mb-1.5 block text-sm font-semibold text-white">Заголовок <span class="text-rose-300">*</span></span>
+          <input name="title" required maxlength="200" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-white outline-none focus:border-violet-400" />
+        </label>
+
+        <section class="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035]">
+          <div class="flex flex-wrap gap-1 border-b border-white/10 p-2" role="tablist" aria-label="Режим редактора">
+            <button data-editor-tab="markdown" type="button" role="tab" class="min-h-11 rounded-xl bg-violet-600 px-4 text-sm font-semibold text-white">Markdown</button>
+            <button data-editor-tab="preview" type="button" role="tab" class="min-h-11 rounded-xl px-4 text-sm font-semibold text-slate-300 hover:bg-white/5">Preview</button>
+            <button data-editor-tab="source" type="button" role="tab" class="min-h-11 rounded-xl px-4 text-sm font-semibold text-slate-300 hover:bg-white/5">HTML/source</button>
+          </div>
+
+          <div data-editor-panel="markdown" class="p-3 sm:p-4">
+            <div class="mb-3 flex flex-wrap gap-1" aria-label="Markdown toolbar">
+              <button type="button" data-line-prefix="## " class="min-h-11 rounded-lg border border-white/10 px-3 text-sm font-semibold hover:bg-white/5">H2</button>
+              <button type="button" data-line-prefix="### " class="min-h-11 rounded-lg border border-white/10 px-3 text-sm font-semibold hover:bg-white/5">H3</button>
+              <button type="button" data-wrap="**|**" class="min-h-11 rounded-lg border border-white/10 px-3 text-sm font-bold hover:bg-white/5" title="Полужирный">Bold</button>
+              <button type="button" data-wrap="*|*" class="min-h-11 rounded-lg border border-white/10 px-3 text-sm italic hover:bg-white/5" title="Курсив">Italic</button>
+              <button type="button" data-internal-link class="min-h-11 rounded-lg border border-white/10 px-3 text-sm hover:bg-white/5">Internal Link</button>
+              <button type="button" data-external-link class="min-h-11 rounded-lg border border-white/10 px-3 text-sm hover:bg-white/5">External Link</button>
+              <button type="button" data-line-prefix="- " class="min-h-11 rounded-lg border border-white/10 px-3 text-sm hover:bg-white/5">Unordered List</button>
+              <button type="button" data-ordered-list class="min-h-11 rounded-lg border border-white/10 px-3 text-sm hover:bg-white/5">Ordered List</button>
+              <button type="button" data-line-prefix="> " class="min-h-11 rounded-lg border border-white/10 px-3 text-sm hover:bg-white/5">Quote</button>
+              <button type="button" data-image class="min-h-11 rounded-lg border border-white/10 px-3 text-sm hover:bg-white/5">Image</button>
+            </div>
+            <label for="content" class="sr-only">Основной текст</label>
+            <textarea id="content" name="content" rows="26" spellcheck="false" class="w-full resize-y rounded-xl border border-white/10 bg-night-950 p-4 font-mono text-sm leading-6 text-slate-100 outline-none focus:border-violet-400"></textarea>
+            <p class="mt-2 text-xs leading-5 text-slate-400">Основной режим добавляет Markdown. Уже существующий HTML остаётся без преобразования.</p>
+          </div>
+
+          <div data-editor-panel="preview" hidden class="p-3 sm:p-4">
+            <p class="mb-3 text-xs leading-5 text-slate-400">Preview изолирован, очищен от scripts, styles и опасных атрибутов.</p>
+            <iframe data-preview sandbox="" title="Предпросмотр статьи" class="h-[38rem] w-full rounded-xl bg-white"></iframe>
+          </div>
+
+          <div data-editor-panel="source" hidden class="p-3 sm:p-4">
+            <label for="content-source" class="mb-2 block text-sm font-semibold text-white">Точный source content</label>
+            <textarea id="content-source" data-content-source rows="26" spellcheck="false" class="w-full resize-y rounded-xl border border-white/10 bg-night-950 p-4 font-mono text-sm leading-6 text-slate-100 outline-none focus:border-violet-400"></textarea>
+            <p class="mt-2 rounded-xl border border-amber-400/20 bg-amber-400/10 p-3 text-xs leading-5 text-amber-100">Это тот же `content`, без HTML↔Markdown-конвертации. Изменения source сразу синхронизируются с Markdown-режимом.</p>
+          </div>
+        </section>
+      </div>
+
+      <aside class="space-y-5 rounded-2xl border border-white/10 bg-white/[0.035] p-4 lg:sticky lg:top-4">
+        <div data-readonly hidden class="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-200">
+          Режим просмотра: GitHub-сохранение не настроено. Нужны server-side secrets, указанные ниже.
+        </div>
+        <label class="block">
+          <span class="mb-1.5 block text-sm font-semibold text-white">Slug <span class="text-rose-300">*</span></span>
+          <input name="slug" required maxlength="160" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 font-mono text-sm text-white outline-none focus:border-violet-400" />
+          <span data-slug-warning hidden class="mt-2 block rounded-lg border border-amber-400/30 bg-amber-400/10 p-2 text-xs leading-5 text-amber-200">Изменение slug изменит URL страницы и может потребовать redirect.</span>
+        </label>
+        <label class="block">
+          <span class="mb-1.5 block text-sm font-semibold text-white">Буква</span>
+          <input name="letter" maxlength="8" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-white outline-none focus:border-violet-400" />
+        </label>
+        <label class="block">
+          <span class="mb-1.5 block text-sm font-semibold text-white">Дата <span class="text-rose-300">*</span></span>
+          <input name="date" required maxlength="32" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-white outline-none focus:border-violet-400" />
+        </label>
+        <section>
+          <h2 class="text-sm font-semibold text-white">Категории</h2>
+          <div data-selected-categories class="mt-2 flex flex-wrap gap-2"></div>
+          <button data-category-add type="button" class="mt-2 min-h-11 rounded-xl border border-white/10 px-3 text-sm font-semibold text-slate-200 hover:bg-white/5">+ Добавить категорию</button>
+          <div data-category-picker hidden class="mt-3 rounded-xl border border-white/10 bg-night-950 p-3">
+            <input data-category-search type="search" autocomplete="off" placeholder="Найти категорию" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-900 px-3 text-sm text-white outline-none focus:border-violet-400" />
+            <div data-category-results class="mt-2 max-h-52 overflow-y-auto"></div>
+            <button data-category-create hidden type="button" class="mt-2 min-h-11 w-full rounded-xl border border-violet-400/40 bg-violet-500/10 px-3 text-left text-sm font-semibold text-violet-200"></button>
+          </div>
+        </section>
+        <label class="block">
+          <span class="mb-1.5 block text-sm font-semibold text-white">Исходный URL <span class="text-rose-300">*</span></span>
+          <input name="sourceUrl" required type="url" maxlength="2000" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-sm text-white outline-none focus:border-violet-400" />
+        </label>
+        <p class="text-xs leading-5 text-slate-400">Неизвестные поля и `comments` не редактируются и сохраняются сервером без удаления.</p>
+        <section class="rounded-xl border border-white/10 bg-night-950/60 p-3">
+          <h2 class="text-sm font-semibold text-white">Content checks</h2>
+          <ul data-content-checks class="mt-2 space-y-2 text-xs leading-5"></ul>
+          <p class="mt-2 text-[11px] leading-4 text-slate-500">Рекомендации не блокируют сохранение и не являются SEO score.</p>
+        </section>
+        <button data-save type="submit" class="min-h-11 w-full rounded-xl bg-violet-600 px-4 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50">Сохранить через GitHub</button>
+      </aside>
+    </div>
+  </form>
+
+  <dialog data-link-dialog class="m-auto w-[min(42rem,calc(100vw-2rem))] max-w-none overflow-hidden rounded-2xl border border-white/10 bg-night-900 p-0 text-slate-200 shadow-2xl backdrop:bg-black/70">
+    <div class="flex max-h-[min(44rem,calc(100vh-2rem))] flex-col">
+      <div class="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-5">
+        <h2 class="font-display text-xl font-bold text-white">Вставить ссылку</h2>
+        <button data-link-close type="button" aria-label="Закрыть" class="grid min-h-11 min-w-11 place-items-center rounded-xl border border-white/10 text-xl hover:bg-white/5">×</button>
+      </div>
+      <div class="flex gap-2 border-b border-white/10 px-4 py-3 sm:px-5" role="tablist" aria-label="Тип ссылки">
+        <button data-link-tab="internal" type="button" role="tab" class="min-h-11 rounded-xl bg-violet-600 px-4 text-sm font-semibold text-white">Внутренняя</button>
+        <button data-link-tab="external" type="button" role="tab" class="min-h-11 rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-300">Внешняя</button>
+      </div>
+      <section data-link-panel="internal" class="min-h-0 overflow-y-auto p-4 sm:p-5">
+        <label class="block">
+          <span class="mb-1.5 block text-sm font-semibold text-white">Поиск существующей статьи</span>
+          <input data-link-search type="search" autocomplete="off" placeholder="Введите заголовок" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-white outline-none placeholder:text-slate-500 focus:border-violet-400" />
+        </label>
+        <p data-link-status class="mt-3 text-sm text-slate-400" role="status">Введите запрос или выделите текст перед открытием окна.</p>
+        <div data-link-results class="mt-3 divide-y divide-white/10 overflow-hidden rounded-xl border border-white/10"></div>
+      </section>
+      <section data-link-panel="external" hidden class="space-y-4 overflow-y-auto p-4 sm:p-5">
+        <label class="block">
+          <span class="mb-1.5 block text-sm font-semibold text-white">URL</span>
+          <input data-external-url type="url" inputmode="url" placeholder="https://example.com/" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-white outline-none placeholder:text-slate-500 focus:border-violet-400" />
+        </label>
+        <label class="block">
+          <span class="mb-1.5 block text-sm font-semibold text-white">Текст ссылки</span>
+          <input data-external-text class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-white outline-none focus:border-violet-400" />
+        </label>
+        <p data-external-error hidden class="rounded-xl border border-rose-400/30 bg-rose-400/10 p-3 text-sm text-rose-200" role="alert"></p>
+        <button data-external-insert type="button" class="min-h-11 w-full rounded-xl bg-violet-600 px-4 text-sm font-semibold text-white hover:bg-violet-500">Вставить внешнюю ссылку</button>
+      </section>
+    </div>
+  </dialog>
+
+  <dialog data-image-dialog class="m-auto w-[min(34rem,calc(100vw-2rem))] max-w-none overflow-hidden rounded-2xl border border-white/10 bg-night-900 p-0 text-slate-200 shadow-2xl backdrop:bg-black/70">
+    <div class="max-h-[calc(100vh-2rem)] overflow-y-auto">
+      <div class="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-5">
+        <h2 class="font-display text-xl font-bold text-white">Вставить изображение</h2>
+        <button data-image-close type="button" aria-label="Закрыть" class="grid min-h-11 min-w-11 place-items-center rounded-xl border border-white/10 text-xl hover:bg-white/5">×</button>
+      </div>
+      <div class="space-y-4 p-4 sm:p-5">
+        <label class="block">
+          <span class="mb-1.5 block text-sm font-semibold text-white">Image URL / path</span>
+          <input data-image-url inputmode="url" placeholder="/uploads/image.webp" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-white outline-none focus:border-violet-400" />
+        </label>
+        <label class="block">
+          <span class="mb-1.5 block text-sm font-semibold text-white">Alt text <span class="text-rose-300">*</span></span>
+          <input data-image-alt maxlength="300" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-white outline-none focus:border-violet-400" />
+        </label>
+        <p data-image-error hidden class="rounded-xl border border-rose-400/30 bg-rose-400/10 p-3 text-sm text-rose-200" role="alert"></p>
+        <button data-image-insert type="button" class="min-h-11 w-full rounded-xl bg-violet-600 px-4 text-sm font-semibold text-white hover:bg-violet-500">Вставить изображение</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script>
+    // @ts-ignore JavaScript search module is shared with the public search page.
+    import { rankSearch } from '../../../lib/public-search.mjs';
+
+    interface PostData {
+      title: string; slug: string; date: string; letter: string | null;
+      categories: string[]; content: string; sourceUrl: string;
+    }
+    interface LoadResult { ok: boolean; post?: PostData; version?: string; writable?: boolean; error?: string }
+    interface LinkPost { id: string; title: string; slug: string; categories: string[]; text: string }
+    interface CategoryOption { name: string; count: number }
+    const params = new URLSearchParams(location.search);
+    const id = params.get('id');
+    const form = document.querySelector<HTMLFormElement>('[data-form]')!;
+    const status = document.querySelector<HTMLElement>('[data-status]')!;
+    const readOnlyNotice = document.querySelector<HTMLElement>('[data-readonly]')!;
+    const save = document.querySelector<HTMLButtonElement>('[data-save]')!;
+    const openSite = document.querySelector<HTMLAnchorElement>('[data-open-site]')!;
+    const preview = document.querySelector<HTMLIFrameElement>('[data-preview]')!;
+    const content = form.elements.namedItem('content') as HTMLTextAreaElement;
+    const contentSource = document.querySelector<HTMLTextAreaElement>('[data-content-source]')!;
+    const slug = form.elements.namedItem('slug') as HTMLInputElement;
+    const linkDialog = document.querySelector<HTMLDialogElement>('[data-link-dialog]')!;
+    const linkSearch = document.querySelector<HTMLInputElement>('[data-link-search]')!;
+    const linkResults = document.querySelector<HTMLElement>('[data-link-results]')!;
+    const linkStatus = document.querySelector<HTMLElement>('[data-link-status]')!;
+    const externalUrl = document.querySelector<HTMLInputElement>('[data-external-url]')!;
+    const externalText = document.querySelector<HTMLInputElement>('[data-external-text]')!;
+    const externalError = document.querySelector<HTMLElement>('[data-external-error]')!;
+    const imageDialog = document.querySelector<HTMLDialogElement>('[data-image-dialog]')!;
+    const imageUrl = document.querySelector<HTMLInputElement>('[data-image-url]')!;
+    const imageAlt = document.querySelector<HTMLInputElement>('[data-image-alt]')!;
+    const imageError = document.querySelector<HTMLElement>('[data-image-error]')!;
+    const categoryPicker = document.querySelector<HTMLElement>('[data-category-picker]')!;
+    const categorySearch = document.querySelector<HTMLInputElement>('[data-category-search]')!;
+    const categoryResults = document.querySelector<HTMLElement>('[data-category-results]')!;
+    const categoryCreate = document.querySelector<HTMLButtonElement>('[data-category-create]')!;
+    const selectedCategoriesElement = document.querySelector<HTMLElement>('[data-selected-categories]')!;
+    const contentChecks = document.querySelector<HTMLElement>('[data-content-checks]')!;
+    let originalSlug = '';
+    let version = '';
+    let writable = false;
+    let previewTimer = 0;
+    let linkSearchTimer = 0;
+    let linkIndex: LinkPost[] | null = null;
+    let linkIndexRequest: Promise<LinkPost[]> | null = null;
+    let savedSelection = { start: 0, end: 0, text: '' };
+    let savedImageSelection = { start: 0, end: 0, text: '' };
+    let selectedCategories: string[] = [];
+    let categoryOptions: CategoryOption[] = [];
+    let categoryRequest: Promise<CategoryOption[]> | null = null;
+
+    function field(name: string) { return form.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement; }
+    function showStatus(message: string, tone: 'neutral' | 'error' | 'success' = 'neutral') {
+      status.hidden = false;
+      status.textContent = message;
+      status.className = `mt-6 rounded-xl border p-4 text-sm ${tone === 'error' ? 'border-rose-400/30 bg-rose-400/10 text-rose-200' : tone === 'success' ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200' : 'border-white/10 bg-white/5 text-slate-300'}`;
+    }
+
+    function populate(post: PostData) {
+      field('title').value = post.title || '';
+      slug.value = post.slug || '';
+      field('date').value = post.date || '';
+      field('letter').value = post.letter || '';
+      selectedCategories = normalizeCategories(post.categories);
+      content.value = post.content || '';
+      contentSource.value = content.value;
+      field('sourceUrl').value = post.sourceUrl || '';
+      originalSlug = post.slug;
+      renderSelectedCategories();
+      updateSlugState();
+      updatePreview();
+      updateContentChecks();
+    }
+
+    async function load() {
+      if (!id || !/^(0|[1-9]\d{0,5})$/.test(id)) {
+        showStatus('Некорректный id статьи.', 'error');
+        return;
+      }
+      let result: LoadResult | null = null;
+      try {
+        const liveResponse = await fetch(`/api/admin/posts/${id}`, { headers: { accept: 'application/json' } });
+        result = await liveResponse.json() as LoadResult;
+        if (!liveResponse.ok && liveResponse.status !== 503) throw new Error(result.error || 'Не удалось загрузить статью.');
+        if (!liveResponse.ok) result = null;
+      } catch (error) {
+        if (result) { showStatus(error instanceof Error ? error.message : 'Не удалось загрузить статью.', 'error'); return; }
+      }
+      if (!result) {
+        try {
+          const staticResponse = await fetch(`/admin/posts/data/${id}.json`, { headers: { accept: 'application/json' } });
+          result = await staticResponse.json() as LoadResult;
+          if (!staticResponse.ok || !result.ok) throw new Error(result.error || 'Статья не найдена.');
+        } catch (error) {
+          showStatus(error instanceof Error ? error.message : 'Не удалось загрузить статью.', 'error');
+          return;
+        }
+      }
+      if (!result.post) { showStatus('Статья не найдена.', 'error'); return; }
+      version = result.version || '';
+      writable = Boolean(result.writable && version);
+      populate(result.post);
+      form.hidden = false;
+      status.hidden = true;
+      readOnlyNotice.hidden = writable;
+      save.disabled = !writable;
+    }
+
+    function updateSlugState() {
+      const changed = slug.value !== originalSlug;
+      document.querySelector<HTMLElement>('[data-slug-warning]')!.hidden = !changed;
+      openSite.href = `/${encodeURIComponent(slug.value || originalSlug)}/`;
+    }
+
+    function updatePreview() {
+      const safeTitle = escapeHtml(field('title').value);
+      const rendered = sanitizePreviewHtml(renderMarkdown(content.value));
+      preview.srcdoc = `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https:; style-src 'unsafe-inline'"><style>body{font:16px/1.7 system-ui;color:#cbd5e1;background:#080613;padding:24px;margin:0}article{max-width:48rem;margin:auto}h1,h2,h3{line-height:1.25;color:#fff}h1{font-size:2rem}h2{font-size:1.5rem;margin-top:1.8em}h3{font-size:1.25rem;margin-top:1.5em}a{color:#c4b5fd}blockquote{border-left:3px solid #8b5cf6;margin-left:0;padding-left:1rem;color:#ddd6fe}img{max-width:100%;height:auto;border-radius:12px}code{white-space:pre-wrap}li{margin:.35rem 0}</style><article><h1>${safeTitle}</h1>${rendered}</article>`;
+    }
+
+    function insertMarkup(prefix: string, suffix = '') {
+      const start = content.selectionStart;
+      const end = content.selectionEnd;
+      const selected = content.value.slice(start, end);
+      content.setRangeText(prefix + selected + suffix, start, end, 'select');
+      syncFromMarkdown();
+      content.focus();
+    }
+
+    function prefixSelectedLines(prefix: string, ordered = false) {
+      const start = content.selectionStart;
+      const end = content.selectionEnd;
+      const selected = content.value.slice(start, end);
+      const lines = (selected || '').split('\n');
+      const replacement = lines.map((line, index) => `${ordered ? `${index + 1}. ` : prefix}${line}`).join('\n');
+      content.setRangeText(replacement, start, end, 'select');
+      syncFromMarkdown();
+      content.focus();
+    }
+
+    function setEditorTab(tab: 'markdown' | 'preview' | 'source') {
+      document.querySelectorAll<HTMLButtonElement>('[data-editor-tab]').forEach((button) => {
+        const active = button.dataset.editorTab === tab;
+        button.setAttribute('aria-selected', String(active));
+        button.className = active
+          ? 'min-h-11 rounded-xl bg-violet-600 px-4 text-sm font-semibold text-white'
+          : 'min-h-11 rounded-xl px-4 text-sm font-semibold text-slate-300 hover:bg-white/5';
+      });
+      document.querySelectorAll<HTMLElement>('[data-editor-panel]').forEach((panel) => {
+        panel.hidden = panel.dataset.editorPanel !== tab;
+      });
+      if (tab === 'preview') updatePreview();
+      if (tab === 'source') { contentSource.value = content.value; contentSource.focus(); }
+      if (tab === 'markdown') content.focus();
+    }
+
+    function syncFromMarkdown() {
+      contentSource.value = content.value;
+      schedulePreview();
+      updateContentChecks();
+    }
+
+    function syncFromSource() {
+      content.value = contentSource.value;
+      schedulePreview();
+      updateContentChecks();
+    }
+
+    function loadLinkIndex(): Promise<LinkPost[]> {
+      if (linkIndex) return Promise.resolve(linkIndex);
+      if (!linkIndexRequest) {
+        linkIndexRequest = fetch('/admin/posts/link-index.json', { headers: { accept: 'application/json' } })
+          .then((response) => {
+            if (!response.ok) throw new Error('Не удалось загрузить индекс статей.');
+            return response.json() as Promise<LinkPost[]>;
+          })
+          .then((rows) => (linkIndex = rows));
+      }
+      return linkIndexRequest;
+    }
+
+    async function openLinkDialog(initialTab: 'internal' | 'external' = 'internal') {
+      savedSelection = {
+        start: content.selectionStart,
+        end: content.selectionEnd,
+        text: content.value.slice(content.selectionStart, content.selectionEnd),
+      };
+      linkSearch.value = savedSelection.text.trim();
+      externalText.value = savedSelection.text;
+      externalUrl.value = '';
+      externalError.hidden = true;
+      setLinkTab(initialTab);
+      linkDialog.showModal();
+      (initialTab === 'internal' ? linkSearch : externalUrl).focus();
+      if (initialTab === 'internal') await renderLinkResults();
+    }
+
+    function setLinkTab(tab: 'internal' | 'external') {
+      document.querySelectorAll<HTMLButtonElement>('[data-link-tab]').forEach((button) => {
+        const active = button.dataset.linkTab === tab;
+        button.setAttribute('aria-selected', String(active));
+        button.className = active
+          ? 'min-h-11 rounded-xl bg-violet-600 px-4 text-sm font-semibold text-white'
+          : 'min-h-11 rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-300';
+      });
+      document.querySelectorAll<HTMLElement>('[data-link-panel]').forEach((panel) => {
+        panel.hidden = panel.dataset.linkPanel !== tab;
+      });
+      (tab === 'internal' ? linkSearch : externalUrl).focus();
+    }
+
+    async function renderLinkResults() {
+      const query = linkSearch.value.trim();
+      linkResults.replaceChildren();
+      linkStatus.className = 'mt-3 text-sm text-slate-400';
+      if (!query) {
+        linkStatus.hidden = false;
+        linkStatus.textContent = 'Введите запрос или выделите текст перед открытием окна.';
+        return;
+      }
+      linkStatus.hidden = false;
+      linkStatus.textContent = 'Поиск…';
+      try {
+        const rows = await loadLinkIndex();
+        const matches = rankSearch(query, rows, 12) as LinkPost[];
+        if (!matches.length) {
+          linkStatus.textContent = 'Совпадений не найдено.';
+          return;
+        }
+        linkStatus.hidden = true;
+        linkResults.append(...matches.map(renderLinkResult));
+      } catch (error) {
+        linkStatus.textContent = error instanceof Error ? error.message : 'Не удалось выполнить поиск.';
+        linkStatus.className = 'mt-3 text-sm text-rose-300';
+      }
+    }
+
+    function renderLinkResult(row: LinkPost) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'block min-h-11 w-full px-3 py-3 text-left transition hover:bg-white/5 focus:bg-white/5';
+      const title = document.createElement('strong');
+      title.className = 'block break-words text-sm text-white';
+      title.textContent = row.title;
+      const meta = document.createElement('span');
+      meta.className = 'mt-1 block break-all text-xs text-slate-400';
+      meta.textContent = `/${row.slug}/${row.categories?.[0] ? ` · ${row.categories[0]}` : ''}`;
+      button.append(title, meta);
+      button.addEventListener('click', () => insertInternalLink(row));
+      return button;
+    }
+
+    function insertInternalLink(row: LinkPost) {
+      const canonical = linkIndex?.find((candidate) => candidate.id === row.id && candidate.slug === row.slug);
+      if (!canonical) return;
+      const label = savedSelection.text.trim() ? savedSelection.text : canonical.title;
+      replaceSavedSelection(`[${escapeMarkdownLabel(label)}](/${canonical.slug}/)`);
+    }
+
+    function insertExternalLink() {
+      externalError.hidden = true;
+      let url: URL;
+      try {
+        url = new URL(externalUrl.value.trim());
+      } catch {
+        showExternalError('Введите корректный URL.');
+        return;
+      }
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+        showExternalError('Разрешены только ссылки http:// и https://.');
+        return;
+      }
+      const label = externalText.value.trim() ? externalText.value : savedSelection.text;
+      if (!label.trim()) {
+        showExternalError('Введите текст ссылки.');
+        return;
+      }
+      const safeUrl = url.href.replace(/\(/g, '%28').replace(/\)/g, '%29');
+      replaceSavedSelection(`[${escapeMarkdownLabel(label)}](${safeUrl})`);
+    }
+
+    function showExternalError(message: string) {
+      externalError.textContent = message;
+      externalError.hidden = false;
+    }
+
+    function escapeMarkdownLabel(value: string) {
+      return value.replace(/\\/g, '\\\\').replace(/\]/g, '\\]');
+    }
+
+    function replaceSavedSelection(markdown: string) {
+      content.setRangeText(markdown, savedSelection.start, savedSelection.end, 'end');
+      linkDialog.close();
+      syncFromMarkdown();
+      content.focus();
+    }
+
+    function openImageDialog() {
+      savedImageSelection = {
+        start: content.selectionStart,
+        end: content.selectionEnd,
+        text: content.value.slice(content.selectionStart, content.selectionEnd),
+      };
+      imageUrl.value = '';
+      imageAlt.value = savedImageSelection.text.trim();
+      imageError.hidden = true;
+      imageDialog.showModal();
+      imageUrl.focus();
+    }
+
+    function insertImage() {
+      const alt = imageAlt.value.trim();
+      if (!alt) return showImageError('Alt text обязателен.');
+      const source = safeImageSource(imageUrl.value.trim());
+      if (!source) return showImageError('Используйте корневой путь /… либо безопасный http(s) URL.');
+      const markdown = `![${escapeMarkdownLabel(alt)}](${source.replace(/\(/g, '%28').replace(/\)/g, '%29')})`;
+      content.setRangeText(markdown, savedImageSelection.start, savedImageSelection.end, 'end');
+      imageDialog.close();
+      syncFromMarkdown();
+      content.focus();
+    }
+
+    function showImageError(message: string) {
+      imageError.textContent = message;
+      imageError.hidden = false;
+    }
+
+    function safeImageSource(value: string): string | null {
+      if (/^\/(?!\/)[^\s()]+$/.test(value)) return value;
+      try {
+        const parsed = new URL(value);
+        return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.href : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function normalizeCategories(value: unknown): string[] {
+      const values = Array.isArray(value) ? value : typeof value === 'string' ? [value] : [];
+      const seen = new Set<string>();
+      const result: string[] = [];
+      for (const item of values) {
+        if (typeof item !== 'string') continue;
+        const category = item.trim().replace(/\s+/g, ' ');
+        const key = normalizedCategoryKey(category);
+        if (!category || seen.has(key)) continue;
+        seen.add(key);
+        result.push(category);
+      }
+      return result;
+    }
+
+    function normalizedCategoryKey(value: string) {
+      return value.normalize('NFKC').toLocaleLowerCase('hy-AM');
+    }
+
+    function renderSelectedCategories() {
+      selectedCategoriesElement.replaceChildren(...selectedCategories.map((category) => {
+        const chip = document.createElement('span');
+        chip.className = 'inline-flex min-h-11 max-w-full items-center gap-1 rounded-xl border border-violet-400/30 bg-violet-500/10 pl-3 pr-1 text-sm text-violet-100';
+        const label = document.createElement('span');
+        label.className = 'min-w-0 break-words';
+        label.textContent = category;
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'grid min-h-9 min-w-9 place-items-center rounded-lg text-lg hover:bg-white/10';
+        remove.setAttribute('aria-label', `Удалить категорию ${category}`);
+        remove.textContent = '×';
+        remove.addEventListener('click', () => {
+          selectedCategories = selectedCategories.filter((value) => normalizedCategoryKey(value) !== normalizedCategoryKey(category));
+          renderSelectedCategories();
+          renderCategoryChoices();
+        });
+        chip.append(label, remove);
+        return chip;
+      }));
+      if (!selectedCategories.length) {
+        const empty = document.createElement('span');
+        empty.className = 'text-xs text-slate-500';
+        empty.textContent = 'Категории не выбраны';
+        selectedCategoriesElement.append(empty);
+      }
+    }
+
+    async function openCategoryPicker() {
+      categoryPicker.hidden = !categoryPicker.hidden;
+      if (categoryPicker.hidden) return;
+      categorySearch.value = '';
+      categorySearch.focus();
+      try {
+        if (!categoryRequest) {
+          categoryRequest = fetch('/admin/posts/categories.json', { headers: { accept: 'application/json' } })
+            .then((response) => {
+              if (!response.ok) throw new Error('Не удалось загрузить категории.');
+              return response.json() as Promise<CategoryOption[]>;
+            });
+        }
+        categoryOptions = await categoryRequest;
+        renderCategoryChoices();
+      } catch (error) {
+        categoryResults.textContent = error instanceof Error ? error.message : 'Не удалось загрузить категории.';
+        categoryResults.className = 'mt-2 text-sm text-rose-300';
+      }
+    }
+
+    function renderCategoryChoices() {
+      const query = normalizedCategoryKey(categorySearch.value.trim().replace(/\s+/g, ' '));
+      const selectedKeys = new Set(selectedCategories.map(normalizedCategoryKey));
+      const choices = categoryOptions
+        .filter((option) => !selectedKeys.has(normalizedCategoryKey(option.name)))
+        .filter((option) => !query || normalizedCategoryKey(option.name).includes(query))
+        .slice(0, 15);
+      categoryResults.className = 'mt-2 max-h-52 overflow-y-auto';
+      categoryResults.replaceChildren(...choices.map((option) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'block min-h-11 w-full rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-white/5';
+        button.textContent = `${option.name} (${option.count})`;
+        button.addEventListener('click', () => addCategory(option.name));
+        return button;
+      }));
+      const proposed = categorySearch.value.trim().replace(/\s+/g, ' ');
+      const known = categoryOptions.some((option) => normalizedCategoryKey(option.name) === normalizedCategoryKey(proposed));
+      const alreadySelected = selectedKeys.has(normalizedCategoryKey(proposed));
+      categoryCreate.hidden = !proposed || known || alreadySelected;
+      categoryCreate.textContent = proposed ? `Создать новую категорию «${proposed}»` : '';
+    }
+
+    function addCategory(category: string) {
+      selectedCategories = normalizeCategories([...selectedCategories, category]);
+      renderSelectedCategories();
+      categorySearch.value = '';
+      renderCategoryChoices();
+    }
+
+    function updateContentChecks() {
+      const source = content.value;
+      const hasContentH1 = /(^|\n)\s*#\s+\S/m.test(source) || /<h1\b/i.test(source);
+      const hasSubheading = /(^|\n)\s*#{2,3}\s+\S/m.test(source) || /<h[23]\b/i.test(source);
+      const hasInternalLink = /\]\(\/(?!\/)[^)]+\)/.test(source) || /<a\b[^>]*href=["']\/(?!\/)/i.test(source);
+      const markdownImages = [...source.matchAll(/!\[([^\]]*)\]\([^)]+\)/g)];
+      const parsed = new DOMParser().parseFromString(source, 'text/html');
+      const htmlImages = [...parsed.querySelectorAll('img')];
+      const imagesHaveAlt = markdownImages.every((match) => Boolean(match[1].trim()))
+        && htmlImages.every((image) => Boolean(image.getAttribute('alt')?.trim()));
+      const checks = [
+        { ok: Boolean(field('title').value.trim()) && !hasContentH1, text: hasContentH1 ? 'H1 найден в content — основной H1 должен идти из title' : 'H1 управляется полем title' },
+        { ok: hasSubheading, text: 'Есть структурный H2 или H3' },
+        { ok: hasInternalLink, text: 'Есть внутренняя ссылка' },
+        { ok: imagesHaveAlt, text: markdownImages.length || htmlImages.length ? 'Все изображения имеют alt' : 'Изображений нет' },
+        { ok: Boolean(source.trim()), text: 'Content не пустой' },
+      ];
+      contentChecks.replaceChildren(...checks.map((check) => {
+        const item = document.createElement('li');
+        item.className = check.ok ? 'text-emerald-300' : 'text-amber-200';
+        item.textContent = `${check.ok ? '✓' : '○'} ${check.text}`;
+        return item;
+      }));
+    }
+
+    function renderMarkdown(source: string): string {
+      const output: string[] = [];
+      let list: 'ul' | 'ol' | null = null;
+      const closeList = () => { if (list) output.push(`</${list}>`); list = null; };
+      for (const line of source.replace(/\r\n?/g, '\n').split('\n')) {
+        if (/<\/?[a-z][^>]*>/i.test(line)) { closeList(); output.push(line); continue; }
+        const heading = line.match(/^\s*(#{2,6})\s+(.+)$/);
+        if (heading) { closeList(); const level = heading[1].length; output.push(`<h${level}>${renderInlineMarkdown(heading[2])}</h${level}>`); continue; }
+        const quote = line.match(/^\s*>\s?(.*)$/);
+        if (quote) { closeList(); output.push(`<blockquote>${renderInlineMarkdown(quote[1])}</blockquote>`); continue; }
+        const unordered = line.match(/^\s*[-*+]\s+(.+)$/);
+        if (unordered) { if (list !== 'ul') { closeList(); list = 'ul'; output.push('<ul>'); } output.push(`<li>${renderInlineMarkdown(unordered[1])}</li>`); continue; }
+        const ordered = line.match(/^\s*\d+\.\s+(.+)$/);
+        if (ordered) { if (list !== 'ol') { closeList(); list = 'ol'; output.push('<ol>'); } output.push(`<li>${renderInlineMarkdown(ordered[1])}</li>`); continue; }
+        closeList();
+        if (line.trim()) output.push(`<p>${renderInlineMarkdown(line)}</p>`);
+      }
+      closeList();
+      return output.join('\n');
+    }
+
+    function renderInlineMarkdown(value: string): string {
+      return escapeHtml(value)
+        .replace(/!\[([^\]]+)\]\(([^)\s]+)\)/g, (_match, alt, src) => safeImageSource(src) ? `<img src="${escapeHtml(src)}" alt="${alt}">` : alt)
+        .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_match, label, href) => safePreviewUrl(href) ? `<a href="${escapeHtml(href)}">${label}</a>` : label)
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    }
+
+    function sanitizePreviewHtml(value: string): string {
+      const document = new DOMParser().parseFromString(`<body>${value}</body>`, 'text/html');
+      document.querySelectorAll('script,style,iframe,object,embed,form,input,button,textarea,select,meta,link,base').forEach((node) => node.remove());
+      document.body.querySelectorAll('*').forEach((element) => {
+        for (const attribute of [...element.attributes]) {
+          const name = attribute.name.toLowerCase();
+          if (name.startsWith('on') || name === 'style' || name === 'srcdoc') element.removeAttribute(attribute.name);
+        }
+        if (element.hasAttribute('href') && !safePreviewUrl(element.getAttribute('href') || '')) element.removeAttribute('href');
+        if (element.hasAttribute('src') && !safeImageSource(element.getAttribute('src') || '')) element.removeAttribute('src');
+      });
+      return document.body.innerHTML;
+    }
+
+    function safePreviewUrl(value: string): boolean {
+      if (/^\/(?!\/)/.test(value) || /^#[^\s]*$/.test(value)) return true;
+      try { return ['http:', 'https:'].includes(new URL(value).protocol); } catch { return false; }
+    }
+
+    function escapeHtml(value: string) {
+      return value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!);
+    }
+    function schedulePreview() {
+      clearTimeout(previewTimer);
+      previewTimer = window.setTimeout(updatePreview, 180);
+    }
+
+    document.querySelectorAll<HTMLButtonElement>('[data-editor-tab]').forEach((button) => button.addEventListener('click', () => setEditorTab(button.dataset.editorTab as 'markdown' | 'preview' | 'source')));
+    document.querySelectorAll<HTMLButtonElement>('[data-wrap]').forEach((button) => button.addEventListener('click', () => {
+      const [before, after] = (button.dataset.wrap || '').split('|');
+      insertMarkup(before, after);
+    }));
+    document.querySelectorAll<HTMLButtonElement>('[data-line-prefix]').forEach((button) => button.addEventListener('click', () => prefixSelectedLines(button.dataset.linePrefix || '')));
+    document.querySelector<HTMLButtonElement>('[data-ordered-list]')!.addEventListener('click', () => prefixSelectedLines('', true));
+    document.querySelector<HTMLButtonElement>('[data-internal-link]')!.addEventListener('click', () => openLinkDialog('internal'));
+    document.querySelector<HTMLButtonElement>('[data-external-link]')!.addEventListener('click', () => openLinkDialog('external'));
+    document.querySelector<HTMLElement>('[data-link-close]')!.addEventListener('click', () => { linkDialog.close(); content.focus(); });
+    document.querySelectorAll<HTMLButtonElement>('[data-link-tab]').forEach((button) => button.addEventListener('click', () => setLinkTab(button.dataset.linkTab as 'internal' | 'external')));
+    document.querySelector<HTMLButtonElement>('[data-external-insert]')!.addEventListener('click', insertExternalLink);
+    linkSearch.addEventListener('input', () => {
+      clearTimeout(linkSearchTimer);
+      linkSearchTimer = window.setTimeout(renderLinkResults, 120);
+    });
+    linkDialog.addEventListener('click', (event) => { if (event.target === linkDialog) { linkDialog.close(); content.focus(); } });
+    document.querySelector<HTMLButtonElement>('[data-image]')!.addEventListener('click', openImageDialog);
+    document.querySelector<HTMLButtonElement>('[data-image-close]')!.addEventListener('click', () => { imageDialog.close(); content.focus(); });
+    document.querySelector<HTMLButtonElement>('[data-image-insert]')!.addEventListener('click', insertImage);
+    imageDialog.addEventListener('click', (event) => { if (event.target === imageDialog) { imageDialog.close(); content.focus(); } });
+    document.querySelector<HTMLButtonElement>('[data-category-add]')!.addEventListener('click', openCategoryPicker);
+    categorySearch.addEventListener('input', renderCategoryChoices);
+    categoryCreate.addEventListener('click', () => addCategory(categorySearch.value));
+    slug.addEventListener('input', updateSlugState);
+    content.addEventListener('input', syncFromMarkdown);
+    contentSource.addEventListener('input', syncFromSource);
+    field('title').addEventListener('input', () => { schedulePreview(); updateContentChecks(); });
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!writable || !id || !form.reportValidity()) return;
+      save.disabled = true;
+      showStatus('Сохранение и создание commit…');
+      const post: PostData = {
+        title: field('title').value,
+        slug: slug.value,
+        date: field('date').value,
+        letter: field('letter').value || null,
+        categories: normalizeCategories(selectedCategories),
+        content: content.value,
+        sourceUrl: field('sourceUrl').value,
+      };
+      try {
+        const response = await fetch(`/api/admin/posts/${id}`, {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json', accept: 'application/json' },
+          body: JSON.stringify({ version, originalSlug, post }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || 'Не удалось сохранить статью.');
+        version = result.blobSha;
+        originalSlug = post.slug;
+        updateSlugState();
+        showStatus('Изменения сохранены в GitHub. Cloudflare опубликует их после новой сборки.', 'success');
+      } catch (error) {
+        showStatus(error instanceof Error ? error.message : 'Не удалось сохранить статью.', 'error');
+      } finally {
+        save.disabled = !writable;
+      }
+    });
+    load();
+  </script>
+</AdminLayout>

@@ -1,0 +1,166 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="Статьи сонника — Админка">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="text-sm font-medium text-violet-300">Основной контент</p>
+      <h1 class="mt-1 font-display text-3xl font-bold text-white">Статьи сонника</h1>
+      <p class="mt-2 text-sm text-slate-400"><span data-total>5 800</span> существующих статей. Создание и удаление отключены.</p>
+    </div>
+    <a href="/" class="inline-flex min-h-11 items-center rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-semibold text-slate-200 transition hover:bg-white/10">Открыть сайт</a>
+  </div>
+
+  <section class="mt-7 grid gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,18rem)_11rem]" aria-label="Поиск и сортировка">
+    <label class="block">
+      <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400">Поиск</span>
+      <input data-search type="search" autocomplete="off" placeholder="Заголовок или slug" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-white outline-none transition placeholder:text-slate-500 focus:border-violet-400" />
+    </label>
+    <label class="block">
+      <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400">Категория</span>
+      <select data-category class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-white outline-none focus:border-violet-400">
+        <option value="">Все категории</option>
+      </select>
+    </label>
+    <label class="block">
+      <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400">Сортировка</span>
+      <select data-sort class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-white outline-none focus:border-violet-400">
+        <option value="source">Исходный порядок</option>
+        <option value="title">По заголовку</option>
+        <option value="slug">По slug</option>
+      </select>
+    </label>
+  </section>
+
+  <div class="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035]">
+    <p data-status class="p-6 text-sm text-slate-400" role="status">Загрузка статей…</p>
+    <div data-table hidden>
+      <div class="hidden grid-cols-[minmax(0,2fr)_minmax(12rem,1fr)_14rem] gap-4 border-b border-white/10 bg-white/5 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400 md:grid">
+        <span>Заголовок</span><span>Slug</span><span>Действия</span>
+      </div>
+      <div data-list class="divide-y divide-white/10"></div>
+      <div class="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 px-4 py-3">
+        <p data-count class="text-sm text-slate-400"></p>
+        <div class="flex gap-2">
+          <button data-prev type="button" class="min-h-11 rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 disabled:cursor-not-allowed disabled:opacity-40">Назад</button>
+          <button data-next type="button" class="min-h-11 rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 disabled:cursor-not-allowed disabled:opacity-40">Далее</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // @ts-ignore JavaScript search module is shared with the public search page.
+    import { rankSearch } from '../../../lib/public-search.mjs';
+
+    interface PostRow { id: string; title: string; slug: string; categories: string[] | string | null }
+    const PAGE_SIZE = 50;
+    const search = document.querySelector<HTMLInputElement>('[data-search]')!;
+    const category = document.querySelector<HTMLSelectElement>('[data-category]')!;
+    const sort = document.querySelector<HTMLSelectElement>('[data-sort]')!;
+    const list = document.querySelector<HTMLElement>('[data-list]')!;
+    const status = document.querySelector<HTMLElement>('[data-status]')!;
+    const table = document.querySelector<HTMLElement>('[data-table]')!;
+    const count = document.querySelector<HTMLElement>('[data-count]')!;
+    const total = document.querySelector<HTMLElement>('[data-total]')!;
+    const prev = document.querySelector<HTMLButtonElement>('[data-prev]')!;
+    const next = document.querySelector<HTMLButtonElement>('[data-next]')!;
+    let rows: PostRow[] = [];
+    let page = 0;
+
+    const collator = new Intl.Collator('hy-AM', { sensitivity: 'base', numeric: true });
+
+    function filteredRows() {
+      const query = search.value.trim();
+      let result = query ? rankSearch(query, rows, rows.length) as PostRow[] : [...rows];
+      if (category.value) result = result.filter((row) => normalizeCategories(row.categories).includes(category.value));
+      if (sort.value !== 'source') {
+        const key = sort.value as 'title' | 'slug';
+        result.sort((a, b) => collator.compare(a[key] || '', b[key] || ''));
+      }
+      return result;
+    }
+
+    function render() {
+      const result = filteredRows();
+      const pages = Math.max(1, Math.ceil(result.length / PAGE_SIZE));
+      page = Math.min(page, pages - 1);
+      const visible = result.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+      list.replaceChildren(...visible.map(renderRow));
+      count.textContent = result.length
+        ? `${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, result.length)} из ${result.length.toLocaleString('ru-RU')}`
+        : 'Ничего не найдено';
+      prev.disabled = page === 0;
+      next.disabled = page >= pages - 1;
+    }
+
+    function renderRow(row: PostRow) {
+      const article = document.createElement('article');
+      article.className = 'grid gap-3 px-4 py-4 md:grid-cols-[minmax(0,2fr)_minmax(12rem,1fr)_14rem] md:items-center md:gap-4 md:px-5';
+      const title = document.createElement('strong');
+      title.className = 'min-w-0 break-words text-sm text-white';
+      title.textContent = row.title;
+      const slug = document.createElement('code');
+      slug.className = 'min-w-0 break-all text-xs text-slate-400';
+      slug.textContent = row.slug;
+      const actions = document.createElement('div');
+      actions.className = 'flex flex-wrap gap-2';
+      const edit = document.createElement('a');
+      edit.href = `/admin/posts/edit/?id=${encodeURIComponent(row.id)}`;
+      edit.className = 'inline-flex min-h-11 items-center rounded-xl bg-violet-600 px-3 text-sm font-semibold text-white hover:bg-violet-500';
+      edit.textContent = 'Редактировать';
+      const open = document.createElement('a');
+      open.href = `/${encodeURIComponent(row.slug)}/`;
+      open.target = '_blank';
+      open.rel = 'noopener';
+      open.className = 'inline-flex min-h-11 items-center rounded-xl border border-white/10 px-3 text-sm font-semibold text-slate-200 hover:bg-white/5';
+      open.textContent = 'Открыть';
+      actions.append(edit, open);
+      article.append(title, slug, actions);
+      return article;
+    }
+
+    async function load() {
+      try {
+        const response = await fetch('/admin/posts/data.json', { headers: { accept: 'application/json' } });
+        if (!response.ok) throw new Error('Не удалось загрузить список статей.');
+        rows = await response.json() as PostRow[];
+        total.textContent = rows.length.toLocaleString('ru-RU');
+        const categoryCounts = new Map<string, number>();
+        rows.forEach((row) => new Set(normalizeCategories(row.categories)).forEach((value) => {
+          categoryCounts.set(value, (categoryCounts.get(value) || 0) + 1);
+        }));
+        const categories = [...categoryCounts.keys()].sort(collator.compare);
+        category.append(...categories.map((value) => {
+          const option = document.createElement('option');
+          option.value = value;
+          option.textContent = `${value} (${categoryCounts.get(value)})`;
+          return option;
+        }));
+        status.hidden = true;
+        table.hidden = false;
+        render();
+      } catch (error) {
+        status.className = 'p-6 text-sm text-rose-300';
+        status.textContent = error instanceof Error ? error.message : 'Не удалось загрузить список статей.';
+      }
+    }
+
+    let searchTimer = 0;
+    search.addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      searchTimer = window.setTimeout(() => { page = 0; render(); }, 120);
+    });
+    category.addEventListener('change', () => { page = 0; render(); });
+    sort.addEventListener('change', () => { page = 0; render(); });
+    prev.addEventListener('click', () => { page -= 1; render(); scrollTo({ top: 0, behavior: 'smooth' }); });
+    next.addEventListener('click', () => { page += 1; render(); scrollTo({ top: 0, behavior: 'smooth' }); });
+    load();
+
+    function normalizeCategories(value: PostRow['categories']): string[] {
+      const values = Array.isArray(value) ? value : typeof value === 'string' ? [value] : [];
+      return [...new Set(values.map((item) => item.trim()).filter(Boolean))];
+    }
+  </script>
+</AdminLayout>

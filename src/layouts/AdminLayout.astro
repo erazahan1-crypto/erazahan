@@ -17,13 +17,14 @@ const { title } = Astro.props;
     <title>{title}</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8C%99%3C/text%3E%3C/svg%3E" />
   </head>
-  <body class="min-h-screen bg-night-950 font-sans text-slate-200">
+  <body class="min-h-screen overflow-x-hidden bg-night-950 font-sans text-slate-200">
     <header class="border-b border-white/10 bg-night-900/80">
       <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
-        <a href="/admin/dreams/" class="font-display text-xl font-bold text-white">Сны · Админка</a>
-        <nav class="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 text-sm" aria-label="Админ-разделы">
+        <a href="/admin/posts/" class="font-display text-xl font-bold text-white">Erazahan · Админка</a>
+        <nav class="flex w-full min-w-0 flex-wrap items-center justify-start gap-x-4 gap-y-2 text-sm sm:w-auto sm:justify-end" aria-label="Админ-разделы">
           <a href="/admin/dreams/" class="font-semibold text-slate-300 transition hover:text-white">Сны</a>
           <a href="/admin/comments/" class="font-semibold text-slate-300 transition hover:text-white">Комментарии</a>
+          <a href="/admin/posts/" class="font-semibold text-slate-300 transition hover:text-white">Статьи</a>
           <a href="/chgtnvac-erazner/" class="text-slate-400 transition hover:text-white">Публичная страница</a>
         </nav>
       </div>
