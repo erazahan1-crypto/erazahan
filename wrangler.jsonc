@@ -3,6 +3,10 @@
   "name": "erazahan",
   "compatibility_date": "2026-09-06",
   "pages_build_output_dir": "./dist",
+  "vars": {
+    "ADMIN_GITHUB_REPO": "erazahan1-crypto/erazahan",
+    "ADMIN_GITHUB_BRANCH": "main"
+  },
   "d1_databases": [
     {
       "binding": "DREAMS_DB",
