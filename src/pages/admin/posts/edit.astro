@@ -48,7 +48,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
 
           <div data-editor-panel="preview" hidden class="p-3 sm:p-4">
             <p class="mb-3 text-xs leading-5 text-slate-400">Preview изолирован, очищен от scripts, styles и опасных атрибутов.</p>
-            <iframe data-preview sandbox="" title="Предпросмотр статьи" class="h-[38rem] w-full rounded-xl bg-white"></iframe>
+            <iframe data-preview sandbox="allow-same-origin" title="Предпросмотр статьи" class="h-[38rem] w-full rounded-xl bg-white"></iframe>
           </div>
 
           <div data-editor-panel="source" hidden class="p-3 sm:p-4">
@@ -271,9 +271,17 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     }
 
     function updatePreview() {
-      const safeTitle = escapeHtml(field('title').value);
-      const rendered = sanitizePreviewHtml(renderMarkdown(content.value));
-      preview.srcdoc = `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https:; style-src 'unsafe-inline'"><style>body{font:16px/1.7 system-ui;color:#cbd5e1;background:#080613;padding:24px;margin:0}article{max-width:48rem;margin:auto}h1,h2,h3{line-height:1.25;color:#fff}h1{font-size:2rem}h2{font-size:1.5rem;margin-top:1.8em}h3{font-size:1.25rem;margin-top:1.5em}a{color:#c4b5fd}blockquote{border-left:3px solid #8b5cf6;margin-left:0;padding-left:1rem;color:#ddd6fe}img{max-width:100%;height:auto;border-radius:12px}code{white-space:pre-wrap}li{margin:.35rem 0}</style><article><h1>${safeTitle}</h1>${rendered}</article>`;
+      try {
+        const safeTitle = escapeHtml(field('title').value);
+        const rendered = renderPreviewContent(content.value);
+        const body = rendered.trim() || (content.value.trim()
+          ? '<p class="preview-fallback">Preview could not render this legacy content.</p>'
+          : '<p class="preview-fallback">Content is empty.</p>');
+        preview.srcdoc = `<!doctype html><html lang="hy"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data:; style-src 'unsafe-inline'"><style>body{font:16px/1.7 system-ui;color:#cbd5e1;background:#080613;padding:24px;margin:0;overflow-wrap:anywhere}article{max-width:48rem;margin:auto}h1,h2,h3,h4,h5,h6{line-height:1.25;color:#fff}h1{font-size:2rem}h2{font-size:1.5rem;margin-top:1.8em}h3{font-size:1.25rem;margin-top:1.5em}a{color:#c4b5fd;overflow-wrap:anywhere}blockquote{border-left:3px solid #8b5cf6;margin-left:0;padding-left:1rem;color:#ddd6fe}img{display:block;max-width:100%;height:auto;border-radius:12px}code{white-space:pre-wrap;overflow-wrap:anywhere}.preview-fallback{border:1px solid #f59e0b;border-radius:12px;padding:1rem;color:#fcd34d}</style></head><body><article><h1>${safeTitle}</h1>${body}</article></body></html>`;
+      } catch (error) {
+        preview.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><style>body{font:16px/1.6 system-ui;padding:24px;background:#080613;color:#fcd34d;overflow-wrap:anywhere}</style></head><body><p class="preview-fallback">Preview could not render this legacy content.</p></body></html>`;
+        console.error('Preview rendering failed', error);
+      }
     }
 
     function insertMarkup(prefix: string, suffix = '') {
@@ -614,6 +622,25 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         item.textContent = `${check.ok ? '✓' : '○'} ${check.text}`;
         return item;
       }));
+    }
+
+    function renderPreviewContent(source: string): string {
+      const cleaned = source
+        .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, '')
+        .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, '');
+      if (!cleaned.trim()) return '';
+      const hasHtml = /<\/?[a-z][^>]*>/i.test(cleaned);
+      const rendered = hasHtml ? renderMixedContent(cleaned) : renderMarkdown(cleaned);
+      return sanitizePreviewHtml(rendered);
+    }
+
+    function renderMixedContent(source: string): string {
+      const output: string[] = [];
+      for (const line of source.replace(/\r\n?/g, '\n').split('\n')) {
+        if (/<\/?[a-z][^>]*>/i.test(line)) output.push(line);
+        else if (line.trim()) output.push(renderMarkdown(line));
+      }
+      return output.join('\n');
     }
 
     function renderMarkdown(source: string): string {
