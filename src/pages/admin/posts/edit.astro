@@ -57,6 +57,17 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
             <p class="mt-2 rounded-xl border border-amber-400/20 bg-amber-400/10 p-3 text-xs leading-5 text-amber-100">Это тот же `content`, без HTML↔Markdown-конвертации. Изменения source сразу синхронизируются с Markdown-режимом.</p>
           </div>
         </section>
+
+        <section class="rounded-2xl border border-white/10 bg-white/[0.035] p-3 sm:p-4" data-post-images-section>
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 class="font-display text-lg font-bold text-white">Изображения статьи</h2>
+              <p class="mt-1 text-xs leading-5 text-slate-400">Управляются только новые изображения из R2. Legacy-файлы не затрагиваются.</p>
+            </div>
+            <button data-image-add type="button" class="min-h-11 rounded-xl border border-violet-400/40 bg-violet-500/10 px-4 text-sm font-semibold text-violet-200 hover:bg-violet-500/20">+ Изображение</button>
+          </div>
+          <div data-post-images-list class="mt-4 grid min-w-0 gap-3 sm:grid-cols-2"></div>
+        </section>
       </div>
 
       <aside class="space-y-5 rounded-2xl border border-white/10 bg-white/[0.035] p-4 lg:sticky lg:top-4">
@@ -134,23 +145,28 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     </div>
   </dialog>
 
-  <dialog data-image-dialog class="m-auto w-[min(34rem,calc(100vw-2rem))] max-w-none overflow-hidden rounded-2xl border border-white/10 bg-night-900 p-0 text-slate-200 shadow-2xl backdrop:bg-black/70">
+  <dialog data-image-dialog class="m-auto w-[min(34rem,calc(100vw-1rem))] max-w-none overflow-hidden rounded-2xl border border-white/10 bg-night-900 p-0 text-slate-200 shadow-2xl backdrop:bg-black/70">
     <div class="max-h-[calc(100vh-2rem)] overflow-y-auto">
       <div class="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-5">
-        <h2 class="font-display text-xl font-bold text-white">Вставить изображение</h2>
+        <h2 data-image-dialog-title class="font-display text-xl font-bold text-white">Вставить изображение</h2>
         <button data-image-close type="button" aria-label="Закрыть" class="grid min-h-11 min-w-11 place-items-center rounded-xl border border-white/10 text-xl hover:bg-white/5">×</button>
       </div>
-      <div class="space-y-4 p-4 sm:p-5">
+      <div class="min-w-0 space-y-4 p-4 sm:p-5">
         <label class="block">
-          <span class="mb-1.5 block text-sm font-semibold text-white">Image URL / path</span>
-          <input data-image-url inputmode="url" placeholder="/uploads/image.webp" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-white outline-none focus:border-violet-400" />
+          <span class="mb-1.5 block text-sm font-semibold text-white">JPEG, PNG или WebP <span class="text-rose-300">*</span></span>
+          <input data-image-file type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" class="block min-h-11 w-full min-w-0 rounded-xl border border-white/10 bg-night-950 px-3 py-2 text-sm text-slate-200 file:mr-3 file:rounded-lg file:border-0 file:bg-violet-600 file:px-3 file:py-2 file:font-semibold file:text-white" />
         </label>
+        <div data-image-processing hidden class="rounded-xl border border-violet-400/20 bg-violet-500/10 p-3 text-sm text-violet-100" role="status">Оптимизация изображения…</div>
+        <div data-image-preview-wrap hidden class="min-w-0 overflow-hidden rounded-xl border border-white/10 bg-black/20 p-2">
+          <img data-image-preview alt="" class="mx-auto block max-h-80 max-w-full object-contain" />
+        </div>
+        <p data-image-info hidden class="break-words rounded-xl border border-white/10 bg-night-950 p-3 text-sm leading-6 text-slate-300"></p>
         <label class="block">
-          <span class="mb-1.5 block text-sm font-semibold text-white">Alt text <span class="text-rose-300">*</span></span>
+          <span class="mb-1.5 block text-sm font-semibold text-white">ALT <span class="text-rose-300">*</span></span>
           <input data-image-alt maxlength="300" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-white outline-none focus:border-violet-400" />
         </label>
         <p data-image-error hidden class="rounded-xl border border-rose-400/30 bg-rose-400/10 p-3 text-sm text-rose-200" role="alert"></p>
-        <button data-image-insert type="button" class="min-h-11 w-full rounded-xl bg-violet-600 px-4 text-sm font-semibold text-white hover:bg-violet-500">Вставить изображение</button>
+        <button data-image-insert type="button" disabled class="min-h-11 w-full rounded-xl bg-violet-600 px-4 text-sm font-semibold text-white hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50">Вставить изображение</button>
       </div>
     </div>
   </dialog>
@@ -158,6 +174,17 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
   <script>
     // @ts-ignore JavaScript search module is shared with the public search page.
     import { rankSearch } from '../../../lib/public-search.mjs';
+    import {
+      buildPendingImageMarkup,
+      createPendingImageToken,
+      formatImageBytes,
+      optimizePostImage,
+      parseEditorImages,
+      replaceEditorImage,
+      updateEditorImageAlt,
+      type EditorImage,
+      type OptimizedImage,
+    } from '../../../lib/admin-post-images';
 
     interface PostData {
       title: string; slug: string; date: string; letter: string | null;
@@ -166,6 +193,10 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     interface LoadResult { ok: boolean; post?: PostData; version?: string; writable?: boolean; error?: string }
     interface LinkPost { id: string; title: string; slug: string; categories: string[]; text: string }
     interface CategoryOption { name: string; count: number }
+    interface PendingImage extends OptimizedImage { token: string; objectUrl: string }
+    interface SaveResult extends LoadResult {
+      blobSha?: string; url?: string; uploadedKeys?: string[]; deletedKeys?: string[]; warnings?: string[];
+    }
     const params = new URLSearchParams(location.search);
     const id = params.get('id');
     const form = document.querySelector<HTMLFormElement>('[data-form]')!;
@@ -185,9 +216,16 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     const externalText = document.querySelector<HTMLInputElement>('[data-external-text]')!;
     const externalError = document.querySelector<HTMLElement>('[data-external-error]')!;
     const imageDialog = document.querySelector<HTMLDialogElement>('[data-image-dialog]')!;
-    const imageUrl = document.querySelector<HTMLInputElement>('[data-image-url]')!;
+    const imageDialogTitle = document.querySelector<HTMLElement>('[data-image-dialog-title]')!;
+    const imageFile = document.querySelector<HTMLInputElement>('[data-image-file]')!;
     const imageAlt = document.querySelector<HTMLInputElement>('[data-image-alt]')!;
     const imageError = document.querySelector<HTMLElement>('[data-image-error]')!;
+    const imageProcessing = document.querySelector<HTMLElement>('[data-image-processing]')!;
+    const imagePreviewWrap = document.querySelector<HTMLElement>('[data-image-preview-wrap]')!;
+    const imagePreview = document.querySelector<HTMLImageElement>('[data-image-preview]')!;
+    const imageInfo = document.querySelector<HTMLElement>('[data-image-info]')!;
+    const imageInsert = document.querySelector<HTMLButtonElement>('[data-image-insert]')!;
+    const postImagesList = document.querySelector<HTMLElement>('[data-post-images-list]')!;
     const categoryPicker = document.querySelector<HTMLElement>('[data-category-picker]')!;
     const categorySearch = document.querySelector<HTMLInputElement>('[data-category-search]')!;
     const categoryResults = document.querySelector<HTMLElement>('[data-category-results]')!;
@@ -202,7 +240,14 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     let linkIndex: LinkPost[] | null = null;
     let linkIndexRequest: Promise<LinkPost[]> | null = null;
     let savedSelection = { start: 0, end: 0, text: '' };
-    let savedImageSelection = { start: 0, end: 0, text: '' };
+    let savedImageSelection = { start: 0, end: 0 };
+    let imageDialogMode: 'insert' | 'replace' = 'insert';
+    let imageBeingReplaced: EditorImage | null = null;
+    let optimizedDialogImage: OptimizedImage | null = null;
+    let dialogObjectUrl = '';
+    const pendingImages = new Map<string, PendingImage>();
+    const deleteImageKeys = new Set<string>();
+    const replaceImageKeys = new Set<string>();
     let selectedCategories: string[] = [];
     let categoryOptions: CategoryOption[] = [];
     let categoryRequest: Promise<CategoryOption[]> | null = null;
@@ -228,6 +273,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       updateSlugState();
       updatePreview();
       updateContentChecks();
+      renderPostImages();
     }
 
     async function load() {
@@ -277,7 +323,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         const body = rendered.trim() || (content.value.trim()
           ? '<p class="preview-fallback">Preview could not render this legacy content.</p>'
           : '<p class="preview-fallback">Content is empty.</p>');
-        preview.srcdoc = `<!doctype html><html lang="hy"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data:; style-src 'unsafe-inline'"><style>body{font:16px/1.7 system-ui;color:#cbd5e1;background:#080613;padding:24px;margin:0;overflow-wrap:anywhere}article{max-width:48rem;margin:auto}h1,h2,h3,h4,h5,h6{line-height:1.25;color:#fff}h1{font-size:2rem}h2{font-size:1.5rem;margin-top:1.8em}h3{font-size:1.25rem;margin-top:1.5em}a{color:#c4b5fd;overflow-wrap:anywhere}blockquote{border-left:3px solid #8b5cf6;margin-left:0;padding-left:1rem;color:#ddd6fe}img{display:block;max-width:100%;height:auto;border-radius:12px}code{white-space:pre-wrap;overflow-wrap:anywhere}.preview-fallback{border:1px solid #f59e0b;border-radius:12px;padding:1rem;color:#fcd34d}</style></head><body><article><h1>${safeTitle}</h1>${body}</article></body></html>`;
+        preview.srcdoc = `<!doctype html><html lang="hy"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data: blob:; style-src 'unsafe-inline'"><style>body{font:16px/1.7 system-ui;color:#cbd5e1;background:#080613;padding:24px;margin:0;overflow-wrap:anywhere}article{max-width:48rem;margin:auto}h1,h2,h3,h4,h5,h6{line-height:1.25;color:#fff}h1{font-size:2rem}h2{font-size:1.5rem;margin-top:1.8em}h3{font-size:1.25rem;margin-top:1.5em}a{color:#c4b5fd;overflow-wrap:anywhere}blockquote{border-left:3px solid #8b5cf6;margin-left:0;padding-left:1rem;color:#ddd6fe}img{display:block;max-width:100%;height:auto;border-radius:12px}code{white-space:pre-wrap;overflow-wrap:anywhere}.preview-fallback{border:1px solid #f59e0b;border-radius:12px;padding:1rem;color:#fcd34d}</style></head><body><article><h1>${safeTitle}</h1>${body}</article></body></html>`;
       } catch (error) {
         preview.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><style>body{font:16px/1.6 system-ui;padding:24px;background:#080613;color:#fcd34d;overflow-wrap:anywhere}</style></head><body><p class="preview-fallback">Preview could not render this legacy content.</p></body></html>`;
         console.error('Preview rendering failed', error);
@@ -324,12 +370,14 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       contentSource.value = content.value;
       schedulePreview();
       updateContentChecks();
+      renderPostImages();
     }
 
     function syncFromSource() {
       content.value = contentSource.value;
       schedulePreview();
       updateContentChecks();
+      renderPostImages();
     }
 
     function loadLinkIndex(): Promise<LinkPost[]> {
@@ -461,27 +509,68 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       content.focus();
     }
 
-    function openImageDialog() {
+    function openImageDialog(mode: 'insert' | 'replace' = 'insert', existing: EditorImage | null = null) {
       savedImageSelection = {
         start: content.selectionStart,
         end: content.selectionEnd,
-        text: content.value.slice(content.selectionStart, content.selectionEnd),
       };
-      imageUrl.value = '';
-      imageAlt.value = savedImageSelection.text.trim();
+      resetImageDialogPreview();
+      imageDialogMode = mode;
+      imageBeingReplaced = existing;
+      imageFile.value = '';
+      imageAlt.value = existing?.alt || (mode === 'insert' ? content.value.slice(content.selectionStart, content.selectionEnd).trim() : '');
+      imageDialogTitle.textContent = mode === 'replace' ? 'Заменить изображение' : 'Вставить изображение';
+      imageInsert.textContent = mode === 'replace' ? 'Заменить изображение' : 'Вставить изображение';
+      imageInsert.disabled = true;
       imageError.hidden = true;
       imageDialog.showModal();
-      imageUrl.focus();
+      imageFile.focus();
+    }
+
+    async function prepareSelectedImage() {
+      resetImageDialogPreview();
+      imageError.hidden = true;
+      const file = imageFile.files?.[0];
+      if (!file) return;
+      imageProcessing.hidden = false;
+      imageInsert.disabled = true;
+      try {
+        const optimized = await optimizePostImage(file);
+        if (!imageDialog.open || imageFile.files?.[0] !== file) return;
+        optimizedDialogImage = optimized;
+        dialogObjectUrl = URL.createObjectURL(optimizedDialogImage.blob);
+        imagePreview.src = dialogObjectUrl;
+        imagePreviewWrap.hidden = false;
+        imageInfo.hidden = false;
+        const larger = optimizedDialogImage.size > optimizedDialogImage.originalSize
+          ? '<br><span class="text-amber-200">WebP получился больше исходника; выбран самый компактный безопасный вариант без дополнительного уменьшения размеров.</span>'
+          : '';
+        imageInfo.innerHTML = `Исходник: ${optimizedDialogImage.originalWidth} × ${optimizedDialogImage.originalHeight}, ${formatImageBytes(optimizedDialogImage.originalSize)}<br>WebP: ${optimizedDialogImage.width} × ${optimizedDialogImage.height}, ${formatImageBytes(optimizedDialogImage.size)}${larger}`;
+        imageInsert.disabled = false;
+      } catch (error) {
+        showImageError(error instanceof Error ? error.message : 'Не удалось оптимизировать изображение.');
+      } finally {
+        imageProcessing.hidden = true;
+      }
     }
 
     function insertImage() {
       const alt = imageAlt.value.trim();
-      if (!alt) return showImageError('Alt text обязателен.');
-      const source = safeImageSource(imageUrl.value.trim());
-      if (!source) return showImageError('Используйте корневой путь /… либо безопасный http(s) URL.');
-      const markdown = `![${escapeMarkdownLabel(alt)}](${source.replace(/\(/g, '%28').replace(/\)/g, '%29')})`;
-      content.setRangeText(markdown, savedImageSelection.start, savedImageSelection.end, 'end');
-      imageDialog.close();
+      if (!alt) return showImageError('ALT обязателен.');
+      if (!optimizedDialogImage || !dialogObjectUrl) return showImageError('Сначала выберите и дождитесь оптимизации изображения.');
+      const token = createPendingImageToken();
+      const markup = buildPendingImageMarkup(token, alt, optimizedDialogImage.width, optimizedDialogImage.height);
+      pendingImages.set(token, { token, objectUrl: dialogObjectUrl, ...optimizedDialogImage });
+      dialogObjectUrl = '';
+      if (imageDialogMode === 'replace' && imageBeingReplaced) {
+        const oldImage = imageBeingReplaced;
+        content.value = replaceEditorImage(content.value, oldImage, markup);
+        if (oldImage.key) replaceImageKeys.add(oldImage.key);
+        if (oldImage.token) releasePendingImageIfUnused(oldImage.token);
+      } else {
+        content.setRangeText(markup, savedImageSelection.start, savedImageSelection.end, 'end');
+      }
+      closeImageDialog();
       syncFromMarkdown();
       content.focus();
     }
@@ -492,6 +581,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     }
 
     function safeImageSource(value: string): string | null {
+      if ([...pendingImages.values()].some((image) => image.objectUrl === value)) return value;
       if (/^\/(?!\/)[^\s()]+$/.test(value)) return value;
       try {
         const parsed = new URL(value);
@@ -499,6 +589,108 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       } catch {
         return null;
       }
+    }
+
+    function resetImageDialogPreview() {
+      if (dialogObjectUrl) URL.revokeObjectURL(dialogObjectUrl);
+      dialogObjectUrl = '';
+      optimizedDialogImage = null;
+      imagePreview.removeAttribute('src');
+      imagePreviewWrap.hidden = true;
+      imageInfo.hidden = true;
+      imageProcessing.hidden = true;
+    }
+
+    function closeImageDialog() {
+      resetImageDialogPreview();
+      imageDialog.close();
+      imageBeingReplaced = null;
+      content.focus();
+    }
+
+    function releasePendingImageIfUnused(token: string) {
+      if (parseEditorImages(content.value).some((image) => image.token === token)) return;
+      const pending = pendingImages.get(token);
+      if (pending) URL.revokeObjectURL(pending.objectUrl);
+      pendingImages.delete(token);
+    }
+
+    function renderPostImages() {
+      const images = parseEditorImages(content.value);
+      if (!images.length) {
+        const empty = document.createElement('p');
+        empty.className = 'text-sm text-slate-500 sm:col-span-2';
+        empty.textContent = 'Управляемых R2-изображений в статье пока нет.';
+        postImagesList.replaceChildren(empty);
+        return;
+      }
+      postImagesList.replaceChildren(...images.map((image) => {
+        const card = document.createElement('article');
+        card.className = 'min-w-0 overflow-hidden rounded-xl border border-white/10 bg-night-950/60 p-3';
+        const previewImage = document.createElement('img');
+        previewImage.className = 'h-36 w-full rounded-lg bg-black/20 object-contain';
+        previewImage.alt = image.alt;
+        previewImage.loading = 'lazy';
+        if (image.token) previewImage.src = pendingImages.get(image.token)?.objectUrl || '';
+        else if (image.key) previewImage.src = `/api/admin/post-images/preview?key=${encodeURIComponent(image.key)}`;
+        const details = document.createElement('div');
+        details.className = 'mt-3 min-w-0 space-y-1 text-xs leading-5 text-slate-400';
+        const name = document.createElement('p');
+        name.className = 'break-all font-mono text-slate-300';
+        name.textContent = image.key?.slice('posts/'.length) || 'Ожидает сохранения';
+        const alt = document.createElement('p');
+        alt.className = 'break-words';
+        alt.textContent = `ALT: ${image.alt || '—'}`;
+        const dimensions = document.createElement('p');
+        dimensions.textContent = image.width && image.height ? `Размер: ${image.width}×${image.height}` : 'Размер: нет metadata в разметке';
+        details.append(name, alt, dimensions);
+        const actions = document.createElement('div');
+        actions.className = 'mt-3 grid gap-2';
+        actions.append(
+          imageAction('Изменить ALT', () => editImageAlt(image)),
+          imageAction('Заменить', () => openImageDialog('replace', image)),
+          imageAction('Убрать из поста', () => removeImageFromPost(image)),
+        );
+        if (image.key) actions.append(imageAction('Удалить из R2', () => deleteImageFromR2(image), true));
+        card.append(previewImage, details, actions);
+        return card;
+      }));
+    }
+
+    function imageAction(label: string, action: () => void, danger = false): HTMLButtonElement {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `min-h-11 w-full rounded-lg border px-3 text-sm font-semibold ${danger ? 'border-rose-400/30 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20' : 'border-white/10 text-slate-200 hover:bg-white/5'}`;
+      button.textContent = label;
+      button.addEventListener('click', action);
+      return button;
+    }
+
+    function editImageAlt(image: EditorImage) {
+      const nextAlt = window.prompt('Введите новый ALT (файл в R2 не изменится):', image.alt);
+      if (nextAlt === null) return;
+      try {
+        content.value = updateEditorImageAlt(content.value, image, nextAlt);
+        syncFromMarkdown();
+      } catch (error) {
+        showStatus(error instanceof Error ? error.message : 'Не удалось изменить ALT.', 'error');
+      }
+    }
+
+    function removeImageFromPost(image: EditorImage) {
+      if (!window.confirm('Убрать изображение из статьи? Файл останется в R2.')) return;
+      content.value = replaceEditorImage(content.value, image, '');
+      if (image.token) releasePendingImageIfUnused(image.token);
+      syncFromMarkdown();
+    }
+
+    function deleteImageFromR2(image: EditorImage) {
+      if (!image.key) return;
+      if (!window.confirm('Удалить изображение из статьи и физически удалить файл из R2 после успешного сохранения? Это действие необратимо.')) return;
+      content.value = replaceEditorImage(content.value, image, '');
+      deleteImageKeys.add(image.key);
+      syncFromMarkdown();
+      showStatus('Удаление из R2 запланировано. Файл будет удалён только после успешного сохранения posts.json.');
     }
 
     function normalizeCategories(value: unknown): string[] {
@@ -625,7 +817,8 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     }
 
     function renderPreviewContent(source: string): string {
-      const cleaned = source
+      const withPendingPreviews = source.replace(/pending-image:([A-Za-z0-9_-]{8,80})/g, (match, token) => pendingImages.get(token)?.objectUrl || match);
+      const cleaned = withPendingPreviews
         .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, '')
         .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, '');
       if (!cleaned.trim()) return '';
@@ -716,10 +909,16 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       linkSearchTimer = window.setTimeout(renderLinkResults, 120);
     });
     linkDialog.addEventListener('click', (event) => { if (event.target === linkDialog) { linkDialog.close(); content.focus(); } });
-    document.querySelector<HTMLButtonElement>('[data-image]')!.addEventListener('click', openImageDialog);
-    document.querySelector<HTMLButtonElement>('[data-image-close]')!.addEventListener('click', () => { imageDialog.close(); content.focus(); });
-    document.querySelector<HTMLButtonElement>('[data-image-insert]')!.addEventListener('click', insertImage);
-    imageDialog.addEventListener('click', (event) => { if (event.target === imageDialog) { imageDialog.close(); content.focus(); } });
+    document.querySelector<HTMLButtonElement>('[data-image]')!.addEventListener('click', () => openImageDialog());
+    document.querySelector<HTMLButtonElement>('[data-image-add]')!.addEventListener('click', () => openImageDialog());
+    document.querySelector<HTMLButtonElement>('[data-image-close]')!.addEventListener('click', closeImageDialog);
+    imageInsert.addEventListener('click', insertImage);
+    imageFile.addEventListener('change', prepareSelectedImage);
+    imageDialog.addEventListener('click', (event) => { if (event.target === imageDialog) closeImageDialog(); });
+    imageDialog.addEventListener('close', () => {
+      resetImageDialogPreview();
+      imageBeingReplaced = null;
+    });
     document.querySelector<HTMLButtonElement>('[data-category-add]')!.addEventListener('click', openCategoryPicker);
     categorySearch.addEventListener('input', renderCategoryChoices);
     categoryCreate.addEventListener('click', () => addCategory(categorySearch.value));
@@ -731,8 +930,17 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       if (!writable || !id || !form.reportValidity()) return;
+      const pendingInContent = parseEditorImages(content.value).filter((image) => image.token);
+      if (pendingInContent.some((image) => !image.alt.trim())) {
+        showStatus('У каждого нового изображения должен быть заполнен ALT.', 'error');
+        return;
+      }
+      if (pendingInContent.some((image) => !pendingImages.has(image.token!))) {
+        showStatus('Pending-изображение недоступно в браузере. Удалите его разметку и выберите файл заново.', 'error');
+        return;
+      }
       save.disabled = true;
-      showStatus('Сохранение и создание commit…');
+      showStatus(pendingInContent.length ? 'Загрузка изображений в R2 и создание commit…' : 'Сохранение и создание commit…');
       const post: PostData = {
         title: field('title').value,
         slug: slug.value,
@@ -743,17 +951,47 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         sourceUrl: field('sourceUrl').value,
       };
       try {
+        const payload = {
+          version,
+          originalSlug,
+          post,
+          deleteImageKeys: [...deleteImageKeys],
+          replaceImageKeys: [...replaceImageKeys],
+        };
+        let body: BodyInit;
+        let headers: HeadersInit;
+        if (pendingInContent.length) {
+          const multipart = new FormData();
+          multipart.set('payload', JSON.stringify(payload));
+          for (const image of pendingInContent) {
+            const pending = pendingImages.get(image.token!)!;
+            multipart.set(`image:${image.token}`, pending.blob, `${slug.value || originalSlug}.webp`);
+          }
+          body = multipart;
+          headers = { accept: 'application/json' };
+        } else {
+          body = JSON.stringify(payload);
+          headers = { 'content-type': 'application/json', accept: 'application/json' };
+        }
         const response = await fetch(`/api/admin/posts/${id}`, {
           method: 'PUT',
-          headers: { 'content-type': 'application/json', accept: 'application/json' },
-          body: JSON.stringify({ version, originalSlug, post }),
+          headers,
+          body,
         });
-        const result = await response.json();
+        const result = await response.json() as SaveResult;
         if (!response.ok || !result.ok) throw new Error(result.error || 'Не удалось сохранить статью.');
-        version = result.blobSha;
-        originalSlug = post.slug;
-        updateSlugState();
-        showStatus('Изменения сохранены в GitHub. Cloudflare опубликует их после новой сборки.', 'success');
+        for (const pending of pendingImages.values()) URL.revokeObjectURL(pending.objectUrl);
+        pendingImages.clear();
+        deleteImageKeys.clear();
+        replaceImageKeys.clear();
+        if (result.blobSha) version = result.blobSha;
+        if (result.post) populate(result.post);
+        if (result.url) openSite.href = result.url;
+        const warning = result.warnings?.length ? ` ${result.warnings.join(' ')}` : '';
+        showStatus(
+          `Изменения сохранены в GitHub. Cloudflare опубликует их после новой сборки.${warning}`,
+          result.warnings?.length ? 'neutral' : 'success',
+        );
       } catch (error) {
         showStatus(error instanceof Error ? error.message : 'Не удалось сохранить статью.', 'error');
       } finally {

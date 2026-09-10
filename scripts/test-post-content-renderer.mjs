@@ -25,6 +25,10 @@ assert.match(renderPostContent(fixtures.markdown), /<a href="\/target\/">interna
 assert.match(renderPostContent(fixtures.mixed), /<strong>Visible Markdown<\/strong>/);
 assert.doesNotMatch(renderPostContent(fixtures.faq), /FAQPage|application\/ld\+json|<script/i);
 assert.match(renderPostContent(fixtures.image), /<img src="\/uploads\/example\.webp" alt="Useful alt"/);
+assert.match(
+  renderPostContent('<img src="https://images.erazahan.info/posts/erazahan-bad.webp" alt="Duck" width="1600" height="1067" loading="lazy" decoding="async" onclick="bad()" style="width:100%">'),
+  /<img src="https:\/\/images\.erazahan\.info\/posts\/erazahan-bad\.webp" alt="Duck" width="1600" height="1067" loading="lazy" decoding="async" \/>/,
+);
 assert.match(renderPostContent(fixtures.table), /<table>/);
 
 const hostile = renderPostContent(`
