@@ -13,5 +13,11 @@
       "database_name": "erazahan-dreams",
       "database_id": "1214b8ef-136b-40cd-8203-f6c426b0675a"
     }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "POST_IMAGES",
+      "bucket_name": "erazahan-images"
+    }
   ]
 }
