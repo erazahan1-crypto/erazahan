@@ -4,6 +4,7 @@ import menuJson from '../data/menu.json';
 import imagesJson from '../data/images.json';
 import fs from 'node:fs';
 import path from 'node:path';
+import { plainTextFromPostContent } from './render-post-content';
 
 export interface Comment {
   id: string;
@@ -74,14 +75,8 @@ export const letterPathByLetter = new Map(
   letterPages.map((p) => [normLetter(p.letter || ''), p.path])
 );
 
-export const stripHtml = (h: string) =>
-  h
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, ' ')
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+// Kept as a compatibility name for existing excerpt/search consumers.
+export const stripHtml = plainTextFromPostContent;
 
 // ===== Внутренние ссылки =====
 

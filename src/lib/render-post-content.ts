@@ -66,3 +66,64 @@ export function renderPostContent(rawContent: string): string {
     transformTags: { a: externalLinkTransform },
   });
 }
+
+const TEXT_ONLY_BLOCK_RE = /<(blockquote|p|li|h[1-6]|pre)\b[^>]*>([\s\S]*?)<\/\1>/gi;
+const NON_TEXT_TAGS = ['script', 'style', 'textarea', 'option', 'iframe', 'object', 'embed'];
+
+/**
+ * Converts the same mixed Markdown/HTML accepted by the article renderer into
+ * plain text for excerpts and search data. Images contribute no URL, markup,
+ * or alt text. A punctuation-only block left behind by an image is discarded.
+ */
+export function plainTextFromPostContent(rawContent: string): string {
+  if (!rawContent.trim()) return '';
+
+  const rendered = renderPostContent(rawContent).replace(/<img\b[^>]*\/?\s*>/gi, ' ');
+  const withoutImageOnlyBlocks = rendered.replace(
+    TEXT_ONLY_BLOCK_RE,
+    (block, _tag, inner) => /[\p{L}\p{N}]/u.test(htmlFragmentToPlainText(inner)) ? block : ' ',
+  );
+
+  return htmlFragmentToPlainText(withoutImageOnlyBlocks);
+}
+
+function htmlFragmentToPlainText(html: string): string {
+  const encodedText = sanitizeHtml(html, {
+    allowedTags: [],
+    allowedAttributes: {},
+    nonTextTags: NON_TEXT_TAGS,
+  });
+  return decodeHtmlEntities(encodedText).replace(/\s+/gu, ' ').trim();
+}
+
+const NAMED_HTML_ENTITIES: Record<string, string> = {
+  amp: '&',
+  apos: "'",
+  gt: '>',
+  hellip: '…',
+  laquo: '«',
+  lt: '<',
+  mdash: '—',
+  nbsp: ' ',
+  ndash: '–',
+  quot: '"',
+  raquo: '»',
+  shy: '',
+};
+
+function decodeHtmlEntities(value: string): string {
+  return value.replace(/&(?:#(\d+)|#x([\da-f]+)|([a-z][\da-z]+));/gi, (entity, decimal, hex, named) => {
+    if (decimal || hex) {
+      const codePoint = Number.parseInt(decimal || hex, decimal ? 10 : 16);
+      if (Number.isSafeInteger(codePoint) && codePoint >= 0 && codePoint <= 0x10ffff) {
+        try {
+          return String.fromCodePoint(codePoint);
+        } catch {
+          return entity;
+        }
+      }
+      return entity;
+    }
+    return NAMED_HTML_ENTITIES[String(named).toLowerCase()] ?? entity;
+  });
+}

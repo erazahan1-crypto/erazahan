@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
-import { detectPostContentFormat, renderPostContent } from '../src/lib/render-post-content.ts';
+import {
+  detectPostContentFormat,
+  plainTextFromPostContent,
+  renderPostContent,
+} from '../src/lib/render-post-content.ts';
 
 const fixtures = {
   html: '<h2>Legacy</h2><p>Visible <strong>HTML</strong>.</p>',
@@ -43,4 +47,33 @@ const hostile = renderPostContent(`
 assert.match(hostile, /Safe text/);
 assert.doesNotMatch(hostile, /script|style=|onclick|onmouseover|onerror|javascript:|data:text|srcdoc|iframe|object/i);
 
-console.log('Post renderer: legacy HTML, Markdown, mixed content, FAQ JSON-LD, images, links, tables, and sanitization OK');
+const plainTextCases = [
+  ['plain text', 'Պարզ հայկական տեքստ։', 'Պարզ հայկական տեքստ։'],
+  ['Markdown link', '[բադ](/erazahan-bad-spanel/)', 'բադ'],
+  ['bold and italic', '**թավ** և *շեղ* ու _ընդգծված_', 'թավ և շեղ ու ընդգծված'],
+  ['blockquote', '> Մեջբերված տեքստ։', 'Մեջբերված տեքստ։'],
+  ['raw HTML', '<p>HTML <strong>տեքստ</strong> &amp; նշան։</p>', 'HTML տեքստ & նշան։'],
+  ['images', 'Սկիզբ ![alt](/image.webp) <img src="/other.webp" alt="other"> Վերջ։', 'Սկիզբ Վերջ։'],
+  [
+    'mixed Markdown and HTML',
+    '## Վերնագիր\n\n> **Խառը** <em>HTML</em>\n\n- Առաջին\n- Երկրորդ\n\n`կոդ`',
+    'Վերնագիր Խառը HTML Առաջին Երկրորդ կոդ',
+  ],
+];
+
+for (const [name, source, expected] of plainTextCases) {
+  assert.equal(plainTextFromPostContent(source), expected, name);
+}
+
+const malformedImageBlock = `Հին տեքստ։
+
+> **«<img src="https://images.erazahan.info/posts/erazahan-bad.webp" alt="Բադ">։**
+
+Հաջորդ տեքստ։`;
+assert.equal(
+  plainTextFromPostContent(malformedImageBlock),
+  'Հին տեքստ։ Հաջորդ տեքստ։',
+  'an image-only Markdown block must not leave wrapper punctuation in plain text',
+);
+
+console.log('Post renderer and plain-text excerpts: HTML, Markdown, images, links, blocks, and sanitization OK');

@@ -104,6 +104,14 @@ assert.equal(insert(bold, 8), `${bold}\n\n${blockMarkup}`);
 const quotedBold = '> **«Текст в кавычках»**\n> продолжение';
 assert.equal(insert(quotedBold, 7), `${quotedBold}\n\n${blockMarkup}`);
 
+const realQuotedImageRegression = '> **«Մեկնաբանություն։**\n\nՀաջորդ տեքստ';
+const realQuotedImageResult = insert(realQuotedImageRegression, realQuotedImageRegression.indexOf('Մեկնաբանություն'));
+assert.equal(
+  realQuotedImageResult,
+  `> **«Մեկնաբանություն։**\n\n${blockMarkup}\n\nՀաջորդ տեքստ`,
+);
+assert.doesNotMatch(realQuotedImageResult, /> \*\*«<img\b/);
+
 const linked = 'До [ссылки](https://example.com) и после';
 const selectedStart = linked.indexOf('[ссылки]');
 const selectedEnd = selectedStart + '[ссылки](https://example.com)'.length;
