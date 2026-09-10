@@ -11,6 +11,7 @@
     "test:build-output": "node scripts/verify-post-build.mjs",
     "test:content": "node --experimental-strip-types scripts/test-post-content-renderer.mjs",
     "test:images": "node --experimental-strip-types scripts/test-post-images.mjs",
+    "test:redirect": "node --experimental-strip-types scripts/test-hostname-redirect.mjs",
     "test:search": "node scripts/test-public-search.mjs",
     "cf:types": "wrangler types"
   },
