@@ -18,6 +18,7 @@ import {
 } from '../functions/_lib/post-images.ts';
 import {
   buildPendingImageMarkup,
+  insertEditorImageBlock,
   optimizePostImage,
   parseEditorImages,
   replaceEditorImage,
@@ -87,6 +88,29 @@ const replacementFinal = replacePendingImages(replacementContent, new Map([
 ]));
 assert.doesNotMatch(replacementFinal, /erazahan-bad-2\.webp/);
 assert.match(replacementFinal, /erazahan-bad-3\.webp/);
+
+const blockMarkup = buildPendingImageMarkup('blockInsert123', 'ALT', 1200, 800);
+const insert = (source, start, end = start) => insertEditorImageBlock(source, blockMarkup, start, end).content;
+
+const paragraph = 'Первый абзац\n\nСледующий текст';
+assert.equal(insert(paragraph, 6), `Первый абзац\n\n${blockMarkup}\n\nСледующий текст`);
+
+const blockquote = '> Первая строка\n> вторая строка\n\nПосле цитаты';
+assert.equal(insert(blockquote, 5), `> Первая строка\n> вторая строка\n\n${blockMarkup}\n\nПосле цитаты`);
+
+const bold = '**выделенный текст** и продолжение';
+assert.equal(insert(bold, 8), `${bold}\n\n${blockMarkup}`);
+
+const quotedBold = '> **«Текст в кавычках»**\n> продолжение';
+assert.equal(insert(quotedBold, 7), `${quotedBold}\n\n${blockMarkup}`);
+
+const linked = 'До [ссылки](https://example.com) и после';
+const selectedStart = linked.indexOf('[ссылки]');
+const selectedEnd = selectedStart + '[ссылки](https://example.com)'.length;
+assert.equal(insert(linked, selectedStart, selectedEnd), `${linked}\n\n${blockMarkup}`);
+
+assert.equal(insert('Текст', 0), `${blockMarkup}\n\nТекст`);
+assert.equal(insert('Текст', 'Текст'.length), `Текст\n\n${blockMarkup}`);
 
 const safeMarkup = buildPostImageMarkup('posts/erazahan-bad.webp', 'Բադ', 1600, 1067);
 assert.match(safeMarkup, /^<img src="https:\/\/images\.erazahan\.info\/posts\/erazahan-bad\.webp"/);

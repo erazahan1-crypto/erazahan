@@ -178,6 +178,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       buildPendingImageMarkup,
       createPendingImageToken,
       formatImageBytes,
+      insertEditorImageBlock,
       optimizePostImage,
       parseEditorImages,
       replaceEditorImage,
@@ -568,7 +569,14 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         if (oldImage.key) replaceImageKeys.add(oldImage.key);
         if (oldImage.token) releasePendingImageIfUnused(oldImage.token);
       } else {
-        content.setRangeText(markup, savedImageSelection.start, savedImageSelection.end, 'end');
+        const insertion = insertEditorImageBlock(
+          content.value,
+          markup,
+          savedImageSelection.start,
+          savedImageSelection.end,
+        );
+        content.value = insertion.content;
+        content.setSelectionRange(insertion.cursor, insertion.cursor);
       }
       closeImageDialog();
       syncFromMarkdown();

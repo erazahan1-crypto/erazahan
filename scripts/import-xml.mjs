@@ -313,20 +313,10 @@ const images = [...allImageUrls].map((url) => ({ url, file: uploadFile(url) })).
 
 // ---------- запись JSON ----------
 mkdirSync(outDir, { recursive: true });
-mkdirSync(join(root, 'public'), { recursive: true });
 writeFileSync(join(outDir, 'posts.json'), JSON.stringify(posts));
 writeFileSync(join(outDir, 'pages.json'), JSON.stringify(pages));
 writeFileSync(join(outDir, 'menu.json'), JSON.stringify(menu));
 writeFileSync(join(outDir, 'images.json'), JSON.stringify(images));
-
-const stripHtml = (h) => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-const searchIndex = posts.map((p) => ({
-  slug: p.slug,
-  title: p.title,
-  letter: p.letter,
-  text: stripHtml(p.content).slice(0, 220),
-}));
-writeFileSync(join(root, 'public', 'search-index.json'), JSON.stringify(searchIndex));
 
 // ---------- сводка ----------
 console.log('posts (все публикации):', posts.length);
@@ -338,4 +328,4 @@ console.log('unique images:', images.length);
 console.log('menu items:', menu.length);
 console.log('comments на постах:', posts.reduce((a, p) => a + p.comments.length, 0));
 console.log('comments на страницах:', pages.reduce((a, p) => a + p.comments.length, 0));
-console.log('Готово. Файлы записаны в src/data/ и public/search-index.json');
+console.log('Готово. Файлы записаны в src/data/');

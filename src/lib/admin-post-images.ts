@@ -23,6 +23,11 @@ export interface EditorImage {
   tag: string;
 }
 
+export interface EditorImageInsertion {
+  content: string;
+  cursor: number;
+}
+
 const INPUT_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 export async function optimizePostImage(file: File): Promise<OptimizedImage> {
@@ -74,6 +79,43 @@ export function buildPendingImageMarkup(token: string, alt: string, width: numbe
     throw new Error('Некорректные размеры изображения.');
   }
   return `<img src="pending-image:${token}" alt="${escapeHtml(normalizedAlt)}" width="${width}" height="${height}" loading="lazy" decoding="async">`;
+}
+
+export function insertEditorImageBlock(
+  content: string,
+  markup: string,
+  selectionStart: number,
+  selectionEnd = selectionStart,
+): EditorImageInsertion {
+  const start = clampOffset(selectionStart, content.length);
+  const end = clampOffset(selectionEnd, content.length);
+  const selectionFrom = Math.min(start, end);
+  const selectionTo = Math.max(start, end);
+  const newline = content.includes('\r\n') ? '\r\n' : '\n';
+  const anchor = selectionTo > selectionFrom ? selectionTo : selectionFrom;
+  const lineStart = content.lastIndexOf('\n', Math.max(0, anchor - 1)) + 1;
+  const lineEnd = nextLineEnd(content, anchor);
+  const line = content.slice(lineStart, lineEnd).replace(/\r$/, '');
+
+  let insertionAt: number;
+  if (!line.trim()) {
+    insertionAt = lineStart;
+  } else if (selectionTo === selectionFrom && anchor === lineStart) {
+    insertionAt = lineStart;
+  } else {
+    insertionAt = paragraphEnd(content, lineEnd);
+  }
+
+  const before = content.slice(0, insertionAt);
+  const after = content.slice(insertionAt);
+  const leftSeparator = before ? newline.repeat(Math.max(0, 2 - trailingNewlines(before))) : '';
+  const rightSeparator = after ? newline.repeat(Math.max(0, 2 - leadingNewlines(after))) : '';
+  const inserted = before + leftSeparator + markup + rightSeparator + after;
+
+  return {
+    content: inserted,
+    cursor: before.length + leftSeparator.length + markup.length,
+  };
 }
 
 export function parseEditorImages(content: string): EditorImage[] {
@@ -173,6 +215,37 @@ function htmlAttribute(tag: string, name: string): string | null {
 
 function positiveInteger(value: string | null): number {
   return value && /^\d+$/.test(value) ? Number(value) : 0;
+}
+
+function clampOffset(value: number, length: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(length, Math.trunc(value)));
+}
+
+function nextLineEnd(content: string, offset: number): number {
+  const end = content.indexOf('\n', offset);
+  return end < 0 ? content.length : end;
+}
+
+function paragraphEnd(content: string, firstLineEnd: number): number {
+  let end = firstLineEnd;
+  while (end < content.length) {
+    const nextStart = end + 1;
+    const nextEnd = nextLineEnd(content, nextStart);
+    if (!content.slice(nextStart, nextEnd).replace(/\r$/, '').trim()) break;
+    end = nextEnd;
+  }
+  return end;
+}
+
+function trailingNewlines(value: string): number {
+  const match = value.match(/(?:\r?\n)+$/);
+  return match ? (match[0].match(/\n/g) || []).length : 0;
+}
+
+function leadingNewlines(value: string): number {
+  const match = value.match(/^(?:\r?\n)+/);
+  return match ? (match[0].match(/\n/g) || []).length : 0;
 }
 
 function decodeHtml(value: string): string {

@@ -48,7 +48,14 @@ assert.equal(searchIndex.length, posts.length);
 assert.ok(searchIndex.some((entry) => entry.slug === 'erazahan-bad'));
 
 const sitemap = readFileSync('dist/sitemap.xml', 'utf8');
-assert.equal(posts.filter((post) => sitemap.includes(`/${post.slug}/`)).length, posts.length);
+const sitemapUrls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
+const uniqueSitemapUrls = new Set(sitemapUrls);
+const sitemapPostUrls = posts.map((post) => `https://erazahan.info/${post.slug}/`);
+assert.equal(uniqueSitemapUrls.size, sitemapUrls.length, 'sitemap must not contain duplicate URLs');
+assert.equal(sitemapUrls.length - uniqueSitemapUrls.size, 0, 'sitemap duplicate count must be zero');
+assert.ok(sitemapPostUrls.every((url) => uniqueSitemapUrls.has(url)), 'sitemap must contain every post URL');
+assert.equal(sitemapPostUrls.length, posts.length);
+assert.ok(sitemapUrls.every((url) => !/\/(?:admin|api)(?:\/|$)/.test(new URL(url).pathname)), 'sitemap must exclude admin and API URLs');
 
 const assetFiles = readdirSync('dist/_astro').map((name) => join('dist/_astro', name));
 assert.ok(assetFiles.every((file) => !statSync(file).isFile() || statSync(file).size < 7_000_000));
@@ -56,7 +63,9 @@ assert.ok(assetFiles.every((file) => !statSync(file).isFile() || statSync(file).
 console.log({
   publicPostRoutes: posts.length,
   searchIndexEntries: searchIndex.length,
-  sitemapPostUrls: posts.length,
+  sitemapUrls: sitemapUrls.length,
+  sitemapPostUrls: sitemapPostUrls.length,
+  sitemapDuplicates: sitemapUrls.length - uniqueSitemapUrls.size,
   regressionSamples: {
     legacy: 'erazahan-bad',
     markdown: markdown.post.slug,
