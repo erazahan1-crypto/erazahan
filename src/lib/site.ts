@@ -48,45 +48,9 @@ export interface Page {
   comments: Comment[];
 }
 
-// Посты загружаем из папки, которой управляет Keystatic (src/data/posts/*.json).
-// import.meta.glob заставляет Vite следить за файлами — правки видны без перезапуска dev-сервера.
-const postModules = import.meta.glob('../data/posts/*.json', { eager: true }) as Record<
-  string,
-  { default: Record<string, unknown> }
->;
-
-const slugFromSourceUrl = (url?: string): string => {
-  if (!url) return '';
-  try {
-    const clean = url.trim().replace(/\/+$/, '');
-    return decodeURIComponent(clean.slice(clean.lastIndexOf('/') + 1));
-  } catch {
-    return '';
-  }
-};
-
-const slugFromFile = (file: string): string =>
-  (file.split('/').pop() || '').replace(/\.json$/, '');
-
-const loadPostsFromFolder = (): Post[] =>
-  Object.entries(postModules).map(([file, mod]) => {
-    const d = mod.default as Partial<Post>;
-    return {
-      slug: String(d.slug || slugFromSourceUrl(d.sourceUrl) || slugFromFile(file)),
-      title: String(d.title ?? ''),
-      description: typeof d.description === 'string' ? d.description : null,
-      date: String(d.date ?? ''),
-      letter: d.letter ?? null,
-      categories: Array.isArray(d.categories) ? d.categories : [],
-      content: String(d.content ?? ''),
-      sourceUrl: String(d.sourceUrl ?? ''),
-      comments: Array.isArray(d.comments) ? d.comments : [],
-      cover: typeof d.cover === 'string' ? d.cover : null,
-    } as Post;
-  });
-
-const folderPosts = loadPostsFromFolder();
-export const posts: Post[] = folderPosts.length > 0 ? folderPosts : (postsJson as Post[]);
+// Public pages and every derived public index use the same canonical dataset.
+// The per-post JSON directory remains for legacy/Keystatic compatibility only.
+export const posts: Post[] = postsJson as Post[];
 export const pages = pagesJson as Page[];
 export const menu = menuJson as { label: string; href: string; parent: string; order: number }[];
 

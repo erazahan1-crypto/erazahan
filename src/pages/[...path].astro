@@ -27,6 +27,7 @@ import type { Comment } from '../lib/site';
 import { excerptOf } from '../lib/site';
 import { SITE } from '../lib/config';
 import { articleSchema, breadcrumbSchema, itemListSchema } from '../lib/seo';
+import { renderPostContent } from '../lib/render-post-content';
 
 export function getStaticPaths() {
   const routes: { params: { path: string } }[] = [];
@@ -101,6 +102,7 @@ const description = post
 const cover = post ? postCover(post) : null;
 const coverSize = cover ? coverDimensions(cover) : null;
 const related = post ? relatedForPost(post) : [];
+const renderedPostContent = post ? renderPostContent(post.content) : '';
 
 const crumbs = [
   { name: 'Գլխավոր', url: `${SITE}/` },
@@ -158,8 +160,8 @@ const crumbs = [
           />
         ) : null}
 
-        {post.content ? (
-            <div class="dream-content mt-6" set:html={fixBrokenInternalLinks(addInternalLinks(normalizeHeadings(stripBrokenImages(post.content)), post.slug))} />
+        {renderedPostContent ? (
+            <div class="dream-content mt-6" set:html={fixBrokenInternalLinks(addInternalLinks(normalizeHeadings(stripBrokenImages(renderedPostContent)), post.slug))} />
         ) : null}
 
         {post.letter ? <UnmatchedDreamCTA /> : null}
