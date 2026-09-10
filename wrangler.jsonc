@@ -5,7 +5,8 @@
   "pages_build_output_dir": "./dist",
   "vars": {
     "ADMIN_GITHUB_REPO": "erazahan1-crypto/erazahan",
-    "ADMIN_GITHUB_BRANCH": "main"
+    "ADMIN_GITHUB_BRANCH": "main",
+    "PUBLIC_ALLOW_INDEXING": "true"
   },
   "d1_databases": [
     {
