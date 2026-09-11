@@ -1,3 +1,9 @@
+import {
+  HOMEPAGE_FEATURED_LIMIT,
+  selectHomepageFeaturedDreams,
+} from '../_lib/featured-dreams.ts';
+import type { FeaturedDreamRecord } from '../_lib/featured-dreams.ts';
+
 interface D1Statement {
   all<T>(): Promise<{ results: T[] }>;
 }
@@ -11,6 +17,7 @@ interface Env {
 }
 
 interface Context {
+  request: Request;
   env: Env;
 }
 
@@ -34,8 +41,26 @@ const jsonResponse = (body: unknown, status = 200): Response =>
     },
   });
 
-export async function onRequestGet({ env }: Context): Promise<Response> {
+export async function onRequestGet({ request, env }: Context): Promise<Response> {
+  const isHomepageRequest = new URL(request.url).searchParams.get('featured') === 'home';
+
   try {
+    if (isHomepageRequest) {
+      const { results } = await env.DREAMS_DB.prepare(
+        `SELECT id, dream_text, answer_text, created_at, answered_at, updated_at,
+                status, featured_home
+         FROM dream_submissions
+         WHERE featured_home = 1
+           AND status = 'answered'
+           AND answer_text IS NOT NULL
+           AND TRIM(answer_text) <> ''
+         ORDER BY COALESCE(answered_at, updated_at, created_at) DESC, id DESC
+         LIMIT ${HOMEPAGE_FEATURED_LIMIT}`,
+      ).all<FeaturedDreamRecord>();
+
+      return jsonResponse({ ok: true, dreams: selectHomepageFeaturedDreams(results) });
+    }
+
     const { results } = await env.DREAMS_DB.prepare(
       `SELECT id, name, dream_text, answer_text, created_at, answered_at, updated_at, status
        FROM dream_submissions

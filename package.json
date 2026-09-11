@@ -13,6 +13,7 @@
     "test:images": "node --experimental-strip-types scripts/test-post-images.mjs",
     "test:redirect": "node --experimental-strip-types scripts/test-hostname-redirect.mjs",
     "test:search": "node scripts/test-public-search.mjs",
+    "test:featured": "node --experimental-strip-types scripts/test-featured-dreams.mjs",
     "cf:types": "wrangler types"
   },
   "dependencies": {

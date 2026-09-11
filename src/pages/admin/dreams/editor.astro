@@ -30,6 +30,14 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         <button type="button" data-seo-save class="min-h-11 w-full rounded-lg border border-violet-400/30 bg-violet-500/10 px-4 text-sm font-semibold text-violet-200 hover:bg-violet-500/20 disabled:opacity-60 sm:w-auto">Сохранить SEO</button>
         <div class="hidden min-w-0 rounded-lg border px-3 py-2 text-sm sm:flex-1" data-seo-message role="status" aria-live="polite"></div>
       </div>
+      <div class="mt-3 flex min-w-0 flex-col gap-2 border-t border-white/10 pt-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <label class="inline-flex min-h-11 min-w-0 cursor-pointer items-center gap-2 text-sm font-semibold text-slate-200">
+          <input type="checkbox" data-featured-home class="size-5 shrink-0 accent-amber-400" />
+          <span class="break-words">Показывать на главной</span>
+        </label>
+        <button type="button" data-featured-save class="min-h-11 w-full rounded-lg border border-amber-300/30 bg-amber-300/10 px-4 text-sm font-semibold text-amber-200 hover:bg-amber-300/15 disabled:opacity-60 sm:w-auto">Сохранить</button>
+        <div class="hidden min-w-0 rounded-lg border px-3 py-2 text-sm sm:flex-1" data-featured-message role="status" aria-live="polite"></div>
+      </div>
     </section>
 
     <div class="mt-4 grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
@@ -96,6 +104,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       answered_at: string | null;
       notification_sent_at: string | null;
       seo_index: number | null;
+      featured_home: number | null;
     }
     interface SearchItem { slug: string; title: string; text?: string; match?: 'exact' | 'close' | 'partial'; score?: number }
 
@@ -108,6 +117,9 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     const seoIndex = document.querySelector<HTMLInputElement>('[data-seo-index]');
     const seoSave = document.querySelector<HTMLButtonElement>('[data-seo-save]');
     const seoMessage = document.querySelector<HTMLElement>('[data-seo-message]');
+    const featuredHome = document.querySelector<HTMLInputElement>('[data-featured-home]');
+    const featuredSave = document.querySelector<HTMLButtonElement>('[data-featured-save]');
+    const featuredMessage = document.querySelector<HTMLElement>('[data-featured-message]');
     const answer = document.querySelector<HTMLTextAreaElement>('[data-answer]');
     const count = document.querySelector<HTMLElement>('[data-answer-count]');
     const message = document.querySelector<HTMLElement>('[data-message]');
@@ -143,6 +155,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     function fillEditor(dream: DreamRecord) {
       currentStatus = dream.status;
       if (seoIndex) seoIndex.checked = dream.seo_index === 1;
+      if (featuredHome) featuredHome.checked = dream.featured_home === 1;
       setText('[data-id]', dream.id);
       setText('[data-name]', dream.name || 'Без имени');
       setText('[data-email]', dream.email);
@@ -215,6 +228,27 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         }
       } finally {
         seoSave.disabled = false;
+      }
+    }
+
+    async function saveFeaturedHome() {
+      if (!featuredHome || !featuredSave) return;
+      featuredSave.disabled = true;
+      showFeaturedMessage('Сохранение…', 'neutral');
+      try {
+        const response = await fetch(`/api/admin/dreams/${encodeURIComponent(id)}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action: 'update_featured_home', featured_home: featuredHome.checked }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || 'Не удалось сохранить настройку главной.');
+        featuredHome.checked = result.dream.featured_home === 1;
+        showFeaturedMessage('Настройка главной сохранена.', 'success');
+      } catch (error) {
+        showFeaturedMessage(error instanceof Error ? error.message : 'Не удалось сохранить настройку главной.', 'error');
+      } finally {
+        featuredSave.disabled = false;
       }
     }
 
@@ -326,6 +360,16 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         : kind === 'error'
           ? 'mt-4 rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200'
           : 'mt-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300';
+    }
+
+    function showFeaturedMessage(text: string, kind: 'success' | 'error' | 'neutral') {
+      if (!featuredMessage) return;
+      featuredMessage.textContent = text;
+      featuredMessage.className = kind === 'success'
+        ? 'rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200 sm:flex-1'
+        : kind === 'error'
+          ? 'rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200 sm:flex-1'
+          : 'rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300 sm:flex-1';
     }
 
 
@@ -473,6 +517,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     dreamText?.addEventListener('input', updateDreamCount);
     dreamSave?.addEventListener('click', saveDreamText);
     seoSave?.addEventListener('click', saveSeoIndex);
+    featuredSave?.addEventListener('click', saveFeaturedHome);
     answer?.addEventListener('input', updateCount);
     document.querySelector('[data-link-toggle]')?.addEventListener('click', openLinkSearch);
     postSearch?.addEventListener('input', () => {

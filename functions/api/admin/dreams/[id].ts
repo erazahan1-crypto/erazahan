@@ -1,6 +1,6 @@
-import { json } from '../../../_lib/admin-db';
-import type { AdminEnv } from '../../../_lib/admin-db';
-import { sendDreamAnswerNotification } from '../../../_lib/email';
+import { json } from '../../../_lib/admin-db.ts';
+import type { AdminEnv } from '../../../_lib/admin-db.ts';
+import { sendDreamAnswerNotification } from '../../../_lib/email.ts';
 
 interface DreamRecord {
   id: string;
@@ -15,6 +15,7 @@ interface DreamRecord {
   answered_at: string | null;
   notification_sent_at: string | null;
   seo_index: number;
+  featured_home: number;
 }
 
 interface Context {
@@ -56,7 +57,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
     return json({ ok: false, error: 'Ожидается JSON-запрос.' }, 415);
   }
 
-  let body: { action?: unknown; answer_text?: unknown; dream_text?: unknown; seo_index?: unknown };
+  let body: { action?: unknown; answer_text?: unknown; dream_text?: unknown; seo_index?: unknown; featured_home?: unknown };
   try {
     body = await context.request.json();
   } catch {
@@ -71,11 +72,19 @@ export async function onRequestPost(context: Context): Promise<Response> {
     : body.seo_index === false || body.seo_index === 0
       ? 0
       : null;
-  if (!['draft', 'publish', 'reject', 'reopen', 'update_dream', 'resend_notification', 'delete_dream', 'update_seo_index'].includes(action)) {
+  const featuredHome = body.featured_home === true || body.featured_home === 1
+    ? 1
+    : body.featured_home === false || body.featured_home === 0
+      ? 0
+      : null;
+  if (!['draft', 'publish', 'reject', 'reopen', 'update_dream', 'resend_notification', 'delete_dream', 'update_seo_index', 'update_featured_home'].includes(action)) {
     return json({ ok: false, error: 'Неизвестное действие.' }, 400);
   }
   if (action === 'update_seo_index' && seoIndex === null) {
     return json({ ok: false, error: 'seo_index должен быть boolean или 0/1.' }, 400);
+  }
+  if (action === 'update_featured_home' && featuredHome === null) {
+    return json({ ok: false, error: 'featured_home должен быть boolean или 0/1.' }, 400);
   }
   if (action === 'update_dream') {
     if (dreamText.length < MIN_DREAM_LENGTH) {
@@ -133,6 +142,11 @@ export async function onRequestPost(context: Context): Promise<Response> {
       await context.env.DREAMS_DB
         .prepare('UPDATE dream_submissions SET seo_index = ?, updated_at = ? WHERE id = ?')
         .bind(seoIndex, new Date().toISOString(), id)
+        .run();
+    } else if (action === 'update_featured_home') {
+      await context.env.DREAMS_DB
+        .prepare('UPDATE dream_submissions SET featured_home = ?, updated_at = ? WHERE id = ?')
+        .bind(featuredHome, now, id)
         .run();
     } else if (action === 'update_dream') {
       await context.env.DREAMS_DB
@@ -231,7 +245,8 @@ function findDream(env: AdminEnv, id: string): Promise<DreamRecord | null> {
   return env.DREAMS_DB
     .prepare(`
       SELECT id, name, email, dream_text, status, answer_text, ai_draft,
-             created_at, updated_at, answered_at, notification_sent_at, seo_index
+             created_at, updated_at, answered_at, notification_sent_at, seo_index,
+             featured_home
       FROM dream_submissions
       WHERE id = ?
       LIMIT 1
