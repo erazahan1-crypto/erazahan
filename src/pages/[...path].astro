@@ -116,7 +116,7 @@ const crumbs = [
 <Layout title={title} description={description} type={post ? 'article' : 'website'} image={cover || undefined}>
   {
     post ? (
-      <article class="reveal mx-auto max-w-3xl px-4 py-12 sm:px-6">
+      <article class="post-article reveal mx-auto max-w-3xl px-4 py-12 sm:px-6">
         <script type="application/ld+json" set:html={JSON.stringify(articleSchema(post))} />
         <script type="application/ld+json" set:html={JSON.stringify(breadcrumbSchema(crumbs))} />
         <nav class="text-sm text-slate-400">
@@ -140,7 +140,7 @@ const crumbs = [
 
         <div class="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-400">
           {post.letter ? (
-            <span class="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-medium">
+            <span class="gold-semantic-label rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-medium">
               Տառ {post.letter}
             </span>
           ) : null}
@@ -167,8 +167,8 @@ const crumbs = [
         {post.letter ? <UnmatchedDreamCTA /> : null}
 
         {related.length > 0 ? (
-          <section class="mt-12 border-t border-white/10 pt-8">
-            <h2 class="font-display text-2xl font-bold text-white">Առնչվող երազներ</h2>
+          <section class="post-section-divider mt-12 border-t pt-8">
+            <h2 class="gold-section-title font-display text-2xl font-bold">Առնչվող երազներ</h2>
             <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {related.map((r) => (
                 <a
@@ -188,7 +188,7 @@ const crumbs = [
         ) : null}
 
         {post.comments && post.comments.length > 0 ? (
-          <section class="mt-12 border-t border-white/10 pt-8">
+          <section class="post-section-divider mt-12 border-t pt-8">
             <h2 class="font-display text-2xl font-bold text-white">
               Մեկնաբանություններ ({post.comments.length})
             </h2>
