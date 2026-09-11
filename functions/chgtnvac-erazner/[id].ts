@@ -169,17 +169,17 @@ const buildPage = (baseHtml: string, dream: PublishedDream, requestUrl: URL): st
   const detailMain = `
     <article class="reveal mx-auto max-w-3xl min-w-0 px-4 py-8 sm:px-6 sm:py-12" style="overflow-wrap:anywhere" data-dream-id="${escapeHtml(dream.id)}">
       <nav class="text-sm text-slate-400"><a href="/chgtnvac-erazner/" class="transition hover:text-white">Չգտնված երազներ</a></nav>
-      <h1 class="mt-4 font-display text-3xl font-bold leading-tight text-white sm:text-4xl">${escapeHtml(title)}</h1>
+      <h1 class="mt-4 font-display text-[1.625rem] font-bold leading-tight text-white sm:text-4xl">${escapeHtml(title)}</h1>
       <div class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm leading-6 text-slate-400">
         <span class="font-medium text-violet-200">${escapeHtml(author)}</span>${date ? `<span aria-hidden="true">·</span><time datetime="${escapeHtml(dream.answered_at || dream.updated_at || dream.created_at)}">${escapeHtml(date)}</time>` : ''}
       </div>
-      <section class="mt-6 min-w-0 border-l-2 border-violet-300/25 pl-4 sm:pl-5">
+      <section class="mt-6 min-w-0 rounded-xl border border-violet-300/15 bg-night-950/40 p-4 sm:p-5">
         <h2 class="text-sm font-semibold tracking-wide text-violet-200">Երազը</h2>
-        <p class="mt-2 text-base leading-8 text-slate-100">${renderPlainText(dream.dream_text)}</p>
+        <p class="mt-2 text-base leading-8 text-slate-300">${renderPlainText(dream.dream_text)}</p>
       </section>
-      <section class="mt-6 min-w-0 rounded-2xl bg-violet-400/[0.08] p-4 sm:p-5">
-        <h2 class="text-sm font-semibold tracking-wide text-violet-200">Պատասխան</h2>
-        <div class="mt-2 space-y-3 text-base leading-7 text-slate-300 [overflow-wrap:anywhere]">${renderMarkdown(dream.answer_text)}</div>
+      <section class="mt-8 min-w-0 rounded-2xl border border-white/10 border-l-2 bg-violet-400/[0.08] p-4 sm:p-5" style="border-left-color:#C8A96B">
+        <h2 class="text-sm font-semibold tracking-wide" style="color:#D2B57A">Մեկնաբանություն</h2>
+        <div class="mt-2 space-y-4 text-base leading-7 text-slate-200 [overflow-wrap:anywhere]">${renderMarkdown(dream.answer_text)}</div>
       </section>
 
       <section class="mt-6 min-w-0 rounded-2xl border border-white/10 bg-white/[0.035] p-4 sm:p-5" aria-labelledby="reactions-title">
