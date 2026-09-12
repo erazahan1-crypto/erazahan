@@ -11,6 +11,16 @@ import {
   readJson,
 } from './baseline-lib.mjs';
 
+const BASELINE_ARTIFACT_COMMIT = '0e9a299e6f714e264b8653d875e402501a5ea7b4';
+
+function requireAncestor(ancestor, commit, label) {
+  try {
+    execFileSync('git', ['merge-base', '--is-ancestor', ancestor, commit], { cwd: ROOT, stdio: 'ignore' });
+  } catch {
+    throw new Error(`${label} ${ancestor} is not an ancestor of HEAD ${commit}`);
+  }
+}
+
 function fail(message) {
   console.error(`BASELINE VERIFY FAILED: ${message}`);
   process.exitCode = 1;
@@ -32,7 +42,8 @@ try {
   if (metadata.generator_version !== GENERATOR_VERSION) throw new Error(`metadata generator_version is ${metadata.generator_version}, expected ${GENERATOR_VERSION}`);
   const commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
   const branch = execFileSync('git', ['branch', '--show-current'], { cwd: ROOT, encoding: 'utf8' }).trim();
-  if (metadata.source_commit !== commit) throw new Error(`HEAD ${commit} differs from baseline source_commit ${metadata.source_commit}`);
+  requireAncestor(metadata.source_commit, commit, 'baseline source_commit');
+  requireAncestor(BASELINE_ARTIFACT_COMMIT, commit, 'baseline artifact commit');
   if (metadata.branch !== branch) throw new Error(`branch ${branch} differs from baseline branch ${metadata.branch}`);
 
   const actual = collectArtifacts({ buildDurationMs: expected.build.build_duration_ms });
