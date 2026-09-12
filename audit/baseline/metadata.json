@@ -1,0 +1,27 @@
+{
+  "astro_version": "7.2.2",
+  "baseline_type": "hy-production-pre-multilingual",
+  "branch": "main",
+  "build_command": "npm run build",
+  "build_duration_ms": 54404,
+  "build_output_dir": "dist",
+  "commit": "6ff3f9403b5d5bf526b68d53c283c4bcfc7b1600",
+  "dictionary_route_count": 5800,
+  "generated_at": "2026-09-12T19:03:55.698Z",
+  "generator": "audit/scripts/create-baseline.mjs",
+  "generator_version": "1.0.0",
+  "node_version": "v24.18.0",
+  "npm_version": "12.0.1",
+  "public_output_determinism_reference": {
+    "checked": true,
+    "file_count": 12327,
+    "identical": true,
+    "manifest_sha256": "8b86826e2c8bca55dc046646ef042bd887ad5604dd999f6c58f9657dd8640b50"
+  },
+  "schema_version": 1,
+  "source_commit": "6ff3f9403b5d5bf526b68d53c283c4bcfc7b1600",
+  "source_post_count": 5800,
+  "source_posts_file": "src/data/posts.json",
+  "source_posts_sha256": "558ce9b0cbbc7acc94302daaf7cae43eb684907ec4fa078b2fc21c1dc4646ba3",
+  "verifier": "audit/scripts/verify-baseline.mjs"
+}

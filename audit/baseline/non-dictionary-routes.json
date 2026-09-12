@@ -1,0 +1,1287 @@
+{
+  "artifact": "non-dictionary-routes",
+  "counts": {
+    "admin_html_routes": 5,
+    "error_html_routes": 1,
+    "html_routes": 127,
+    "public_endpoints": 4,
+    "sitemap_routes": 120,
+    "visitor_html_routes": 121
+  },
+  "extraction_rules": {
+    "html_routes": "Every built HTML route not belonging to the canonical 5,800-post dictionary set; admin and error routes remain explicitly classified.",
+    "public_endpoints": "Top-level built JSON, XML, and TXT endpoints; hashed assets are covered by the full output inventory instead.",
+    "sitemap_routes": "Every sitemap entry not belonging to the canonical dictionary route set."
+  },
+  "html_routes": [
+    {
+      "in_sitemap": false,
+      "output_file": "404.html",
+      "route": "/404.html",
+      "scope": "error"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "about/index.html",
+      "route": "/about/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": false,
+      "output_file": "admin/comments/index.html",
+      "route": "/admin/comments/",
+      "scope": "admin"
+    },
+    {
+      "in_sitemap": false,
+      "output_file": "admin/dreams/editor/index.html",
+      "route": "/admin/dreams/editor/",
+      "scope": "admin"
+    },
+    {
+      "in_sitemap": false,
+      "output_file": "admin/dreams/index.html",
+      "route": "/admin/dreams/",
+      "scope": "admin"
+    },
+    {
+      "in_sitemap": false,
+      "output_file": "admin/posts/edit/index.html",
+      "route": "/admin/posts/edit/",
+      "scope": "admin"
+    },
+    {
+      "in_sitemap": false,
+      "output_file": "admin/posts/index.html",
+      "route": "/admin/posts/",
+      "scope": "admin"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "anunneri-nshanakutyuny/index.html",
+      "route": "/anunneri-nshanakutyuny/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "arakan-anunner-a/index.html",
+      "route": "/arakan-anunner-a/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "astxagushak/index.html",
+      "route": "/astxagushak/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "baxtagushakutyun/index.html",
+      "route": "/baxtagushakutyun/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "chgtnvac-erazner/index.html",
+      "route": "/chgtnvac-erazner/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-a-tar/index.html",
+      "route": "/erazahan-online/erazahan-a-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-b-tar/index.html",
+      "route": "/erazahan-online/erazahan-b-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-cha/index.html",
+      "route": "/erazahan-online/erazahan-cha/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-che-tar/index.html",
+      "route": "/erazahan-online/erazahan-che-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-d-tar/index.html",
+      "route": "/erazahan-online/erazahan-d-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-dz-tar/index.html",
+      "route": "/erazahan-online/erazahan-dz-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-e-tar/index.html",
+      "route": "/erazahan-online/erazahan-e-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-ee-tar/index.html",
+      "route": "/erazahan-online/erazahan-ee-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-eth-tar/index.html",
+      "route": "/erazahan-online/erazahan-eth-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-f-tar/index.html",
+      "route": "/erazahan-online/erazahan-f-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-g-tar/index.html",
+      "route": "/erazahan-online/erazahan-g-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-ghe-tar/index.html",
+      "route": "/erazahan-online/erazahan-ghe-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-ho-tar/index.html",
+      "route": "/erazahan-online/erazahan-ho-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-i-tar/index.html",
+      "route": "/erazahan-online/erazahan-i-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-je-tar/index.html",
+      "route": "/erazahan-online/erazahan-je-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-ke-tar/index.html",
+      "route": "/erazahan-online/erazahan-ke-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-khe-tar/index.html",
+      "route": "/erazahan-online/erazahan-khe-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-l-tar/index.html",
+      "route": "/erazahan-online/erazahan-l-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-m-tar/index.html",
+      "route": "/erazahan-online/erazahan-m-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-n-tar/index.html",
+      "route": "/erazahan-online/erazahan-n-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-o-tar/index.html",
+      "route": "/erazahan-online/erazahan-o-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-pe-tar/index.html",
+      "route": "/erazahan-online/erazahan-pe-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-ph-tar/index.html",
+      "route": "/erazahan-online/erazahan-ph-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-q-tar/index.html",
+      "route": "/erazahan-online/erazahan-q-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-ra-tar/index.html",
+      "route": "/erazahan-online/erazahan-ra-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-se-tar/index.html",
+      "route": "/erazahan-online/erazahan-se-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-sha-tar/index.html",
+      "route": "/erazahan-online/erazahan-sha-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-t-tar-2/index.html",
+      "route": "/erazahan-online/erazahan-t-tar-2/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-t-tar/index.html",
+      "route": "/erazahan-online/erazahan-t-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-tsa-tar/index.html",
+      "route": "/erazahan-online/erazahan-tsa-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-tso-tar/index.html",
+      "route": "/erazahan-online/erazahan-tso-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-u-tar/index.html",
+      "route": "/erazahan-online/erazahan-u-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-ve-tar/index.html",
+      "route": "/erazahan-online/erazahan-ve-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-vo-tar/index.html",
+      "route": "/erazahan-online/erazahan-vo-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-yi-tar/index.html",
+      "route": "/erazahan-online/erazahan-yi-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-z-tar/index.html",
+      "route": "/erazahan-online/erazahan-z-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/erazahan-zhe-tar/index.html",
+      "route": "/erazahan-online/erazahan-zhe-tar/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "erazahan-online/index.html",
+      "route": "/erazahan-online/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "gangabanutyun/index.html",
+      "route": "/gangabanutyun/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "index.html",
+      "route": "/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": false,
+      "output_file": "search/index.html",
+      "route": "/search/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "tvagitutyun/index.html",
+      "route": "/tvagitutyun/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "աստղերի-ազդեցությունը-ծնունդներու-վ/index.html",
+      "route": "/աստղերի-ազդեցությունը-ծնունդներու-վ/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-ա-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-ա-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-բ-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-բ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-գ-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-գ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-դ-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-դ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-ե-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-ե-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-զ-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-զ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-է-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-է-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-թ-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-թ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-ժ-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-ժ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-ի-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-ի-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-լ-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-լ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-խ-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-խ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-ծ-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-ծ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-կ-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-կ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-հ-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-հ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-ղ-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-ղ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-մ-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-մ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-յ-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-յ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-ն-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-ն-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-շ-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-շ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-ո-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-ո-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-ու-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-ու-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-պ-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-պ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-ջ-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-ջ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-ռ-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-ռ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-ս-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-ս-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-վ-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-վ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-տ-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-տ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-ր-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-ր-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-ց-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-ց-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-փ-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-փ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-ք-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-ք-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-օ-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-օ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "արական-անուններ-սկսվող-ֆ-տառով/index.html",
+      "route": "/արական-անուններ-սկսվող-ֆ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "գովազդ-կայքում-govazd-kayqum/index.html",
+      "route": "/գովազդ-կայքում-govazd-kayqum/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "գույների-նշանակությունը-երազում/index.html",
+      "route": "/գույների-նշանակությունը-երազում/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "էջը-չի-գտնվել/index.html",
+      "route": "/էջը-չի-գտնվել/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-ա-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-ա-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-բ-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-բ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-գ-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-գ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-դ-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-դ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-ե-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-ե-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-զ-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-զ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-է-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-է-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-ը-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-ը-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-թ-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-թ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-ժ-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-ժ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-ի-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-ի-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-լ-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-լ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-խ-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-խ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-ծ-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-ծ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-կ-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-կ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-հ-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-հ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-մ-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-մ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-յ-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-յ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-ն-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-ն-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-շ-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-շ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-ո-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-ո-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-ու-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-ու-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-չ-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-չ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-պ-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-պ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-ջ-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-ջ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-ռ-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-ռ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-ս-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-ս-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-վ-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-վ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-տ-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-տ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-ց-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-ց-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-փ-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-փ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-ք-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-ք-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-օ-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-օ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "իգական-անուններ-սկսվող-ֆ-տառով/index.html",
+      "route": "/իգական-անուններ-սկսվող-ֆ-տառով/",
+      "scope": "visitor"
+    },
+    {
+      "in_sitemap": true,
+      "output_file": "վիճակարան-ըստ-համաստեղութեան/index.html",
+      "route": "/վիճակարան-ըստ-համաստեղութեան/",
+      "scope": "visitor"
+    }
+  ],
+  "public_endpoints": [
+    {
+      "output_file": "dream-content-index.json",
+      "route": "/dream-content-index.json",
+      "sha256": "380f23c79c2e9b1f7d0efc31d09302a92286116d6850ce777101da720d412efe",
+      "size": 3209846
+    },
+    {
+      "output_file": "robots.txt",
+      "route": "/robots.txt",
+      "sha256": "331ea9090db0c9f6f597bd9840fd5b171830f6e0b3ba1cb24dfa91f0c95aedc1",
+      "size": 26
+    },
+    {
+      "output_file": "search-index.json",
+      "route": "/search-index.json",
+      "sha256": "4a5b63aa194635c7eb9afc14d92af9ec381d8145d36b45766b6bbb3405ae3310",
+      "size": 1932294
+    },
+    {
+      "output_file": "sitemap.xml",
+      "route": "/sitemap.xml",
+      "sha256": "19015d826f34a8a7652c9fb5e6aa48296d0a95a939fb1f21b79e92406f5ae357",
+      "size": 626851
+    }
+  ],
+  "schema_version": 1,
+  "sitemap_routes": [
+    {
+      "loc": "https://erazahan.info/"
+    },
+    {
+      "lastmod": "2016-09-01",
+      "loc": "https://erazahan.info/erazahan-online/"
+    },
+    {
+      "lastmod": "2016-09-01",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-a-tar/"
+    },
+    {
+      "lastmod": "2016-09-11",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-b-tar/"
+    },
+    {
+      "lastmod": "2016-09-11",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-g-tar/"
+    },
+    {
+      "lastmod": "2016-09-11",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-d-tar/"
+    },
+    {
+      "lastmod": "2016-09-11",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-e-tar/"
+    },
+    {
+      "lastmod": "2016-09-12",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-z-tar/"
+    },
+    {
+      "lastmod": "2016-09-13",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-ee-tar/"
+    },
+    {
+      "lastmod": "2016-09-13",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-eth-tar/"
+    },
+    {
+      "lastmod": "2016-09-13",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-t-tar/"
+    },
+    {
+      "lastmod": "2016-09-14",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-zhe-tar/"
+    },
+    {
+      "lastmod": "2016-09-14",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-i-tar/"
+    },
+    {
+      "lastmod": "2016-09-14",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-l-tar/"
+    },
+    {
+      "lastmod": "2016-09-18",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-khe-tar/"
+    },
+    {
+      "lastmod": "2016-09-18",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-tsa-tar/"
+    },
+    {
+      "lastmod": "2016-09-18",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-ke-tar/"
+    },
+    {
+      "lastmod": "2016-09-19",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-ho-tar/"
+    },
+    {
+      "lastmod": "2016-09-21",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-dz-tar/"
+    },
+    {
+      "lastmod": "2016-09-21",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-ghe-tar/"
+    },
+    {
+      "lastmod": "2016-09-21",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-che-tar/"
+    },
+    {
+      "lastmod": "2016-09-21",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-m-tar/"
+    },
+    {
+      "lastmod": "2016-09-23",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-yi-tar/"
+    },
+    {
+      "lastmod": "2016-09-23",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-n-tar/"
+    },
+    {
+      "lastmod": "2016-09-23",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-sha-tar/"
+    },
+    {
+      "lastmod": "2016-09-25",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-vo-tar/"
+    },
+    {
+      "lastmod": "2016-09-25",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-cha/"
+    },
+    {
+      "lastmod": "2016-09-27",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-pe-tar/"
+    },
+    {
+      "lastmod": "2016-09-28",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-je-tar/"
+    },
+    {
+      "lastmod": "2016-09-29",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-ra-tar/"
+    },
+    {
+      "lastmod": "2016-09-29",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-se-tar/"
+    },
+    {
+      "lastmod": "2016-10-02",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-ve-tar/"
+    },
+    {
+      "lastmod": "2016-10-02",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-t-tar-2/"
+    },
+    {
+      "lastmod": "2016-10-05",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-tso-tar/"
+    },
+    {
+      "lastmod": "2016-10-05",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-u-tar/"
+    },
+    {
+      "lastmod": "2016-10-05",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-ph-tar/"
+    },
+    {
+      "lastmod": "2016-10-06",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-q-tar/"
+    },
+    {
+      "lastmod": "2016-10-06",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-o-tar/"
+    },
+    {
+      "lastmod": "2016-10-06",
+      "loc": "https://erazahan.info/erazahan-online/erazahan-f-tar/"
+    },
+    {
+      "lastmod": "2016-10-08",
+      "loc": "https://erazahan.info/baxtagushakutyun/"
+    },
+    {
+      "lastmod": "2016-10-10",
+      "loc": "https://erazahan.info/աստղերի-ազդեցությունը-ծնունդներու-վ/"
+    },
+    {
+      "lastmod": "2016-10-10",
+      "loc": "https://erazahan.info/վիճակարան-ըստ-համաստեղութեան/"
+    },
+    {
+      "lastmod": "2017-03-06",
+      "loc": "https://erazahan.info/գույների-նշանակությունը-երազում/"
+    },
+    {
+      "lastmod": "2017-03-14",
+      "loc": "https://erazahan.info/gangabanutyun/"
+    },
+    {
+      "lastmod": "2017-04-02",
+      "loc": "https://erazahan.info/tvagitutyun/"
+    },
+    {
+      "lastmod": "2017-04-09",
+      "loc": "https://erazahan.info/astxagushak/"
+    },
+    {
+      "lastmod": "2017-07-26",
+      "loc": "https://erazahan.info/anunneri-nshanakutyuny/"
+    },
+    {
+      "lastmod": "2017-07-25",
+      "loc": "https://erazahan.info/arakan-anunner-a/"
+    },
+    {
+      "lastmod": "2017-07-26",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-բ-տառով/"
+    },
+    {
+      "lastmod": "2017-07-26",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-գ-տառով/"
+    },
+    {
+      "lastmod": "2017-07-27",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-դ-տառով/"
+    },
+    {
+      "lastmod": "2017-07-27",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-ե-տառով/"
+    },
+    {
+      "lastmod": "2017-07-27",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-զ-տառով/"
+    },
+    {
+      "lastmod": "2017-07-28",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-է-տառով/"
+    },
+    {
+      "lastmod": "2017-07-29",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-թ-տառով/"
+    },
+    {
+      "lastmod": "2017-07-29",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-ժ-տառով/"
+    },
+    {
+      "lastmod": "2017-07-29",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-ի-տառով/"
+    },
+    {
+      "lastmod": "2017-07-29",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-լ-տառով/"
+    },
+    {
+      "lastmod": "2017-07-31",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-խ-տառով/"
+    },
+    {
+      "lastmod": "2017-07-31",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-ծ-տառով/"
+    },
+    {
+      "lastmod": "2017-07-31",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-կ-տառով/"
+    },
+    {
+      "lastmod": "2017-07-31",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-հ-տառով/"
+    },
+    {
+      "lastmod": "2017-07-31",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-ղ-տառով/"
+    },
+    {
+      "lastmod": "2017-07-31",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-մ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-01",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-յ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-01",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-ն-տառով/"
+    },
+    {
+      "lastmod": "2017-08-01",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-շ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-01",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-ո-տառով/"
+    },
+    {
+      "lastmod": "2017-08-02",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-պ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-02",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-ջ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-02",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-ռ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-02",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-ս-տառով/"
+    },
+    {
+      "lastmod": "2017-08-02",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-վ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-04",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-տ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-04",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-ր-տառով/"
+    },
+    {
+      "lastmod": "2017-08-04",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-ց-տառով/"
+    },
+    {
+      "lastmod": "2017-08-04",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-ու-տառով/"
+    },
+    {
+      "lastmod": "2017-08-04",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-փ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-04",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-ք-տառով/"
+    },
+    {
+      "lastmod": "2017-08-04",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-օ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-04",
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-ֆ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-05",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-ա-տառով/"
+    },
+    {
+      "lastmod": "2017-08-05",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-բ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-05",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-գ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-05",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-դ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-05",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-ե-տառով/"
+    },
+    {
+      "lastmod": "2017-08-05",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-զ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-05",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-է-տառով/"
+    },
+    {
+      "lastmod": "2017-08-06",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-ը-տառով/"
+    },
+    {
+      "lastmod": "2017-08-06",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-թ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-06",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-ժ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-06",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-ի-տառով/"
+    },
+    {
+      "lastmod": "2017-08-06",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-լ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-17",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-խ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-17",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-ծ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-17",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-կ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-17",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-հ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-18",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-մ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-18",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-յ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-18",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-ն-տառով/"
+    },
+    {
+      "lastmod": "2017-08-18",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-շ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-18",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-ո-տառով/"
+    },
+    {
+      "lastmod": "2017-08-18",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-չ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-18",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-պ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-18",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-ջ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-18",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-ռ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-21",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-ս-տառով/"
+    },
+    {
+      "lastmod": "2017-08-21",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-վ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-21",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-տ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-21",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-ց-տառով/"
+    },
+    {
+      "lastmod": "2017-08-21",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-ու-տառով/"
+    },
+    {
+      "lastmod": "2017-08-21",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-փ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-21",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-ք-տառով/"
+    },
+    {
+      "lastmod": "2017-08-21",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-օ-տառով/"
+    },
+    {
+      "lastmod": "2017-08-21",
+      "loc": "https://erazahan.info/իգական-անուններ-սկսվող-ֆ-տառով/"
+    },
+    {
+      "lastmod": "2019-11-09",
+      "loc": "https://erazahan.info/գովազդ-կայքում-govazd-kayqum/"
+    },
+    {
+      "lastmod": "2026-05-30",
+      "loc": "https://erazahan.info/about/"
+    },
+    {
+      "lastmod": "2026-05-30",
+      "loc": "https://erazahan.info/chgtnvac-erazner/"
+    },
+    {
+      "lastmod": "2026-06-12",
+      "loc": "https://erazahan.info/էջը-չի-գտնվել/"
+    },
+    {
+      "loc": "https://erazahan.info/արական-անուններ-սկսվող-ա-տառով/"
+    }
+  ]
+}
