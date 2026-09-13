@@ -143,6 +143,22 @@ function assertCurrentProjection(currentPost, currentItem, currentHy) {
   }
 }
 
+function newlineStyle(value) {
+  const hasCrlf = /\r\n/.test(value);
+  const hasLf = /(^|[^\r])\n/.test(value);
+  const hasCr = /\r(?!\n)/.test(value);
+  if (!hasCrlf && !hasLf && !hasCr) return 'none';
+  if (hasCrlf && !hasLf && !hasCr) return 'crlf';
+  if (hasLf && !hasCrlf && !hasCr) return 'lf';
+  fail('UNSUPPORTED_NEWLINE_STYLE', 'existing post content has mixed or CR-only newline style');
+}
+
+function restoreEstablishedNewlineStyle(currentContent, submittedContent) {
+  const style = newlineStyle(currentContent);
+  const logicalLf = submittedContent.replace(/\r\n?|\n/g, '\n');
+  return style === 'crlf' ? logicalLf.replace(/\n/g, '\r\n') : logicalLf;
+}
+
 function publishedPayloadWithoutVersion(published) {
   const { version: _version, ...payload } = published;
   return payload;
@@ -151,7 +167,10 @@ function publishedPayloadWithoutVersion(published) {
 export function projectExistingHyPostUpdate(input) {
   const identity = resolveExistingHyIdentity(input);
   const { currentPost, currentItem, currentHy } = input;
-  const { edit } = identity;
+  const edit = {
+    ...identity.edit,
+    content: restoreEstablishedNewlineStyle(currentPost.content, identity.edit.content),
+  };
   assertCurrentProjection(currentPost, currentItem, currentHy);
 
   const updatedPost = { ...currentPost, ...edit };

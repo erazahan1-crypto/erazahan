@@ -23,9 +23,9 @@ const CONTENT_ID = 'efa61838-86c8-56b8-815c-0a38b0a83242';
 const PATHS = hyStorePaths(CONTENT_ID);
 const POSTS_SHA = 'a'.repeat(40);
 
-function fixture({ drift = false } = {}) {
+function fixture({ drift = false, content = '<p>Example content</p>' } = {}) {
   const published = {
-    slug: 'example-dream', title: 'Example dream', description: 'Preserved description', content: '<p>Example content</p>',
+    slug: 'example-dream', title: 'Example dream', description: 'Preserved description', content,
     image_alts: { 'asset:one': 'Preserved alt' }, tags: ['One', 'Two'], alphabet_key: 'A',
     based_on_source_revision: null, based_on_source_fingerprint: null, updated_at: '2026-09-12T20:00:00Z',
     generation: { kind: 'human', generated_at: '2026-09-12T20:00:00Z' }, version: 3, published_at: '2026-09-12',
@@ -48,8 +48,8 @@ function fixture({ drift = false } = {}) {
   return { post, item, hy, registry };
 }
 
-function fakeTransport({ drift = false, failAt = null } = {}) {
-  const data = fixture({ drift });
+function fakeTransport({ drift = false, failAt = null, content } = {}) {
+  const data = fixture({ drift, content });
   const files = new Map([
     [POSTS_PATH, { sha: POSTS_SHA, content: JSON.stringify([data.post]) }],
     [REGISTRY_PATH, { sha: 'registry-sha', content: JSON.stringify(data.registry) }],
@@ -168,6 +168,14 @@ const noOpResult = await mockedEndpoint({ transport: noOp, env: atomicEnv() });
 assert.equal(noOpResult.status, 200);
 assert.equal(noOpResult.noOp, true);
 assert.equal(noOp.calls.blobs.length + noOp.calls.trees.length + noOp.calls.commits.length + noOp.calls.updates.length, 0);
+const crlfNoOp = fakeTransport({ content: 'a\r\nb' });
+const crlfNoOpResult = await mockedEndpoint({ transport: crlfNoOp, env: atomicEnv(), changes: { content: 'a\nb' } });
+assert.equal(crlfNoOpResult.noOp, true, 'CRLF transport normalization must not create an atomic commit');
+assert.equal(crlfNoOp.calls.blobs.length + crlfNoOp.calls.trees.length + crlfNoOp.calls.commits.length + crlfNoOp.calls.updates.length, 0);
+const crlfEdit = fakeTransport({ content: 'a\r\nb' });
+const crlfEditResult = await mockedEndpoint({ transport: crlfEdit, env: atomicEnv(), changes: { content: 'a\nB' } });
+assert.deepEqual(crlfEditResult.changedPaths, [POSTS_PATH, PATHS.item, PATHS.hy]);
+assert.ok(crlfEdit.calls.blobs.some((content) => content.includes('a\\r\\nB')), 'CRLF edit persists CRLF bytes');
 
 const invalid = fakeTransport();
 assert.equal((await mockedEndpoint({ transport: invalid, mode: 'unexpected' })).status, 503);

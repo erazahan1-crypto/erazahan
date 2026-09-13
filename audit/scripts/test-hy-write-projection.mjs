@@ -29,6 +29,10 @@ function editFrom(post, overrides = {}) {
   };
 }
 
+function canonicalCheckoutBytes(bytes) {
+  return Buffer.from(bytes.toString('utf8').replace(/\r\n/g, '\n'), 'utf8');
+}
+
 function fixture() {
   const published = {
     slug: 'example-dream',
@@ -169,6 +173,86 @@ assert.deepEqual(noOp.changes, {
 assert.equal(noOp.updatedItem.source_revision, 7);
 assert.equal(noOp.updatedHy.published.version, 3);
 
+function projectWithContent(currentContent, submittedContent) {
+  const input = fixture();
+  input.currentPost = { ...input.currentPost, content: currentContent };
+  input.currentHy = {
+    ...input.currentHy,
+    published: { ...input.currentHy.published, content: currentContent },
+  };
+  input.currentItem = {
+    ...input.currentItem,
+    source_fingerprint: sourceFingerprintV1(input.currentHy.published),
+  };
+  return projectExistingHyPostUpdate({
+    ...input,
+    editedPost: editFrom(input.currentPost, { content: submittedContent }),
+  });
+}
+
+const crlfNoOp = projectWithContent('a\r\nb', 'a\nb');
+assert.equal(crlfNoOp.updatedPost.content, 'a\r\nb', 'CRLF no-op restores stored bytes');
+assert.equal(crlfNoOp.updatedHy.published.content, 'a\r\nb', 'CRLF HY no-op restores stored bytes');
+assert.equal(crlfNoOp.changes.noOp, true, 'CRLF browser normalization is a no-op');
+assert.equal(crlfNoOp.updatedItem.source_revision, 7, 'CRLF no-op keeps source revision');
+assert.equal(crlfNoOp.updatedHy.published.version, 3, 'CRLF no-op keeps published version');
+
+const crlfEdit = projectWithContent('a\r\nb', 'a\nB');
+assert.equal(crlfEdit.updatedPost.content, 'a\r\nB', 'CRLF edit restores stored newline style');
+assert.equal(crlfEdit.updatedHy.published.content, 'a\r\nB', 'CRLF edit projects stored newline style');
+assert.equal(crlfEdit.changes.semanticFingerprintChanged, true, 'CRLF edit changes fingerprint');
+assert.equal(crlfEdit.updatedItem.source_revision, 8, 'CRLF edit increments source revision once');
+assert.equal(crlfEdit.updatedHy.published.version, 4, 'CRLF edit increments published version once');
+
+const lfNoOp = projectWithContent('a\nb', 'a\nb');
+assert.equal(lfNoOp.changes.noOp, true, 'LF no-op remains exact');
+const lfEdit = projectWithContent('a\nb', 'a\r\nB');
+assert.equal(lfEdit.updatedPost.content, 'a\nB', 'LF records retain LF style');
+
+const noBreakEdit = projectWithContent('single line', 'single\r\nline');
+assert.equal(noBreakEdit.updatedPost.content, 'single\nline', 'no-break records keep browser LF for introduced lines');
+
+for (const unsupported of ['a\rb', 'a\r\nb\nc']) {
+  const input = fixture();
+  input.currentPost = { ...input.currentPost, content: unsupported };
+  input.currentHy = { ...input.currentHy, published: { ...input.currentHy.published, content: unsupported } };
+  input.currentItem = { ...input.currentItem, source_fingerprint: sourceFingerprintV1(input.currentHy.published) };
+  expectCode('UNSUPPORTED_NEWLINE_STYLE', () => projectExistingHyPostUpdate({
+    ...input,
+    editedPost: editFrom(input.currentPost),
+  }));
+}
+
+const post110Before = '<strong>Երազահան Զամբյուղ Պատրաստել</strong>\r\n<h3><span>Երազում զամբյուղ պատրաստել նշանակում է - Անօգուտ աշխատանք:</span></h3>';
+const post110Submitted = '<strong>Երազահան Զամբյուղ Պատրաստել</strong>\n<h3><span>Երազում զամբյուղ պատրաստել նշանակում է - Անօգուտ աշխատանք։</span></h3>';
+const post110 = fixture();
+post110.currentPost = {
+  slug: 'erazahan-zambyux-patrastel', title: 'Երազահան Զամբյուղ Պատրաստել', date: '2016-09-12', letter: 'Զ',
+  categories: ['Երազներ սկսող Զ տառով'], content: post110Before,
+  sourceUrl: 'https://erazahan.info/erazahan-zambyux-patrastel/', comments: [],
+};
+post110.registryEntries[0] = {
+  ...post110.registryEntries[0],
+  legacy: {
+    original_array_index: post110.postIndex,
+    original_hy_slug: post110.currentPost.slug,
+    original_source_url: post110.currentPost.sourceUrl,
+  },
+};
+post110.editedPost = editFrom(post110.currentPost, { content: post110Submitted });
+post110.currentHy = {
+  ...post110.currentHy,
+  published: {
+    slug: post110.currentPost.slug, title: post110.currentPost.title, description: null, content: post110Before,
+    image_alts: {}, tags: [...post110.currentPost.categories], alphabet_key: post110.currentPost.letter,
+    based_on_source_revision: null, based_on_source_fingerprint: null, version: 1, published_at: post110.currentPost.date,
+  },
+};
+post110.currentItem = { ...post110.currentItem, source_revision: 1, source_fingerprint: sourceFingerprintV1(post110.currentHy.published) };
+const post110Result = projectExistingHyPostUpdate(post110);
+assert.equal(post110Result.updatedPost.content, post110Submitted.replace(/\n/g, '\r\n'), 'post 110 retains CRLF');
+assert.equal(post110Result.updatedItem.source_fingerprint, '1977b25195cfd7e8631cd9efb99db9523ae332f5b7b3b381d36be0019748ab3c', 'post 110 fingerprint uses CRLF content');
+
 expectCode('CURRENT_FINGERPRINT_DRIFT', () => {
   const input = fixture();
   projectExistingHyPostUpdate({ ...input, currentItem: { ...input.currentItem, source_fingerprint: 'a'.repeat(64) } });
@@ -250,8 +334,8 @@ for (let postIndex = 0; postIndex < posts.length; postIndex += 1) {
     corpus.fingerprint += Number(!result.changes.semanticFingerprintChanged);
     corpus.itemLogical += Number(assert.deepEqual(result.updatedItem, currentItem) === undefined);
     corpus.hyLogical += Number(assert.deepEqual(result.updatedHy, currentHy) === undefined);
-    corpus.itemBytes += Number(Buffer.from(result.serialized.item, 'utf8').equals(itemBytes));
-    corpus.hyBytes += Number(Buffer.from(result.serialized.hy, 'utf8').equals(hyBytes));
+    corpus.itemBytes += Number(Buffer.from(result.serialized.item, 'utf8').equals(canonicalCheckoutBytes(itemBytes)));
+    corpus.hyBytes += Number(Buffer.from(result.serialized.hy, 'utf8').equals(canonicalCheckoutBytes(hyBytes)));
     corpus.drift += Number(!result.changes.noOp);
   } catch (error) {
     unexpected.push({ postIndex, message: error instanceof Error ? error.message : String(error) });
