@@ -1,4 +1,4 @@
-import postsJson from '../data/posts.json';
+import { selectedHyPosts } from './content-source/hy-content-source.mjs';
 import pagesJson from '../data/pages.json';
 import menuJson from '../data/menu.json';
 import imagesJson from '../data/images.json';
@@ -51,7 +51,7 @@ export interface Page {
 
 // Public pages and every derived public index use the same canonical dataset.
 // The per-post JSON directory remains for legacy/Keystatic compatibility only.
-export const posts: Post[] = postsJson as Post[];
+export const posts: Post[] = selectedHyPosts as Post[];
 export const pages = pagesJson as Page[];
 export const menu = menuJson as { label: string; href: string; parent: string; order: number }[];
 
