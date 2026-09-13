@@ -98,8 +98,9 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
           </div>
         </section>
         <label class="block">
-          <span class="mb-1.5 block text-sm font-semibold text-white">Исходный URL <span class="text-rose-300">*</span></span>
-          <input name="sourceUrl" required type="url" maxlength="2000" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-sm text-white outline-none focus:border-violet-400" />
+          <span class="mb-1.5 block text-sm font-semibold text-white">Исходный URL</span>
+          <input name="sourceUrl" required readonly aria-readonly="true" aria-describedby="source-url-help" type="url" maxlength="2000" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-sm text-white outline-none focus:border-violet-400" />
+          <span id="source-url-help" class="mt-2 block text-xs leading-5 text-slate-400">Исторический URL закреплён для происхождения записи и сохраняется без изменений.</span>
         </label>
         <p class="text-xs leading-5 text-slate-400">Неизвестные поля и `comments` не редактируются и сохраняются сервером без удаления.</p>
         <section class="rounded-xl border border-white/10 bg-night-950/60 p-3">
