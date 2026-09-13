@@ -10,6 +10,7 @@ import {
   assertAtomicSourceUrl,
   loadAtomicHyWriteSnapshot,
   prepareAtomicHyWrite,
+  resolveAtomicGitHubBranch,
   resolveHyAdminWriteMode,
 } from '../../functions/_lib/admin-atomic-hy-write.mjs';
 import {
@@ -79,11 +80,31 @@ function edit(post, changes = {}) {
 }
 
 // This mirrors the endpoint's injected atomic branch. Repository and R2 operations stay mocked.
-async function mockedEndpoint({ transport, mode, changes = {}, expectedVersion = POSTS_SHA, deleteAfterSuccess = false }) {
+function atomicEnv(branch = 'migration/hy-atomic-drill') {
+  return {
+    ERAZAHAN_HY_ADMIN_WRITE_MODE: 'atomic',
+    ADMIN_GITHUB_BRANCH: branch,
+    ERAZAHAN_HY_ADMIN_ATOMIC_BRANCH: branch,
+  };
+}
+
+function assertNoGitCalls(calls) {
+  assert.equal(calls.ref, 0);
+  assert.equal(calls.commitLookup, 0);
+  assert.equal(calls.reads.length, 0);
+  assert.equal(calls.blobs.length, 0);
+  assert.equal(calls.trees.length, 0);
+  assert.equal(calls.commits.length, 0);
+  assert.equal(calls.updates.length, 0);
+}
+
+async function mockedEndpoint({ transport, mode, env, changes = {}, expectedVersion = POSTS_SHA, deleteAfterSuccess = false }) {
   try {
-    const selected = resolveHyAdminWriteMode(mode === undefined ? {} : { ERAZAHAN_HY_ADMIN_WRITE_MODE: mode });
+    const selectedEnv = env ?? (mode === undefined ? {} : { ERAZAHAN_HY_ADMIN_WRITE_MODE: mode });
+    const selected = resolveHyAdminWriteMode(selectedEnv);
     if (selected === 'legacy') return { status: 200, route: 'legacy', noOp: false };
-    const initial = await loadAtomicHyWriteSnapshot((paths) => loadMultiFileSnapshot(transport.client, { branch: 'main', paths }));
+    const branch = resolveAtomicGitHubBranch(selectedEnv);
+    const initial = await loadAtomicHyWriteSnapshot((paths) => loadMultiFileSnapshot(transport.client, { branch, paths }));
     if (initial.blobSha !== expectedVersion) return { status: 409, route: 'atomic', noOp: false };
     const current = initial.posts[0];
     const prepared = await prepareAtomicHyWrite({
@@ -100,7 +121,9 @@ async function mockedEndpoint({ transport, mode, changes = {}, expectedVersion =
     if (deleteAfterSuccess && !result.noOp) transport.calls.r2Deletes.push('posts/example.webp');
     return { status: 200, route: 'atomic', ...result };
   } catch (error) {
-    if (error instanceof AdminAtomicHyWriteError) return { status: error.code === 'INVALID_WRITE_MODE' ? 503 : 400, error };
+    if (error instanceof AdminAtomicHyWriteError) {
+      return { status: ['INVALID_WRITE_MODE', 'INVALID_ATOMIC_BRANCH_CONFIRMATION'].includes(error.code) ? 503 : 400, error };
+    }
     if (error instanceof HyWriteProjectionError) return { status: 400, error };
     if (error?.code === 'STALE_POSTS_VERSION' || error?.code === 'BRANCH_REF_CONFLICT') return { status: 409, error };
     return { status: 502, error };
@@ -108,10 +131,14 @@ async function mockedEndpoint({ transport, mode, changes = {}, expectedVersion =
 }
 
 const endpointSource = readFileSync('functions/api/admin/posts/[id].ts', 'utf8');
-for (const required of ['resolveHyAdminWriteMode', 'loadAtomicHyWriteSnapshot', 'prepareAtomicHyWrite', 'commitMultiFileTransaction', 'loadSnapshotFiles']) {
+for (const required of ['resolveHyAdminWriteMode', 'resolveAtomicGitHubBranch', 'loadAtomicHyWriteSnapshot', 'prepareAtomicHyWrite', 'commitMultiFileTransaction', 'loadSnapshotFiles']) {
   assert.match(endpointSource, new RegExp(required), `endpoint imports and uses ${required}`);
 }
 assert.equal(endpointSource.includes('process.env'), false, 'endpoint selector comes only from Worker bindings');
+assert.ok(
+  endpointSource.lastIndexOf('resolveAtomicGitHubBranch(context.env)') < endpointSource.lastIndexOf('getGitHubConfig(context.env)'),
+  'atomic branch confirmation precedes GitHub configuration and repository access',
+);
 assert.ok(
   endpointSource.indexOf('const deletedKeys') > endpointSource.indexOf('commitMultiFileTransaction'),
   'post-commit R2 cleanup remains after the atomic transaction',
@@ -125,54 +152,74 @@ assert.equal((await mockedEndpoint({ transport: explicitLegacy, mode: 'legacy' }
 assert.equal(explicitLegacy.calls.ref, 0);
 
 const atomic = fakeTransport();
-const atomicResult = await mockedEndpoint({ transport: atomic, mode: 'atomic', changes: { title: 'Changed title' } });
+const atomicResult = await mockedEndpoint({ transport: atomic, env: atomicEnv(), changes: { title: 'Changed title' } });
 assert.equal(atomicResult.status, 200);
 assert.deepEqual(atomicResult.changedPaths, [POSTS_PATH, PATHS.item, PATHS.hy]);
 assert.equal(atomic.calls.ref, 1);
 assert.equal(atomic.calls.commitLookup, 1);
 assert.equal(atomic.calls.reads.every((call) => call.treeSha === 'tree-sha'), true);
 assert.equal(atomic.calls.commits.length, 1);
-assert.deepEqual(atomic.calls.updates, [{ branch: 'main', sha: 'new-commit', force: false }]);
+assert.deepEqual(atomic.calls.updates, [{ branch: 'migration/hy-atomic-drill', sha: 'new-commit', force: false }]);
 
 const slugOnly = fakeTransport();
-assert.deepEqual((await mockedEndpoint({ transport: slugOnly, mode: 'atomic', changes: { slug: 'changed-slug' } })).changedPaths, [POSTS_PATH, PATHS.hy]);
+assert.deepEqual((await mockedEndpoint({ transport: slugOnly, env: atomicEnv(), changes: { slug: 'changed-slug' } })).changedPaths, [POSTS_PATH, PATHS.hy]);
 const noOp = fakeTransport();
-const noOpResult = await mockedEndpoint({ transport: noOp, mode: 'atomic' });
+const noOpResult = await mockedEndpoint({ transport: noOp, env: atomicEnv() });
 assert.equal(noOpResult.status, 200);
 assert.equal(noOpResult.noOp, true);
 assert.equal(noOp.calls.blobs.length + noOp.calls.trees.length + noOp.calls.commits.length + noOp.calls.updates.length, 0);
 
 const invalid = fakeTransport();
 assert.equal((await mockedEndpoint({ transport: invalid, mode: 'unexpected' })).status, 503);
-assert.equal(invalid.calls.ref, 0);
+assertNoGitCalls(invalid.calls);
+for (const env of [
+  { ERAZAHAN_HY_ADMIN_WRITE_MODE: 'atomic' },
+  { ERAZAHAN_HY_ADMIN_WRITE_MODE: 'atomic', ADMIN_GITHUB_BRANCH: '' },
+  { ERAZAHAN_HY_ADMIN_WRITE_MODE: 'atomic', ADMIN_GITHUB_BRANCH: '   ' },
+  { ERAZAHAN_HY_ADMIN_WRITE_MODE: 'atomic', ADMIN_GITHUB_BRANCH: 'migration/hy-atomic-drill' },
+  { ERAZAHAN_HY_ADMIN_WRITE_MODE: 'atomic', ADMIN_GITHUB_BRANCH: 'migration/hy-atomic-drill', ERAZAHAN_HY_ADMIN_ATOMIC_BRANCH: '' },
+  { ERAZAHAN_HY_ADMIN_WRITE_MODE: 'atomic', ADMIN_GITHUB_BRANCH: 'migration/hy-atomic-drill', ERAZAHAN_HY_ADMIN_ATOMIC_BRANCH: '   ' },
+  { ERAZAHAN_HY_ADMIN_WRITE_MODE: 'atomic', ADMIN_GITHUB_BRANCH: 'main', ERAZAHAN_HY_ADMIN_ATOMIC_BRANCH: 'migration/hy-atomic-drill' },
+  { ERAZAHAN_HY_ADMIN_WRITE_MODE: 'atomic', ADMIN_GITHUB_BRANCH: 'migration/hy-atomic-drill', ERAZAHAN_HY_ADMIN_ATOMIC_BRANCH: 'typo-branch' },
+]) {
+  const guarded = fakeTransport();
+  assert.equal((await mockedEndpoint({ transport: guarded, env })).status, 503);
+  assertNoGitCalls(guarded.calls);
+}
+assert.equal(resolveAtomicGitHubBranch(atomicEnv('main')), 'main', 'explicit main/main is allowed');
+assert.equal(
+  resolveAtomicGitHubBranch({ ...atomicEnv(), ADMIN_GITHUB_BRANCH: '  migration/hy-atomic-drill  ', ERAZAHAN_HY_ADMIN_ATOMIC_BRANCH: 'migration/hy-atomic-drill ' }),
+  'migration/hy-atomic-drill',
+  'branch confirmation trims outer whitespace before exact comparison',
+);
 const sourceChanged = fakeTransport();
-assert.equal((await mockedEndpoint({ transport: sourceChanged, mode: 'atomic', changes: { sourceUrl: 'https://erazahan.info/changed/' } })).status, 400);
+assert.equal((await mockedEndpoint({ transport: sourceChanged, env: atomicEnv(), changes: { sourceUrl: 'https://erazahan.info/changed/' } })).status, 400);
 assert.equal(sourceChanged.calls.blobs.length, 0);
 const stale = fakeTransport();
-assert.equal((await mockedEndpoint({ transport: stale, mode: 'atomic', expectedVersion: 'b'.repeat(40) })).status, 409);
+assert.equal((await mockedEndpoint({ transport: stale, env: atomicEnv(), expectedVersion: 'b'.repeat(40) })).status, 409);
 assert.equal(stale.calls.blobs.length, 0);
 const drift = fakeTransport({ drift: true });
-assert.equal((await mockedEndpoint({ transport: drift, mode: 'atomic', changes: { title: 'Drift' } })).status, 400);
+assert.equal((await mockedEndpoint({ transport: drift, env: atomicEnv(), changes: { title: 'Drift' } })).status, 400);
 assert.equal(drift.calls.blobs.length, 0);
 const conflict = fakeTransport({ failAt: 'branch' });
-assert.equal((await mockedEndpoint({ transport: conflict, mode: 'atomic', changes: { title: 'Conflict' } })).status, 409);
+assert.equal((await mockedEndpoint({ transport: conflict, env: atomicEnv(), changes: { title: 'Conflict' } })).status, 409);
 assert.equal(conflict.calls.commits.length, 1);
 assert.equal(conflict.calls.updates.length, 1);
 for (const failAt of ['blob', 'tree', 'commit']) {
   const failed = fakeTransport({ failAt });
-  assert.equal((await mockedEndpoint({ transport: failed, mode: 'atomic', changes: { title: `Failed ${failAt}` } })).status, 502);
+  assert.equal((await mockedEndpoint({ transport: failed, env: atomicEnv(), changes: { title: `Failed ${failAt}` } })).status, 502);
   assert.equal(failed.calls.updates.length, 0, `${failAt}: no posts-only fallback`);
 }
 const r2Success = fakeTransport();
-assert.equal((await mockedEndpoint({ transport: r2Success, mode: 'atomic', changes: { title: 'Delete after commit' }, deleteAfterSuccess: true })).status, 200);
+assert.equal((await mockedEndpoint({ transport: r2Success, env: atomicEnv(), changes: { title: 'Delete after commit' }, deleteAfterSuccess: true })).status, 200);
 assert.deepEqual(r2Success.calls.r2Deletes, ['posts/example.webp']);
 const r2Failure = fakeTransport({ failAt: 'branch' });
-assert.equal((await mockedEndpoint({ transport: r2Failure, mode: 'atomic', changes: { title: 'No delete' }, deleteAfterSuccess: true })).status, 409);
+assert.equal((await mockedEndpoint({ transport: r2Failure, env: atomicEnv(), changes: { title: 'No delete' }, deleteAfterSuccess: true })).status, 409);
 assert.deepEqual(r2Failure.calls.r2Deletes, []);
 
 console.log('ADMIN ATOMIC HY WRITE PASS');
 console.log(JSON.stringify({
-  selector_default_and_legacy: true, atomic_mode: true, invalid_fails_closed: true,
+  selector_default_and_legacy: true, atomic_mode: true, explicit_atomic_branch_confirmation: true, invalid_fails_closed: true,
   semantic_posts_item_hy: true, slug_posts_hy_only: true, no_op_without_commit: true,
   source_url_immutable: true, stale_client_conflict: true, store_drift_rejected: true,
   branch_conflict: true, git_failures_no_fallback: true, same_snapshot_tree: true,

@@ -17,6 +17,7 @@ import {
   assertAtomicSourceUrl,
   loadAtomicHyWriteSnapshot,
   prepareAtomicHyWrite,
+  resolveAtomicGitHubBranch,
   resolveHyAdminWriteMode,
 } from '../../../_lib/admin-atomic-hy-write.mjs';
 import { HyWriteProjectionError } from '../../../../src/lib/content-write/project-hy-post.mjs';
@@ -80,6 +81,8 @@ export async function onRequestPut(context: Context): Promise<Response> {
 
     let edited = validateEditablePost(body.post);
     const writeMode = resolveHyAdminWriteMode(context.env);
+    // Validate the explicit atomic target before any GitHub or R2 operation.
+    if (writeMode === 'atomic') resolveAtomicGitHubBranch(context.env);
     const config = getGitHubConfig(context.env);
     const atomicSnapshot = writeMode === 'atomic'
       ? await loadAtomicHyWriteSnapshot((paths) => loadMultiFileSnapshot(config, paths))
@@ -256,7 +259,9 @@ async function parseSaveRequest(request: Request, contentType: string): Promise<
 }
 
 function handleError(error: unknown): Response {
-  if (error instanceof AdminAtomicHyWriteError && error.code === 'INVALID_WRITE_MODE') {
+  if (error instanceof AdminAtomicHyWriteError && (
+    error.code === 'INVALID_WRITE_MODE' || error.code === 'INVALID_ATOMIC_BRANCH_CONFIRMATION'
+  )) {
     return json({ ok: false, error: error.message, writable: false }, 503);
   }
   if (error instanceof PostsConfigError) return json({ ok: false, error: error.message, writable: false }, 503);
