@@ -1,7 +1,10 @@
 import {
   commitPosts,
+  commitMultiFileTransaction,
   getGitHubConfig,
+  loadMultiFileSnapshot,
   loadPostsSnapshot,
+  loadSnapshotFiles,
   parsePostId,
   PostsConfigError,
   PostsConflictError,
@@ -9,6 +12,14 @@ import {
   validateEditablePost,
   type GitHubPostsEnv,
 } from '../../../_lib/github-posts';
+import {
+  AdminAtomicHyWriteError,
+  assertAtomicSourceUrl,
+  loadAtomicHyWriteSnapshot,
+  prepareAtomicHyWrite,
+  resolveHyAdminWriteMode,
+} from '../../../_lib/admin-atomic-hy-write.mjs';
+import { HyWriteProjectionError } from '../../../../src/lib/content-write/project-hy-post.mjs';
 import {
   cleanupPostImageUploads,
   contentReferencesImageKey,
@@ -68,8 +79,14 @@ export async function onRequestPut(context: Context): Promise<Response> {
     }
 
     let edited = validateEditablePost(body.post);
+    const writeMode = resolveHyAdminWriteMode(context.env);
     const config = getGitHubConfig(context.env);
-    const snapshot = await loadPostsSnapshot(config);
+    const atomicSnapshot = writeMode === 'atomic'
+      ? await loadAtomicHyWriteSnapshot((paths) => loadMultiFileSnapshot(config, paths))
+      : null;
+    const snapshot = atomicSnapshot
+      ? { posts: atomicSnapshot.posts, blobSha: atomicSnapshot.blobSha }
+      : await loadPostsSnapshot(config);
     if (snapshot.blobSha !== expectedVersion) {
       throw new PostsConflictError('Статья или набор постов уже изменились. Перезагрузите страницу.');
     }
@@ -77,6 +94,7 @@ export async function onRequestPut(context: Context): Promise<Response> {
     if (!current || current.slug !== originalSlug) {
       throw new PostsConflictError('Позиция статьи изменилась. Перезагрузите страницу.');
     }
+    if (writeMode === 'atomic') assertAtomicSourceUrl(current, edited);
     const normalizedSlug = edited.slug.normalize('NFKC').toLocaleLowerCase('hy-AM');
     const duplicate = snapshot.posts.some((post, index) => index !== id
       && typeof post.slug === 'string'
@@ -123,13 +141,52 @@ export async function onRequestPut(context: Context): Promise<Response> {
     if (edited.content.includes('pending-image:')) throw new PostImageValidationError('Не все pending-изображения обработаны.');
     validateManagedImageAlts(edited.content);
 
-    snapshot.posts[id] = { ...current, ...edited };
-    JSON.parse(JSON.stringify(snapshot.posts));
-    const result = await commitPosts(config, snapshot, snapshot.posts);
+    let result: { commitSha: string | null; blobSha: string; noOp?: boolean };
+    let savedPosts: Array<Record<string, unknown>>;
+    if (writeMode === 'atomic') {
+      try {
+        const prepared = await prepareAtomicHyWrite({
+          snapshot: atomicSnapshot!.snapshot,
+          postIndex: id,
+          currentPost: current,
+          editedPost: edited,
+          loadSnapshotFiles: (baseSnapshot, paths) => loadSnapshotFiles(config, baseSnapshot, paths),
+        });
+        const transaction = await commitMultiFileTransaction(
+          config,
+          prepared.snapshot,
+          snapshot.blobSha,
+          prepared.changes,
+          'Admin: update dream dictionary article',
+        );
+        result = {
+          commitSha: transaction.commitSha,
+          blobSha: transaction.blobShas.get('src/data/posts.json') || snapshot.blobSha,
+          noOp: transaction.noOp,
+        };
+        savedPosts = prepared.updatedPosts;
+      } catch (error) {
+        if (error instanceof AdminAtomicHyWriteError || error instanceof HyWriteProjectionError) {
+          throw new PostsValidationError(error.message);
+        }
+        if (error && typeof error === 'object' && (
+          (error as { code?: unknown }).code === 'STALE_POSTS_VERSION'
+          || (error as { code?: unknown }).code === 'BRANCH_REF_CONFLICT'
+        )) {
+          throw new PostsConflictError('Article or branch changed during save. Reload the page.');
+        }
+        throw error;
+      }
+    } else {
+      snapshot.posts[id] = { ...current, ...edited };
+      JSON.parse(JSON.stringify(snapshot.posts));
+      result = await commitPosts(config, snapshot, snapshot.posts);
+      savedPosts = snapshot.posts;
+    }
 
     const deletedKeys: string[] = [];
     const warnings: string[] = [];
-    const replacementPlan = replacementKeysSafeToDelete(snapshot.posts, id, replaceCleanupKeys);
+    const replacementPlan = replacementKeysSafeToDelete(savedPosts, id, replaceCleanupKeys);
     for (const key of replacementPlan.shared) warnings.push(`Старый файл ${key} сохранён в R2: он используется другой статьёй.`);
     const safeReplacementDeletes = replacementPlan.safe;
     for (const key of [...new Set([...deleteKeys, ...safeReplacementDeletes])]) {
@@ -144,7 +201,7 @@ export async function onRequestPut(context: Context): Promise<Response> {
     return json({
       ok: true,
       ...result,
-      post: snapshot.posts[id],
+      post: savedPosts[id],
       uploadedKeys,
       deletedKeys,
       warnings,
@@ -199,6 +256,9 @@ async function parseSaveRequest(request: Request, contentType: string): Promise<
 }
 
 function handleError(error: unknown): Response {
+  if (error instanceof AdminAtomicHyWriteError && error.code === 'INVALID_WRITE_MODE') {
+    return json({ ok: false, error: error.message, writable: false }, 503);
+  }
   if (error instanceof PostsConfigError) return json({ ok: false, error: error.message, writable: false }, 503);
   if (error instanceof PostsConflictError) return json({ ok: false, error: error.message, conflict: true }, 409);
   if (error instanceof PostsValidationError || error instanceof PostImageValidationError) {

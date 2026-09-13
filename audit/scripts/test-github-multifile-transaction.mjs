@@ -3,6 +3,7 @@ import {
   GitHubBranchConflictError,
   GitHubTransactionError,
   commitMultiFileTransaction,
+  loadSnapshotFiles,
   loadMultiFileSnapshot,
 } from '../../functions/_lib/github-multifile.mjs';
 
@@ -82,6 +83,14 @@ assert.equal(initialSnapshot.refSha, 'commit-sha');
 assert.equal(initialSnapshot.commitSha, 'commit-sha');
 assert.equal(initialSnapshot.treeSha, 'tree-sha');
 assert.deepEqual(initial.calls.reads.map((call) => call.treeSha), ['tree-sha', 'tree-sha', 'tree-sha']);
+
+const dynamic = fakeClient();
+const dynamicInitial = await snapshot(dynamic, [POSTS]);
+const dynamicFull = await loadSnapshotFiles(dynamic.client, dynamicInitial, [ITEM, HY]);
+assert.equal(dynamic.calls.ref.length, 1, 'dynamic reads do not resolve the branch again');
+assert.equal(dynamic.calls.commitLookup.length, 1, 'dynamic reads do not resolve the commit again');
+assert.deepEqual(dynamic.calls.reads.map((call) => call.treeSha), ['tree-sha', 'tree-sha', 'tree-sha']);
+assert.deepEqual([...dynamicFull.files.keys()], [POSTS, ITEM, HY]);
 
 const missingSnapshotFile = fakeClient({ files: { [HY]: undefined } });
 await expectCode('SNAPSHOT_FILE_MISSING', () => snapshot(missingSnapshotFile));
@@ -233,6 +242,7 @@ assert.equal(ambiguous.calls.updates.length, 1, 'ambiguous result does not retry
 console.log('GITHUB MULTI-FILE TRANSACTION PASS');
 console.log(JSON.stringify({
   snapshot_same_ref_commit_tree: true,
+  dynamic_files_from_same_tree: true,
   single_file_backward_compatible_shape: true,
   three_file_single_commit: true,
   unchanged_skipped: true,

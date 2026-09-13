@@ -121,6 +121,14 @@ export async function loadMultiFileSnapshot(config: GitHubConfig, paths: string[
   return loadMultiFileSnapshotWithTransport(githubTransport(config), { branch: config.branch, paths });
 }
 
+export async function loadSnapshotFiles(
+  config: GitHubConfig,
+  snapshot: MultiFileSnapshot,
+  paths: string[],
+): Promise<MultiFileSnapshot> {
+  return loadSnapshotFilesWithTransport(githubTransport(config), snapshot, paths);
+}
+
 export async function commitMultiFileTransaction(
   config: GitHubConfig,
   snapshot: MultiFileSnapshot,
@@ -260,4 +268,5 @@ function decodeBase64(value: string): string {
 import {
   commitMultiFileTransaction as commitMultiFileTransactionWithTransport,
   loadMultiFileSnapshot as loadMultiFileSnapshotWithTransport,
+  loadSnapshotFiles as loadSnapshotFilesWithTransport,
 } from './github-multifile.mjs';

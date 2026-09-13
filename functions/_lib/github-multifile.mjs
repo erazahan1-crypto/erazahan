@@ -93,6 +93,25 @@ export async function loadMultiFileSnapshot(client, { branch, paths }) {
   return { branch, refSha: ref.sha, commitSha: ref.sha, treeSha: commit.treeSha, files };
 }
 
+// Reads further files from the immutable tree already captured by a snapshot.
+// Deliberately does not look up the branch ref or commit again.
+export async function loadSnapshotFiles(client, snapshot, paths) {
+  if (!client || typeof client !== 'object') fail('INVALID_TRANSPORT', 'GitHub transport is required');
+  assertSnapshot(snapshot);
+  if (!Array.isArray(paths) || paths.length === 0) fail('INVALID_SNAPSHOT_PATHS', 'At least one repository path is required');
+  assertUniquePaths(paths);
+
+  const files = new Map(snapshot.files);
+  for (const filePath of paths) {
+    const file = await atStage('SNAPSHOT_FILE_FAILURE', () => client.readFileFromTree(snapshot.treeSha, filePath));
+    if (!file || typeof file.sha !== 'string' || !file.sha || typeof file.content !== 'string') {
+      fail('SNAPSHOT_FILE_MISSING', `GitHub snapshot does not contain ${filePath}`);
+    }
+    files.set(filePath, { sha: file.sha, content: file.content });
+  }
+  return { ...snapshot, files };
+}
+
 export async function commitMultiFileTransaction(client, {
   snapshot,
   expectedPostsBlobSha,
