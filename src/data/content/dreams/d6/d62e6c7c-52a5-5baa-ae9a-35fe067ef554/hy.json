@@ -1,0 +1,21 @@
+{
+  "content_id": "d62e6c7c-52a5-5baa-ae9a-35fe067ef554",
+  "draft": null,
+  "locale": "hy",
+  "published": {
+    "alphabet_key": "Թ",
+    "based_on_source_fingerprint": null,
+    "based_on_source_revision": null,
+    "content": "<h2>Երազահան Թերթ</h2>\r\nԵրազում թերթ կարդալը նշանակում է նորություն, բամբասանք կամ խաբեություն։",
+    "description": null,
+    "image_alts": {},
+    "published_at": "2017-10-22",
+    "slug": "erazahan-tert",
+    "tags": [
+      "Երազներ սկսող Թ տառով"
+    ],
+    "title": "Երազահան Թերթ: Erazahan Tert",
+    "version": 1
+  },
+  "schema_version": 1
+}

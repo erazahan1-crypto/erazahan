@@ -1,0 +1,21 @@
+{
+  "content_id": "5f712ad1-6e6e-5619-92bc-28b9118c23db",
+  "draft": null,
+  "locale": "hy",
+  "published": {
+    "alphabet_key": "Ա",
+    "based_on_source_fingerprint": null,
+    "based_on_source_revision": null,
+    "content": "<h2>Երազահան Ավտովթար</h2>\r\n<p> Եթե երազում դուք <strong>ավտովթարի եք ենթարկվել</strong>, ապա դա նշանակում է, որ դուք չեք կարող ամբողջությամբ վայելել այն հաճույքը, որին սպասում էիք:</p>\r\n<p>Եթե <strong>խուսափել եք ավտովթարից</strong>, ապա կկարողանաք դիմանալ կոնկուրենցիային աշխատավայրում:</p>",
+    "description": null,
+    "image_alts": {},
+    "published_at": "2017-08-29",
+    "slug": "avtovtar-tesnel-erazum",
+    "tags": [
+      "Երազներ սկսող Ա տառով"
+    ],
+    "title": "Երազահան Ավտովթար: Erazahan Avtovtar",
+    "version": 1
+  },
+  "schema_version": 1
+}

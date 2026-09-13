@@ -7,7 +7,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { sourceFingerprintV1 } from '../../src/lib/content-schema/fingerprint.mjs';
 import {
   validateContentItem,
@@ -15,10 +15,11 @@ import {
   validateLocaleDocument,
 } from '../../src/lib/content-schema/schema.mjs';
 
-const EXPECTED_POSTS = 5800;
-const EXPECTED_POSTS_SHA256 = '558ce9b0cbbc7acc94302daaf7cae43eb684907ec4fa078b2fc21c1dc4646ba3';
-const EXPECTED_MAPPING_SHA256 = '9ff7d6863936db65784723646d3874c3b7a94b5b87eaec42003175ce7030d1be';
-const EXPECTED_REGISTRY_SHA256 = '7f29716afc886f1423b30b132449e4c8a81c71db10075ad1f54f984be845691a';
+export const EXPECTED_POSTS = 5800;
+export const EXPECTED_POSTS_SHA256 = '558ce9b0cbbc7acc94302daaf7cae43eb684907ec4fa078b2fc21c1dc4646ba3';
+export const EXPECTED_MAPPING_SHA256 = '9ff7d6863936db65784723646d3874c3b7a94b5b87eaec42003175ce7030d1be';
+export const EXPECTED_REGISTRY_SHA256 = '7f29716afc886f1423b30b132449e4c8a81c71db10075ad1f54f984be845691a';
+export const EXPECTED_DRY_RUN_SHA256 = 'adafc2b5edf2f602fb59170ee87b750547db7cc17743178369e7e863546755c2';
 const LEGACY_FIELDS = [
   'slug',
   'title',
@@ -31,17 +32,17 @@ const LEGACY_FIELDS = [
 ];
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(SCRIPT_DIR, '..', '..');
-const POSTS_PATH = path.join(ROOT, 'src', 'data', 'posts.json');
-const REGISTRY_PATH = path.join(ROOT, 'src', 'data', 'migrations', 'content-id-registry.v1.json');
+export const ROOT = path.resolve(SCRIPT_DIR, '..', '..');
+export const POSTS_PATH = path.join(ROOT, 'src', 'data', 'posts.json');
+export const REGISTRY_PATH = path.join(ROOT, 'src', 'data', 'migrations', 'content-id-registry.v1.json');
 const IMAGES_PATH = path.join(ROOT, 'src', 'data', 'images.json');
 const BASELINE_ROUTES_PATH = path.join(ROOT, 'audit', 'baseline', 'dictionary-routes.json');
 
-function sha256(value) {
+export function sha256(value) {
   return createHash('sha256').update(value).digest('hex');
 }
 
-function invariant(condition, message) {
+export function invariant(condition, message) {
   if (!condition) throw new Error(message);
 }
 
@@ -55,11 +56,11 @@ function canonicalize(value) {
   return value;
 }
 
-function canonicalSerialization(value) {
+export function canonicalSerialization(value) {
   return `${JSON.stringify(canonicalize(value), null, 2)}\n`;
 }
 
-function readJsonWithBytes(file) {
+export function readJsonWithBytes(file) {
   const bytes = readFileSync(file);
   return { bytes, value: JSON.parse(bytes.toString('utf8')) };
 }
@@ -72,7 +73,7 @@ function sameSet(left, right) {
   return left.size === right.size && [...left].every((value) => right.has(value));
 }
 
-function baselineRouteSet(baseline) {
+export function baselineRouteSet(baseline) {
   return new Set(baseline.routes.map((route) => {
     invariant(
       typeof route.output_file === 'string' && route.output_file.endsWith('/index.html'),
@@ -94,7 +95,7 @@ function hasInlineImage(post) {
   return /<img\b|!\[[^\]]*\]\(/i.test(post.content);
 }
 
-function buildImport(sourcePosts, registry) {
+export function buildImport(sourcePosts, registry) {
   const entryBySourceUrl = new Map(
     registry.entries.map((entry) => [entry.legacy.original_source_url, entry]),
   );
@@ -221,7 +222,7 @@ function chooseSamples(generated, uploadedFiles) {
   });
 }
 
-function run() {
+export function runDryRun() {
   const postsSource = readJsonWithBytes(POSTS_PATH);
   const registrySource = readJsonWithBytes(REGISTRY_PATH);
   const imagesSource = readJsonWithBytes(IMAGES_PATH);
@@ -386,8 +387,8 @@ function run() {
       registry_mapping_sha256: registry.mapping_sha256,
       registry_sha256: sha256(registrySource.bytes),
       temporary_artifact: artifactPath,
-      permanent_store_paths_checked: ['src/content/dreams'],
-      permanent_store_created: existsSync(path.join(ROOT, 'src', 'content', 'dreams')),
+      forbidden_astro_content_store_paths_checked: ['src/content/dreams'],
+      forbidden_astro_content_store_created: existsSync(path.join(ROOT, 'src', 'content', 'dreams')),
     },
     samples: chooseSamples(generated, uploadedFiles),
     validation_errors: {
@@ -401,9 +402,14 @@ function run() {
   console.log(JSON.stringify(report, null, 2));
 }
 
-try {
-  run();
-} catch (error) {
-  console.error(`HY IMPORT DRY-RUN FAILED: ${error instanceof Error ? error.message : String(error)}`);
-  process.exitCode = 1;
+const isMain = Boolean(process.argv[1])
+  && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
+
+if (isMain) {
+  try {
+    runDryRun();
+  } catch (error) {
+    console.error(`HY IMPORT DRY-RUN FAILED: ${error instanceof Error ? error.message : String(error)}`);
+    process.exitCode = 1;
+  }
 }

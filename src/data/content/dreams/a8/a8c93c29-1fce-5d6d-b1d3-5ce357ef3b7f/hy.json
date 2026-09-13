@@ -1,0 +1,21 @@
+{
+  "content_id": "a8c93c29-1fce-5d6d-b1d3-5ce357ef3b7f",
+  "draft": null,
+  "locale": "hy",
+  "published": {
+    "alphabet_key": "Ե",
+    "based_on_source_fingerprint": null,
+    "based_on_source_revision": null,
+    "content": "<span>- Մահու վտանգ կա;</span>",
+    "description": null,
+    "image_alts": {},
+    "published_at": "2016-09-11",
+    "slug": "erazahan-exerg-lsel",
+    "tags": [
+      "Երազներ սկսող Ե տառով"
+    ],
+    "title": "Եղերերգութիվն լսել",
+    "version": 1
+  },
+  "schema_version": 1
+}
