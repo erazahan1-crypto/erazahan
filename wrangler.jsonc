@@ -20,5 +20,29 @@
       "binding": "POST_IMAGES",
       "bucket_name": "erazahan-images"
     }
-  ]
+  ],
+  "env": {
+    "production": {
+      "vars": {
+        "ADMIN_GITHUB_REPO": "erazahan1-crypto/erazahan",
+        "ADMIN_GITHUB_BRANCH": "main",
+        "PUBLIC_ALLOW_INDEXING": "true",
+        "ERAZAHAN_HY_ADMIN_WRITE_MODE": "atomic",
+        "ERAZAHAN_HY_ADMIN_ATOMIC_BRANCH": "main"
+      },
+      "d1_databases": [
+        {
+          "binding": "DREAMS_DB",
+          "database_name": "erazahan-dreams",
+          "database_id": "1214b8ef-136b-40cd-8203-f6c426b0675a"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "POST_IMAGES",
+          "bucket_name": "erazahan-images"
+        }
+      ]
+    }
+  }
 }
