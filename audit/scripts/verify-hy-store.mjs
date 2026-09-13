@@ -92,7 +92,13 @@ function logicalDifferenceDiagnostic(difference, registryIds) {
   };
 }
 
-function physicalInventory(root) {
+// Match the established checkout-byte contract used by the HY write projection
+// regression: Git's CRLF checkout conversion must not alter store identity.
+export function canonicalCheckoutBytes(bytes) {
+  return Buffer.from(bytes.toString('utf8').replace(/\r\n/g, '\n'), 'utf8');
+}
+
+export function physicalInventory(root) {
   const files = [];
   const pending = [root];
   while (pending.length) {
@@ -103,7 +109,7 @@ function physicalInventory(root) {
       const absolute = path.join(directory, entry.name);
       if (entry.isDirectory()) pending.push(absolute);
       else if (entry.isFile()) {
-        const bytes = readFileSync(absolute);
+        const bytes = canonicalCheckoutBytes(readFileSync(absolute));
         files.push({
           path: toPosix(path.relative(root, absolute)),
           size: bytes.length,
