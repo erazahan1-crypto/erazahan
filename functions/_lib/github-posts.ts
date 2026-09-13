@@ -21,6 +21,24 @@ interface GitHubConfig {
   branch: string;
 }
 
+export interface MultiFileSnapshotFile {
+  sha: string;
+  content: string;
+}
+
+export interface MultiFileSnapshot {
+  branch: string;
+  refSha: string;
+  commitSha: string;
+  treeSha: string;
+  files: Map<string, MultiFileSnapshotFile>;
+}
+
+export interface MultiFileChange {
+  path: string;
+  content: string;
+}
+
 interface GitObject { sha: string }
 interface GitRef { object: GitObject }
 interface GitCommit { tree: GitObject }
@@ -99,6 +117,25 @@ export async function commitPosts(
   return { commitSha: commit.sha, blobSha: blob.sha };
 }
 
+export async function loadMultiFileSnapshot(config: GitHubConfig, paths: string[]): Promise<MultiFileSnapshot> {
+  return loadMultiFileSnapshotWithTransport(githubTransport(config), { branch: config.branch, paths });
+}
+
+export async function commitMultiFileTransaction(
+  config: GitHubConfig,
+  snapshot: MultiFileSnapshot,
+  expectedPostsBlobSha: string,
+  changes: MultiFileChange[],
+  message: string,
+) {
+  return commitMultiFileTransactionWithTransport(githubTransport(config), {
+    snapshot,
+    expectedPostsBlobSha,
+    changes,
+    message,
+  });
+}
+
 export function parsePostId(value: string | string[] | undefined): number {
   const id = Array.isArray(value) ? value[0] : value;
   if (!id || !/^(0|[1-9]\d{0,5})$/.test(id)) throw new PostsValidationError('Некорректный id статьи.');
@@ -147,6 +184,50 @@ async function findBlob(config: GitHubConfig, rootTreeSha: string, filePath: str
   return treeSha;
 }
 
+function githubTransport(config: GitHubConfig) {
+  return {
+    async getBranchRef(branch: string) {
+      const ref = await github<GitRef>(config, `/git/ref/heads/${encodeURIComponent(branch)}`);
+      return { sha: ref.object.sha };
+    },
+    async getCommit(commitSha: string) {
+      const commit = await github<GitCommit>(config, `/git/commits/${commitSha}`);
+      return { treeSha: commit.tree.sha };
+    },
+    async readFileFromTree(treeSha: string, filePath: string) {
+      const blobSha = await findBlob(config, treeSha, filePath);
+      const blob = await github<GitBlob>(config, `/git/blobs/${blobSha}`);
+      if (blob.encoding !== 'base64') throw new Error(`GitHub returned unsupported encoding for ${filePath}`);
+      return { sha: blobSha, content: decodeBase64(blob.content.replace(/\s/g, '')) };
+    },
+    async createBlob(content: string) {
+      return github<GitObject>(config, '/git/blobs', {
+        method: 'POST',
+        body: JSON.stringify({ content, encoding: 'utf-8' }),
+      });
+    },
+    async createTree({ baseTreeSha, entries }: { baseTreeSha: string; entries: TreeEntry[] }) {
+      return github<GitObject>(config, '/git/trees', {
+        method: 'POST',
+        body: JSON.stringify({ base_tree: baseTreeSha, tree: entries }),
+      });
+    },
+    async createCommit({ message, treeSha, parentCommitSha }: { message: string; treeSha: string; parentCommitSha: string }) {
+      return github<GitObject>(config, '/git/commits', {
+        method: 'POST',
+        body: JSON.stringify({ message, tree: treeSha, parents: [parentCommitSha] }),
+      });
+    },
+    async updateBranchRef({ branch, sha, force }: { branch: string; sha: string; force: boolean }) {
+      const ref = await github<GitRef>(config, `/git/refs/heads/${encodeURIComponent(branch)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ sha, force }),
+      });
+      return { sha: ref.object.sha };
+    },
+  };
+}
+
 class GitHubError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
@@ -176,3 +257,7 @@ function decodeBase64(value: string): string {
   for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
   return new TextDecoder().decode(bytes);
 }
+import {
+  commitMultiFileTransaction as commitMultiFileTransactionWithTransport,
+  loadMultiFileSnapshot as loadMultiFileSnapshotWithTransport,
+} from './github-multifile.mjs';
