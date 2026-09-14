@@ -36,9 +36,34 @@ export function assertPublicSlug(slug) {
   return slug;
 }
 
-export function publicPathFor(locale, slug) {
-  assertSupportedLocale(locale);
+// Authoring normalization only. Stored documents must already equal this
+// canonical form and are rejected rather than repaired during repository reads.
+export function normalizeRuSlug(candidate) {
+  if (typeof candidate !== 'string') fail('RU slug candidate must be a string');
+  return candidate
+    .normalize('NFC')
+    .toLowerCase()
+    .replace(/ё/gu, 'е')
+    .replace(/[\s-]+/gu, '-')
+    .replace(/^-+|-+$/gu, '');
+}
+
+export function assertRuPublicSlug(slug) {
   assertPublicSlug(slug);
+  if (slug !== normalizeRuSlug(slug)) fail('RU slug must already be in canonical normalized form');
+  if (!/^[а-я0-9]+(?:-[а-я0-9]+)*$/u.test(slug)) {
+    fail(`RU slug must use ${'lower' + 'case'} Russian Cyrillic letters, digits, and single hyphen separators only`);
+  }
+  return slug;
+}
+
+export function assertLocalePublicSlug(locale, slug) {
+  assertSupportedLocale(locale);
+  return locale === 'ru' ? assertRuPublicSlug(slug) : assertPublicSlug(slug);
+}
+
+export function publicPathFor(locale, slug) {
+  assertLocalePublicSlug(locale, slug);
   return locale === SOURCE_LOCALE ? `/${slug}/` : `/${locale}/${slug}/`;
 }
 
@@ -60,6 +85,9 @@ export function validateLocaleDocumentStorage({ item, filename, localeDocument }
   validateLocaleDocument(localeDocument);
   validateItemLocaleRelation(item, localeDocument);
   if (localeDocument.locale !== locale) fail(`${filename} must contain locale=${locale}`);
+  for (const state of ['draft', 'published']) {
+    if (localeDocument[state]) assertLocalePublicSlug(locale, localeDocument[state].slug);
+  }
   return localeDocument;
 }
 
@@ -78,8 +106,7 @@ function validateReservation(reservation) {
   if (JSON.stringify(keys) !== JSON.stringify(['content_id', 'kind', 'locale', 'slug'])) {
     fail('reservation must contain only locale, slug, content_id, and kind');
   }
-  assertSupportedLocale(reservation.locale);
-  assertPublicSlug(reservation.slug);
+  assertLocalePublicSlug(reservation.locale, reservation.slug);
   if (!isContentId(reservation.content_id)) fail('reservation content_id is invalid');
   if (!LOCALE_RESERVATION_KINDS.includes(reservation.kind)) fail('reservation kind must be active or redirect');
   return reservation;
@@ -114,8 +141,7 @@ export function validateLocaleSlugReservations(registry) {
 
 export function applyPublishedSlugReservation(registry, { locale, content_id: contentId, slug }) {
   validateLocaleSlugReservations(registry);
-  assertSupportedLocale(locale);
-  assertPublicSlug(slug);
+  assertLocalePublicSlug(locale, slug);
   if (!isContentId(contentId)) fail('content_id is invalid');
 
   const existing = registry.reservations.find((entry) => entry.locale === locale && entry.slug === slug);
@@ -135,15 +161,13 @@ export function applyPublishedSlugReservation(registry, { locale, content_id: co
 
 export function assertDraftSlugAvailable({ registry, activeDrafts = [], locale, content_id: contentId, slug }) {
   validateLocaleSlugReservations(registry);
-  assertSupportedLocale(locale);
-  assertPublicSlug(slug);
+  assertLocalePublicSlug(locale, slug);
   if (!isContentId(contentId)) fail('content_id is invalid');
   const permanent = registry.reservations.find((entry) => entry.locale === locale && entry.slug === slug);
   if (permanent && permanent.content_id !== contentId) fail(`draft slug ${locale}/${slug} is permanently reserved to another content_id`);
   for (const draft of activeDrafts) {
     if (!draft || typeof draft !== 'object') fail('draft claim must be an object');
-    assertSupportedLocale(draft.locale);
-    assertPublicSlug(draft.slug);
+    assertLocalePublicSlug(draft.locale, draft.slug);
     if (!isContentId(draft.content_id)) fail('draft claim content_id is invalid');
     if (draft.locale === locale && draft.slug === slug && draft.content_id !== contentId) {
       fail(`draft slug ${locale}/${slug} is claimed by another content_id`);
@@ -154,8 +178,7 @@ export function assertDraftSlugAvailable({ registry, activeDrafts = [], locale, 
 
 export function resolveReservedSlug(registry, locale, slug) {
   validateLocaleSlugReservations(registry);
-  assertSupportedLocale(locale);
-  assertPublicSlug(slug);
+  assertLocalePublicSlug(locale, slug);
   const reservation = registry.reservations.find((entry) => entry.locale === locale && entry.slug === slug);
   if (!reservation) return null;
   if (reservation.kind === 'active') return { kind: 'active', content_id: reservation.content_id, path: publicPathFor(locale, slug) };

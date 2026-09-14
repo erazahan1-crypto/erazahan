@@ -10,9 +10,11 @@ import { buildPublishedSeoContext, localeSeoMetadata } from '../../src/lib/conte
 const A = 'efa61838-86c8-56b8-815c-0a38b0a83242';
 const roots = [];
 
+const ruFixtureSlug = (slug) => [...slug].map((character) => character.codePointAt(0)).join('-');
+
 function payload(locale, slug, fingerprint, overrides = {}) {
   return {
-    slug,
+    slug: locale === 'ru' ? ruFixtureSlug(slug) : slug,
     title: `${locale} title`,
     description: null,
     content: `<p>${locale} content</p>`,
@@ -138,12 +140,12 @@ try {
     const store = repository({ ru: published('ru', 'ru-published') });
     for (const locale of ['hy', 'ru']) {
       const context = buildPublishedSeoContext(store, A, locale);
-      assert.deepEqual(alternates(context), [['hy', `/hy-${A.slice(0, 8)}/`], ['ru', '/ru/ru-published/']]);
+      assert.deepEqual(alternates(context), [['hy', `/hy-${A.slice(0, 8)}/`], ['ru', `/ru/${ruFixtureSlug('ru-published')}/`]]);
     }
     const ru = buildPublishedSeoContext(store, A, 'ru');
     assert.equal(ru.html_lang, 'ru');
     assert.equal(ru.og_locale, 'ru_RU');
-    assert.equal(ru.canonical_path, '/ru/ru-published/');
+    assert.equal(ru.canonical_path, `/ru/${ruFixtureSlug('ru-published')}/`);
   }
   { // HY/EN contexts are reciprocal and never invent an RU translation.
     const store = repository({ en: published('en', 'en-published') });
@@ -156,7 +158,7 @@ try {
     const store = repository({ ru: published('ru', 'ru'), en: published('en', 'en') });
     for (const locale of ['hy', 'ru', 'en']) {
       const context = buildPublishedSeoContext(store, A, locale);
-      assert.deepEqual(alternates(context), [['hy', `/hy-${A.slice(0, 8)}/`], ['ru', '/ru/ru/'], ['en', '/en/en/']]);
+      assert.deepEqual(alternates(context), [['hy', `/hy-${A.slice(0, 8)}/`], ['ru', `/ru/${ruFixtureSlug('ru')}/`], ['en', '/en/en/']]);
     }
   }
   { // Draft-only variants never become alternates; published outdated variants remain public.
@@ -164,7 +166,7 @@ try {
       ru: published('ru', 'outdated', { based_on_source_revision: 2 }),
       en: draft('en', 'en-draft'),
     }), A, 'ru');
-    assert.deepEqual(alternates(context), [['hy', `/hy-${A.slice(0, 8)}/`], ['ru', '/ru/outdated/']]);
+    assert.deepEqual(alternates(context), [['hy', `/hy-${A.slice(0, 8)}/`], ['ru', `/ru/${ruFixtureSlug('outdated')}/`]]);
   }
   { // SEO receives only the published projection, never a newer editorial draft.
     const fixture = mkdtempSync(path.join(tmpdir(), 'erazahan-multilingual-seo-'));
@@ -183,7 +185,7 @@ try {
     for (const secret of ['secret-new-slug', 'SECRET DRAFT TITLE', 'SECRET DRAFT CONTENT', '"draft"']) {
       assert.equal(serialized.includes(secret), false, `${secret} must not leak`);
     }
-    assert.deepEqual(alternates(context), [['hy', `/hy-${A.slice(0, 8)}/`], ['ru', '/ru/public-old-slug/']]);
+    assert.deepEqual(alternates(context), [['hy', `/hy-${A.slice(0, 8)}/`], ['ru', `/ru/${ruFixtureSlug('public-old-slug')}/`]]);
   }
   assert.equal(buildPublishedSeoContext(repository(), '01990c84-9c78-7abc-8def-123456789abd', 'hy'), null);
   assert.throws(() => buildPublishedSeoContext(repository(), A, 'fr'));

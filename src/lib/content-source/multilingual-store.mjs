@@ -7,7 +7,7 @@ import {
 } from '../content-schema/schema.mjs';
 import {
   assertSupportedLocale,
-  assertPublicSlug,
+  assertLocalePublicSlug,
   localeDocumentFilename,
   localeFromDocumentFilename,
   validateLocaleDocumentStorage,
@@ -117,7 +117,7 @@ function validateActiveSlugClaims(records) {
         };
         let slug;
         try {
-          slug = assertPublicSlug(payload.slug);
+          slug = assertLocalePublicSlug(locale, payload.slug);
         } catch (error) {
           fail(
             'INVALID_ACTIVE_SLUG',

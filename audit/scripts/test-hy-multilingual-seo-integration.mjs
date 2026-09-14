@@ -8,9 +8,11 @@ import { loadHyDreamSeoBySlug } from '../../src/lib/content-source/hy-dream-seo.
 const A = 'efa61838-86c8-56b8-815c-0a38b0a83242';
 const roots = [];
 
+const ruFixtureSlug = (slug) => [...slug].map((character) => character.codePointAt(0)).join('-');
+
 function payload(locale, slug, fingerprint, overrides = {}) {
   return {
-    slug, title: `${locale} title`, description: null, content: `<p>${locale} content</p>`, image_alts: {}, tags: [locale], alphabet_key: null,
+    slug: locale === 'ru' ? ruFixtureSlug(slug) : slug, title: `${locale} title`, description: null, content: `<p>${locale} content</p>`, image_alts: {}, tags: [locale], alphabet_key: null,
     based_on_source_revision: locale === 'hy' ? null : 1,
     based_on_source_fingerprint: locale === 'hy' ? null : fingerprint,
     ...overrides,
@@ -73,7 +75,7 @@ try {
   assert.deepEqual(locales(seo({ ru: published('ru', 'ru-outdated', { based_on_source_revision: 2 }) })), ['hy', 'ru']);
   {
     const context = seo({ ru: both('ru', 'secret-new-slug', 'public-old-slug', { title: 'SECRET DRAFT TITLE', content: 'SECRET DRAFT CONTENT' }) });
-    assert.deepEqual(context.alternates.map(({ locale, path: publicPath }) => [locale, publicPath]), [['hy', '/hy-dream/'], ['ru', '/ru/public-old-slug/']]);
+    assert.deepEqual(context.alternates.map(({ locale, path: publicPath }) => [locale, publicPath]), [['hy', '/hy-dream/'], ['ru', `/ru/${ruFixtureSlug('public-old-slug')}/`]]);
     const serialized = JSON.stringify(context);
     for (const secret of ['secret-new-slug', 'SECRET DRAFT TITLE', 'SECRET DRAFT CONTENT', '"draft"']) assert.equal(serialized.includes(secret), false);
   }

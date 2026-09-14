@@ -15,9 +15,11 @@ const B = 'cadd4552-097e-5845-b59e-223c36c82488';
 const V7 = '01990c84-9c78-7abc-8def-123456789abc';
 const roots = [];
 
+const ruFixtureSlug = (slug) => [...slug].map((character) => character.codePointAt(0)).join('-');
+
 function payload(locale, slug, fingerprint, overrides = {}) {
   return {
-    slug,
+    slug: locale === 'ru' ? ruFixtureSlug(slug) : slug,
     title: `${locale} title`,
     description: null,
     content: `<p>${locale} content</p>`,
@@ -112,7 +114,7 @@ try {
     addRecord(fixture, A, { ru: published('ru', 'ru-published'), en: published('en', 'en-published') });
     const repository = scanContentStore(fixture);
     const ruEntry = getPublishedLocaleEntry(repository, A, 'ru');
-    assert.equal(ruEntry.path, '/ru/ru-published/');
+    assert.equal(ruEntry.path, `/ru/${ruFixtureSlug('ru-published')}/`);
     assert.equal(ruEntry.freshness, 'CURRENT');
     assert.equal(getPublishedLocaleEntry(repository, A, 'en').path, '/en/en-published/');
     assert.deepEqual(listPublishedLocalesForContent(repository, A), ['hy', 'ru', 'en']);
@@ -126,15 +128,15 @@ try {
     record.ru.draft.content = 'SECRET DRAFT CONTENT';
     write(fixture, `${A.slice(0, 2)}/${A}/ru.json`, record.ru);
     const entry = getPublishedLocaleEntry(scanContentStore(fixture), A, 'ru');
-    assert.equal(entry.slug, 'public-old-slug');
-    assert.equal(entry.path, '/ru/public-old-slug/');
-    assert.equal(entry.published.slug, 'public-old-slug');
+    assert.equal(entry.slug, ruFixtureSlug('public-old-slug'));
+    assert.equal(entry.path, `/ru/${ruFixtureSlug('public-old-slug')}/`);
+    assert.equal(entry.published.slug, ruFixtureSlug('public-old-slug'));
     assert.equal(Object.hasOwn(entry, 'draft'), false);
     const serialized = JSON.stringify(entry);
     for (const secret of ['secret-new-slug', 'SECRET DRAFT TITLE', 'SECRET DRAFT CONTENT', '"draft"']) {
       assert.equal(serialized.includes(secret), false, `${secret} must not leak`);
     }
-    for (const publishedValue of ['public-old-slug', 'Published title', 'Published content']) {
+    for (const publishedValue of [ruFixtureSlug('public-old-slug'), 'Published title', 'Published content']) {
       assert.equal(serialized.includes(publishedValue), true, `${publishedValue} must remain public`);
     }
     assert.equal(Object.isFrozen(entry), true);
@@ -157,7 +159,7 @@ try {
     });
     const entry = getPublishedLocaleEntry(scanContentStore(fixture), A, 'ru');
     assert.equal(entry.freshness, 'OUTDATED');
-    assert.equal(entry.slug, 'fingerprint-outdated');
+    assert.equal(entry.slug, ruFixtureSlug('fingerprint-outdated'));
   }
   { // I: EN cannot satisfy an RU request.
     const fixture = root();
@@ -189,7 +191,7 @@ try {
     write(fixture, `${A.slice(0, 2)}/${A}/ru.json`, record.ru);
     assert.throws(
       () => scanContentStore(fixture),
-      (error) => error instanceof MultilingualStoreValidationError && error.code === 'INVALID_ACTIVE_SLUG',
+      (error) => error instanceof MultilingualStoreValidationError && error.code === 'INVALID_LOCALE_DOCUMENT',
     );
   }
   {

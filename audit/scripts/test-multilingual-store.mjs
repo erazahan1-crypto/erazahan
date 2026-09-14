@@ -18,9 +18,13 @@ const B = 'cadd4552-097e-5845-b59e-223c36c82488';
 const V7 = '01990c84-9c78-7abc-8def-123456789abc';
 const roots = [];
 
+// Existing fixture labels are ASCII mnemonics; persist them as valid synthetic
+// RU slugs without modeling editorial normalization.
+const ruFixtureSlug = (slug) => [...slug].map((character) => character.codePointAt(0)).join('-');
+
 function payload(locale, slug, fingerprint, overrides = {}) {
   return {
-    slug,
+    slug: locale === 'ru' ? ruFixtureSlug(slug) : slug,
     title: `${locale} title`,
     description: null,
     content: `<p>${locale} content</p>`,
@@ -127,7 +131,7 @@ try {
     addRecord(root, A, { ru: draft('ru', 'ru-draft') });
     const repository = scanContentStore(root);
     assert.equal(repository.counts.ru_documents, 1);
-    assert.equal(getLocaleDocument(repository, A, 'ru')?.draft.slug, 'ru-draft');
+    assert.equal(getLocaleDocument(repository, A, 'ru')?.draft.slug, ruFixtureSlug('ru-draft'));
   }
   {
     const root = fixtureRoot();
@@ -268,7 +272,7 @@ try {
     const source = addRecord(root, A, { ru: published('ru', 'outdated', { based_on_source_revision: 2 }) });
     const repository = scanContentStore(root);
     const translation = getLocaleDocument(repository, A, 'ru');
-    assert.equal(translation.published.slug, 'outdated');
+    assert.equal(translation.published.slug, ruFixtureSlug('outdated'));
     assert.equal(deriveTranslationState(translation, source.item).state, 'OUTDATED');
   }
   {
@@ -276,23 +280,22 @@ try {
     const record = addRecord(root, A, { ru: published('ru', 'safe-published') });
     record.ru.published.slug = 'a%2Fb';
     write(root, `${A.slice(0, 2)}/${A}/ru.json`, record.ru);
-    const error = failure(() => scanContentStore(root), 'INVALID_ACTIVE_SLUG');
+    const error = failure(() => scanContentStore(root), 'INVALID_LOCALE_DOCUMENT');
     assert.equal(error.context.content_id, A);
     assert.equal(error.context.locale, 'ru');
     assert.match(error.context.path, /ru\.json$/);
-    assert.match(error.message, /published slug is invalid/);
-    assert.ok(error.cause instanceof Error);
+    assert.match(error.message, /slug is not a safe URL segment/);
   }
   {
     const root = fixtureRoot();
     const record = addRecord(root, A, { ru: draft('ru', 'safe-draft') });
     record.ru.draft.slug = 'a/b';
     write(root, `${A.slice(0, 2)}/${A}/ru.json`, record.ru);
-    const error = failure(() => scanContentStore(root), 'INVALID_ACTIVE_SLUG');
+    const error = failure(() => scanContentStore(root), 'INVALID_LOCALE_DOCUMENT');
     assert.equal(error.context.content_id, A);
     assert.equal(error.context.locale, 'ru');
     assert.match(error.context.path, /ru\.json$/);
-    assert.match(error.message, /draft slug is invalid/);
+    assert.match(error.message, /slug is not a safe URL segment/);
   }
   {
     const root = fixtureRoot();
