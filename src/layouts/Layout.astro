@@ -5,12 +5,15 @@ import Footer from "../components/Footer.astro";
 import QuickTools from "../components/QuickTools.astro";
 import { SITE, ALLOW_INDEXING } from "../lib/config";
 import { websiteSchema } from "../lib/seo";
+import { localeSeoMetadata } from '../lib/content-source/published-seo.mjs';
 
 interface Props {
   title?: string;
   description?: string;
   type?: string;
   image?: string;
+  locale?: 'hy' | 'ru' | 'en';
+  alternates?: { locale: string; path: string }[] | null;
 }
 
 const {
@@ -19,13 +22,18 @@ const {
     "Անվճար օնլայն երազահան. երազների ճշգրիտ ու մանրամասն մեկնաբանություններ այբբենական կարգով:",
   type = "website",
   image,
+  locale = 'hy',
+  alternates: alternatesProp = [],
 } = Astro.props;
+
+const { html_lang, og_locale } = localeSeoMetadata(locale);
+const alternates = alternatesProp ?? [];
 
 const ogImage = image ? (image.startsWith("http") ? image : `${SITE}${image}`) : undefined;
 ---
 
 <!doctype html>
-<html lang="hy">
+<html lang={html_lang}>
   <head>
     <meta charset="UTF-8" />
     <script is:inline>document.documentElement.classList.add('js-reveal');</script>
@@ -35,6 +43,7 @@ const ogImage = image ? (image.startsWith("http") ? image : `${SITE}${image}`) :
     <meta name="generator" content={Astro.generator} />
 
     <link rel="canonical" href={Astro.url} />
+    {alternates.map((alternate) => <link rel="alternate" hreflang={alternate.locale} href={new URL(alternate.path, Astro.url)} />)}
 
     {!ALLOW_INDEXING ? <meta name="robots" content="noindex, nofollow" /> : null}
 
@@ -44,7 +53,7 @@ const ogImage = image ? (image.startsWith("http") ? image : `${SITE}${image}`) :
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={Astro.url} />
-    <meta property="og:locale" content="hy_AM" />
+    <meta property="og:locale" content={og_locale} />
     {ogImage ? <meta property="og:image" content={ogImage} /> : null}
 
     <!-- Twitter -->
