@@ -406,7 +406,7 @@ async function main() {
   if (!sitemap.baseline_parity || !sitemap.order_parity) failures.push('sitemap parity failed');
   if (html.different_or_missing) failures.push(`current HTML differs from baseline for ${html.different_or_missing} routes`);
   if (storeVerification.fingerprints.permanent_logical_sha256 !== EXPECTED_DRY_RUN_SHA256) failures.push('HY logical SHA changed');
-  if (storeVerification.fingerprints.full_permanent_store_sha256 !== EXPECTED_STORE_SHA256) failures.push('HY full store SHA changed');
+  if (storeVerification.fingerprints.hy_baseline_store_sha256 !== EXPECTED_STORE_SHA256) failures.push('HY baseline store SHA changed');
 
   const report = {
     status: failures.length ? 'REVIEW REQUIRED' : 'PASS',
@@ -443,7 +443,7 @@ async function main() {
     },
     safety: {
       hy_logical_sha256: storeVerification.fingerprints.permanent_logical_sha256,
-      hy_full_store_sha256: storeVerification.fingerprints.full_permanent_store_sha256,
+      hy_baseline_store_sha256: storeVerification.fingerprints.hy_baseline_store_sha256,
       registry_mapping_fingerprint: registry.mapping_sha256,
       registry_full_sha256: sha256(registryBytes),
       posts_sha256: sha256(postsBytes),

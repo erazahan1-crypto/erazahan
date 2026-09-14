@@ -14,6 +14,7 @@ import {
   validateItemLocaleRelation,
   validateLocaleDocument,
 } from '../../src/lib/content-schema/schema.mjs';
+import { scanContentStore } from '../../src/lib/content-source/multilingual-store.mjs';
 import {
   EXPECTED_DRY_RUN_SHA256,
   EXPECTED_POSTS,
@@ -98,7 +99,7 @@ export function canonicalCheckoutBytes(bytes) {
   return Buffer.from(bytes.toString('utf8').replace(/\r\n/g, '\n'), 'utf8');
 }
 
-export function physicalInventory(root) {
+export function physicalInventory(root, { include = () => true } = {}) {
   const files = [];
   const pending = [root];
   while (pending.length) {
@@ -109,9 +110,11 @@ export function physicalInventory(root) {
       const absolute = path.join(directory, entry.name);
       if (entry.isDirectory()) pending.push(absolute);
       else if (entry.isFile()) {
+        const relativePath = toPosix(path.relative(root, absolute));
+        if (!include(relativePath)) continue;
         const bytes = canonicalCheckoutBytes(readFileSync(absolute));
         files.push({
-          path: toPosix(path.relative(root, absolute)),
+          path: relativePath,
           size: bytes.length,
           sha256: createHash('sha256').update(bytes).digest('hex'),
         });
@@ -131,6 +134,13 @@ export function physicalInventory(root) {
     total_bytes: files.reduce((sum, file) => sum + Math.max(0, file.size), 0),
     sha256: sha256(Buffer.from(serialized, 'utf8')),
   };
+}
+
+// The pinned import-era checksum deliberately excludes future translation files.
+export function hyBaselineInventory(root) {
+  return physicalInventory(root, {
+    include: (file) => file.endsWith('/item.json') || file.endsWith('/hy.json'),
+  });
 }
 
 export function verifyHyStoreAt(root = STORE_ROOT) {
@@ -153,7 +163,11 @@ export function verifyHyStoreAt(root = STORE_ROOT) {
   invariant(approved.localeValidationErrors.length === 0, 'Approved mapping has invalid locales');
   invariant(approved.relationValidationErrors.length === 0, 'Approved mapping has invalid relations');
 
+  // This validates all present locale files and fails closed on unknown files;
+  // it deliberately does not apply any public publication filtering.
+  const multilingualStore = scanContentStore(root);
   const inventory = physicalInventory(root);
+  const hyBaseline = hyBaselineInventory(root);
   const parseErrors = [];
   const structureErrors = [];
   const invalidItemSchemas = [];
@@ -181,7 +195,7 @@ export function verifyHyStoreAt(root = STORE_ROOT) {
       if (idEntry.name.slice(0, 2) !== shardEntry.name) invalidShardPlacement += 1;
       const names = readdirSync(directory, { withFileTypes: true });
       const fileNames = names.filter((entry) => entry.isFile()).map((entry) => entry.name);
-      const unexpected = names.filter((entry) => !entry.isFile() || !['item.json', 'hy.json'].includes(entry.name));
+      const unexpected = names.filter((entry) => !entry.isFile() || !['item.json', 'hy.json', 'ru.json', 'en.json'].includes(entry.name));
       for (const entry of unexpected) structureErrors.push(`Unexpected content entry: ${shardEntry.name}/${idEntry.name}/${entry.name}`);
       ruFileCount += fileNames.filter((name) => name === 'ru.json').length;
       enFileCount += fileNames.filter((name) => name === 'en.json').length;
@@ -310,10 +324,9 @@ export function verifyHyStoreAt(root = STORE_ROOT) {
   const inlineImagePosts = posts.filter((post) => /<img\b|!\[[^\]]*\]\(/i.test(post.content)).length;
 
   const failures = [
-    [inventory.files.length !== EXPECTED_POSTS * 2, `Expected 11600 files, found ${inventory.files.length}`],
+    [hyBaseline.files.length !== EXPECTED_POSTS * 2, `Expected 11600 HY baseline files, found ${hyBaseline.files.length}`],
     [itemFileCount !== EXPECTED_POSTS, `Expected 5800 item.json files, found ${itemFileCount}`],
     [hyFileCount !== EXPECTED_POSTS, `Expected 5800 hy.json files, found ${hyFileCount}`],
-    [ruFileCount !== 0 || enFileCount !== 0, 'RU or EN files exist'],
     [structureErrors.length > 0, `${structureErrors.length} structure errors`],
     [parseErrors.length > 0, `${parseErrors.length} JSON parse errors`],
     [invalidShardPlacement > 0, `${invalidShardPlacement} invalid shard placements`],
@@ -338,6 +351,7 @@ export function verifyHyStoreAt(root = STORE_ROOT) {
     status: failures.length ? 'FAIL' : 'PASS',
     store_root: toPosix(path.relative(ROOT, root)),
     counts: {
+      multilingual_repository: multilingualStore.counts,
       logical_items: records.length,
       item_files: itemFileCount,
       hy_files: hyFileCount,
@@ -345,6 +359,7 @@ export function verifyHyStoreAt(root = STORE_ROOT) {
       en_files: enFileCount,
       total_files: inventory.files.length,
       total_bytes: inventory.total_bytes,
+      hy_baseline_files: hyBaseline.files.length,
       unique_content_ids: recordIdSet.size,
       missing_items: missingItems,
       missing_hy: missingHy,
@@ -381,7 +396,8 @@ export function verifyHyStoreAt(root = STORE_ROOT) {
       expected_stage7_logical_sha256: EXPECTED_DRY_RUN_SHA256,
       permanent_logical_sha256: permanentLogicalSha256,
       logical_match: permanentLogicalSha256 === EXPECTED_DRY_RUN_SHA256,
-      full_permanent_store_sha256: inventory.sha256,
+      hy_baseline_store_sha256: hyBaseline.sha256,
+      full_multilingual_store_sha256: inventory.sha256,
       first_logical_difference: logicalDifferenceDiagnostic(logicalDifference, registryIds),
     },
     safety: {

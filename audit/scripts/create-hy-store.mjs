@@ -74,7 +74,7 @@ export function createHyStore() {
       files: permanentReport.counts.total_files,
       bytes: permanentReport.counts.total_bytes,
       logical_sha256: permanentReport.fingerprints.permanent_logical_sha256,
-      full_store_sha256: permanentReport.fingerprints.full_permanent_store_sha256,
+      hy_baseline_store_sha256: permanentReport.fingerprints.hy_baseline_store_sha256,
       generation_strategy: 'validated sibling temp directory followed by same-volume directory rename',
     };
   } catch (error) {
