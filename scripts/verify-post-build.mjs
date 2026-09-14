@@ -1,6 +1,46 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { scanContentStore } from '../src/lib/content-source/multilingual-store.mjs';
+import { listPublishedDreamSitemapEntries } from '../src/lib/content-source/published-sitemaps.mjs';
+
+const ORIGIN = 'https://erazahan.info';
+const SITEMAP_INDEX_OPEN = '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
+const URLSET_OPEN = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
+
+function sitemapUrls(xml) {
+  return [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
+}
+
+function assertSitemapIndex(xml) {
+  assert.ok(xml.includes(SITEMAP_INDEX_OPEN) && xml.includes('</sitemapindex>'), 'root sitemap must be a sitemapindex');
+  assert.equal(xml.includes('<urlset'), false, 'root sitemap must not be a urlset');
+  const urls = sitemapUrls(xml);
+  assert.deepEqual(urls, [
+    `${ORIGIN}/sitemap-hy.xml`,
+    `${ORIGIN}/sitemap-ru.xml`,
+    `${ORIGIN}/sitemap-en.xml`,
+  ], 'root sitemap must contain exactly the ordered locale children');
+  assert.equal(new Set(urls).size, urls.length, 'root sitemap must not contain duplicate children');
+  assert.equal(urls.includes(`${ORIGIN}/sitemap.xml`), false, 'root sitemap must not reference itself');
+  assert.equal(urls.some((url) => /\/[^/]+\/$/.test(new URL(url).pathname)), false, 'root sitemap must not contain page URLs');
+  return urls;
+}
+
+function assertUrlset(xml, locale) {
+  assert.ok(xml.includes(URLSET_OPEN) && xml.includes('</urlset>'), `${locale} sitemap must be a urlset`);
+  assert.equal(xml.includes('<sitemapindex'), false, `${locale} sitemap must not be a sitemapindex`);
+  return sitemapUrls(xml);
+}
+
+function assertExactDreamCoverage(actualUrls, expectedUrls, locale) {
+  const actual = new Set(actualUrls);
+  const expected = new Set(expectedUrls);
+  assert.equal(expected.size, expectedUrls.length, `${locale} expected dream URLs must be unique`);
+  assert.equal(actual.size, actualUrls.length, `${locale} sitemap must not contain duplicate URLs`);
+  assert.deepEqual([...expected].filter((url) => !actual.has(url)), [], `${locale} sitemap is missing a published dream URL`);
+  assert.deepEqual([...actual].filter((url) => !expected.has(url)), [], `${locale} sitemap contains an unexpected URL`);
+}
 
 const posts = JSON.parse(readFileSync('src/data/posts.json', 'utf8'));
 assert.equal(posts.length, 5800);
@@ -47,15 +87,35 @@ const searchIndex = JSON.parse(readFileSync('dist/search-index.json', 'utf8'));
 assert.equal(searchIndex.length, posts.length);
 assert.ok(searchIndex.some((entry) => entry.slug === 'erazahan-bad'));
 
-const sitemap = readFileSync('dist/sitemap.xml', 'utf8');
-const sitemapUrls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
-const uniqueSitemapUrls = new Set(sitemapUrls);
-const sitemapPostUrls = posts.map((post) => `https://erazahan.info/${post.slug}/`);
-assert.equal(uniqueSitemapUrls.size, sitemapUrls.length, 'sitemap must not contain duplicate URLs');
-assert.equal(sitemapUrls.length - uniqueSitemapUrls.size, 0, 'sitemap duplicate count must be zero');
-assert.ok(sitemapPostUrls.every((url) => uniqueSitemapUrls.has(url)), 'sitemap must contain every post URL');
-assert.equal(sitemapPostUrls.length, posts.length);
-assert.ok(sitemapUrls.every((url) => !/\/(?:admin|api)(?:\/|$)/.test(new URL(url).pathname)), 'sitemap must exclude admin and API URLs');
+const sitemapIndex = readFileSync('dist/sitemap.xml', 'utf8');
+const hySitemapUrls = assertUrlset(readFileSync('dist/sitemap-hy.xml', 'utf8'), 'HY');
+const ruSitemapUrls = assertUrlset(readFileSync('dist/sitemap-ru.xml', 'utf8'), 'RU');
+const enSitemapUrls = assertUrlset(readFileSync('dist/sitemap-en.xml', 'utf8'), 'EN');
+const sitemapChildren = assertSitemapIndex(sitemapIndex);
+const hyDreamUrls = posts.map((post) => `${ORIGIN}/${post.slug}/`);
+assert.equal(hyDreamUrls.length, 5800, 'expected HY dream count must remain 5800');
+assert.equal(hySitemapUrls.length, 5920, 'HY sitemap total URL count must remain 5920');
+const hyDreamSet = new Set(hyDreamUrls);
+const hyActualDreamUrls = hySitemapUrls.filter((url) => hyDreamSet.has(url));
+assertExactDreamCoverage(hyActualDreamUrls, hyDreamUrls, 'HY dream');
+assert.ok([...hySitemapUrls, ...ruSitemapUrls, ...enSitemapUrls]
+  .every((url) => !/\/(?:admin|api)(?:\/|$)/.test(new URL(url).pathname)), 'locale sitemaps must exclude admin and API URLs');
+
+const repository = scanContentStore('src/data/content/dreams');
+for (const [locale, urls] of [['ru', ruSitemapUrls], ['en', enSitemapUrls]]) {
+  const expected = listPublishedDreamSitemapEntries(repository, locale)
+    .map((entry) => `${ORIGIN}${entry.path}`);
+  assertExactDreamCoverage(urls, expected, locale.toUpperCase());
+}
+
+// These pure negative checks freeze the sitemap-index safety boundaries without
+// mutating build output.
+assert.throws(() => assertSitemapIndex(sitemapIndex.replace(`${ORIGIN}/sitemap-hy.xml`, '')));
+assert.throws(() => assertSitemapIndex(sitemapIndex.replace(`${ORIGIN}/sitemap-en.xml`, `${ORIGIN}/sitemap-ru.xml`)));
+assert.throws(() => assertSitemapIndex(sitemapIndex.replace(SITEMAP_INDEX_OPEN, URLSET_OPEN)));
+assert.throws(() => assertUrlset(sitemapIndex, 'HY'));
+assert.throws(() => assertUrlset(URLSET_OPEN, 'HY'));
+assert.throws(() => assertExactDreamCoverage(hyDreamUrls.slice(1), hyDreamUrls, 'HY dream'));
 
 const assetFiles = readdirSync('dist/_astro').map((name) => join('dist/_astro', name));
 assert.ok(assetFiles.every((file) => !statSync(file).isFile() || statSync(file).size < 7_000_000));
@@ -63,9 +123,11 @@ assert.ok(assetFiles.every((file) => !statSync(file).isFile() || statSync(file).
 console.log({
   publicPostRoutes: posts.length,
   searchIndexEntries: searchIndex.length,
-  sitemapUrls: sitemapUrls.length,
-  sitemapPostUrls: sitemapPostUrls.length,
-  sitemapDuplicates: sitemapUrls.length - uniqueSitemapUrls.size,
+  sitemapIndexChildren: sitemapChildren.length,
+  hySitemapUrls: hySitemapUrls.length,
+  hyDreamUrls: hyDreamUrls.length,
+  ruSitemapUrls: ruSitemapUrls.length,
+  enSitemapUrls: enSitemapUrls.length,
   regressionSamples: {
     legacy: 'erazahan-bad',
     markdown: markdown.post.slug,
