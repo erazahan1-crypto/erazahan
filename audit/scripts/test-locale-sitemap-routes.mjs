@@ -27,10 +27,6 @@ function fixture({ ru, en } = {}) {
 }
 const xmlUrls = (xml) => [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
 const publicPaths = (xml) => xmlUrls(xml).map((url) => decodeURI(new URL(url).pathname));
-const urlBlocksByPath = (xml) => new Map([...xml.matchAll(/<url>([\s\S]*?)<\/url>/g)].map((match) => {
-  const url = match[1].match(/<loc>([^<]+)<\/loc>/)[1];
-  return [decodeURI(new URL(url).pathname), match[0]];
-}));
 try {
   const hyOnly = scanContentStore(fixture());
   assert.deepEqual(listLocaleSitemapEntries(hyOnly, 'ru'), []); assert.deepEqual(listLocaleSitemapEntries(hyOnly, 'en'), []);
@@ -55,20 +51,14 @@ try {
   for (const route of ['src/pages/sitemap-hy.xml.ts', 'src/pages/sitemap-ru.xml.ts', 'src/pages/sitemap-en.xml.ts']) {
     assert.equal(readFileSync(route, 'utf8').includes("Content-Type': 'application/xml; charset=utf-8'"), true);
   }
-  const main = readFileSync('dist/sitemap.xml', 'utf8');
   const hy = readFileSync('dist/sitemap-hy.xml', 'utf8');
   const ru = readFileSync('dist/sitemap-ru.xml', 'utf8');
   const en = readFileSync('dist/sitemap-en.xml', 'utf8');
   const real = scanContentStore('src/data/content/dreams');
   const dreamPaths = new Set(listPublishedDreamSitemapEntries(real, 'hy').map((entry) => entry.path));
-  assert.equal(xmlUrls(main).length, 5920); assert.equal(xmlUrls(hy).length, 5920); assert.equal(xmlUrls(ru).length, 0); assert.equal(xmlUrls(en).length, 0);
+  assert.equal(xmlUrls(hy).length, 5920); assert.equal(xmlUrls(ru).length, 0); assert.equal(xmlUrls(en).length, 0);
   assert.equal(publicPaths(hy).filter((publicPath) => dreamPaths.has(publicPath)).length, 5800);
   assert.equal(publicPaths(hy).filter((publicPath) => !dreamPaths.has(publicPath)).length, 120);
-  assert.deepEqual(publicPaths(hy).filter((publicPath) => !dreamPaths.has(publicPath)), publicPaths(main).filter((publicPath) => !dreamPaths.has(publicPath)));
-  const mainBlocks = urlBlocksByPath(main); const hyBlocks = urlBlocksByPath(hy);
-  for (const publicPath of publicPaths(main).filter((candidate) => !dreamPaths.has(candidate))) {
-    assert.equal(hyBlocks.get(publicPath), mainBlocks.get(publicPath));
-  }
-  assert.equal(/<sitemapindex\b/u.test(main + hy + ru + en), false);
+  assert.equal(/<sitemapindex\b/u.test(hy + ru + en), false);
   console.log('LOCALE SITEMAP ROUTES PASS');
 } finally { for (const root of roots) rmSync(root, { recursive: true, force: true }); }

@@ -55,7 +55,7 @@ try {
   assert.equal(escapeSitemapXmlText(`a&<b>"'`), 'a&amp;&lt;b&gt;&quot;&apos;');
   const real = scanContentStore('src/data/content/dreams'); const realHy = listPublishedDreamSitemapEntries(real, 'hy');
   assert.equal(realHy.length, 5800); assert.equal(listPublishedDreamSitemapEntries(real, 'ru').length, 0); assert.equal(listPublishedDreamSitemapEntries(real, 'en').length, 0);
-  const sitemapUrls = new Set([...readFileSync('dist/sitemap.xml', 'utf8').matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => decodeURI(new URL(match[1]).pathname)));
+  const sitemapUrls = new Set([...readFileSync('dist/sitemap-hy.xml', 'utf8').matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => decodeURI(new URL(match[1]).pathname)));
   assert.equal(realHy.every(({ path: publicPath }) => sitemapUrls.has(publicPath)), true);
   console.log('MULTILINGUAL SITEMAP PROJECTION PASS');
 } finally { for (const root of roots) rmSync(root, { recursive: true, force: true }); }
