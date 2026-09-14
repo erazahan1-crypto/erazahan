@@ -28,14 +28,16 @@ import { excerptOf } from '../lib/site';
 import { SITE } from '../lib/config';
 import { articleSchema, breadcrumbSchema, itemListSchema } from '../lib/seo';
 import { renderPostContent } from '../lib/render-post-content';
+import { loadHyDreamSeoBySlug } from '../lib/content-source/hy-dream-seo.mjs';
 
 export function getStaticPaths() {
+  const hyDreamSeoBySlug = loadHyDreamSeoBySlug(posts);
   const routes: { params: { path: string } }[] = [];
   const seen = new Set<string>();
   for (const p of posts) {
     if (p.slug && !seen.has(p.slug)) {
       seen.add(p.slug);
-      routes.push({ params: { path: p.slug } });
+      routes.push({ params: { path: p.slug }, props: { seo: hyDreamSeoBySlug.get(p.slug) } });
     }
   }
   for (const p of pages) {
@@ -65,6 +67,8 @@ if (legacyRedirect) {
 }
 
 const post = postBySlug.get(slug);
+const { seo } = Astro.props;
+if (post && !seo) throw new Error(`HY dream SEO context is missing for ${JSON.stringify(post.sourceUrl)}`);
 const page = pageByPath.get(slug);
 const namePage = nameLetterPageByPath.get(slug);
 const isNamesHub = !!page && page.slug === 'anunneri-nshanakutyuny';
@@ -113,7 +117,7 @@ const crumbs = [
 ];
 ---
 
-<Layout title={title} description={description} type={post ? 'article' : 'website'} image={cover || undefined}>
+<Layout title={title} description={description} type={post ? 'article' : 'website'} image={cover || undefined} locale={post ? seo.locale : undefined} alternates={post ? seo.alternates : undefined}>
   {
     post ? (
       <article class="post-article reveal mx-auto max-w-3xl px-4 py-12 sm:px-6">
