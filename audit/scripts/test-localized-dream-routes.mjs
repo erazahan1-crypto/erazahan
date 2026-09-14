@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { sourceFingerprintV1 } from '../../src/lib/content-schema/fingerprint.mjs';
@@ -51,8 +51,8 @@ try {
     const hy = listPublishedLocaleEntries(real, 'hy');
     assert.equal(hy.length, 5800);
     assert.equal(hy.filter((entry) => entry.path !== publicPathFor('hy', entry.slug)).length, 0);
-    assert.equal(existsSync(path.resolve('dist/ru')), false);
-    assert.equal(existsSync(path.resolve('dist/en')), false);
+    assert.deepEqual(readdirSync(path.resolve('dist/ru')), ['search-index.json']);
+    assert.deepEqual(readdirSync(path.resolve('dist/en')), ['search-index.json']);
   }
   console.log('LOCALIZED DREAM ROUTES PASS');
 } finally { for (const fixture of roots) rmSync(fixture, { recursive: true, force: true }); }
