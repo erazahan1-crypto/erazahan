@@ -24,6 +24,14 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 async function withGeneratedClient(page, index, { deferFetch = false } = {}, verify) {
   const html = readFileSync(page.file, 'utf8');
+  const hasAlphabet = html.includes('id="quick-alpha"');
+  if (page.locale === 'hy') {
+    assert.equal(hasAlphabet, true, 'HY retains its legacy alphabet action');
+    assert.equal(html.includes('id="panel-alpha"'), true, 'HY retains its legacy alphabet panel');
+  } else {
+    assert.equal(hasAlphabet, false, `${page.locale} zero-group page has no alphabet action`);
+    assert.equal(html.includes('id="panel-alpha"'), false, `${page.locale} zero-group page has no alphabet panel`);
+  }
   const encoded = html.match(/data-quick-search-config="([^"]+)"/)?.[1];
   const config = JSON.parse((encoded || '').replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
   const asset = html.match(/src="(\/_astro\/QuickTools[^\"]+\.js)"/)?.[1];
@@ -31,7 +39,9 @@ async function withGeneratedClient(page, index, { deferFetch = false } = {}, ver
   assert.equal(config.indexEndpoint, page.endpoint, `${page.locale} serializes its own endpoint`);
   assert.ok(html.includes(config.searchCopy.heading), `${page.locale} built DOM contains localized heading`);
   assert.ok(html.includes(config.searchCopy.placeholder), `${page.locale} built DOM contains localized placeholder`);
-  const elements = Object.fromEntries(['to-top', 'quick-overlay', 'panel-menu', 'panel-search', 'panel-alpha', 'quick-menu', 'quick-search', 'quick-alpha', 'quick-search-input', 'quick-search-results'].map((id) => [id, new Element()]));
+  const ids = ['to-top', 'quick-overlay', 'panel-menu', 'panel-search', 'quick-menu', 'quick-search', 'quick-search-input', 'quick-search-results'];
+  if (hasAlphabet) ids.push('panel-alpha', 'quick-alpha');
+  const elements = Object.fromEntries(ids.map((id) => [id, new Element()]));
   const close = new Element(); const configElement = new Element(); configElement.dataset = { quickSearchConfig: JSON.stringify(config) };
   const documentEvents = new Map(); const fetched = []; let releaseFetch; let urlReads = 0;
   const previous = { document: globalThis.document, window: globalThis.window, fetch: globalThis.fetch, location: globalThis.location, history: globalThis.history };
@@ -43,7 +53,7 @@ async function withGeneratedClient(page, index, { deferFetch = false } = {}, ver
   try {
     await import(`${pathToFileURL(path.resolve('dist', asset.slice(1))).href}?quicktools=${page.locale}-${Math.random()}`);
     await new Promise((resolve) => setImmediate(resolve));
-    await verify({ asset, config, elements, fetched, close, documentEvents, releaseFetch: () => releaseFetch?.(), urlReads: () => urlReads });
+    await verify({ asset, config, elements, fetched, close, documentEvents, hasAlphabet, releaseFetch: () => releaseFetch?.(), urlReads: () => urlReads });
   } finally { Object.assign(globalThis, previous); }
 }
 
@@ -51,6 +61,10 @@ for (const page of pages) {
   const invalid = page.locale === 'hy' ? '/slug/' : `/${page.locale}/slug/`;
   await withGeneratedClient(page, [{ slug: page.valid, title: page.valid }, { slug: invalid, title: 'invalid-match' }, { slug: page.valid, title: 'second sibling' }], { deferFetch: true }, async (run) => {
     assert.deepEqual(run.fetched, [], `${page.locale} does not fetch before lazy search open`);
+    run.elements['quick-menu'].fire('click');
+    assert.ok(run.elements['panel-menu'].classList.contains('flex'), `${page.locale} opens menu panel`);
+    run.documentEvents.get('keydown')?.({ key: 'Escape' });
+    assert.ok(run.elements['quick-overlay'].classList.contains('hidden'), `${page.locale} closes menu through Escape`);
     run.elements['quick-search'].fire('click');
     assert.deepEqual(run.fetched, [page.endpoint], `${page.locale} fetches only its configured endpoint on open`);
     assert.ok(run.elements['quick-search-results'].innerHTML.includes(run.config.searchCopy.loading), `${page.locale} observes configured loading copy at runtime`);
@@ -84,6 +98,14 @@ await withGeneratedClient(pages[0], Array.from({ length: 31 }, (_, index) => ({ 
   const rendered = run.elements['quick-search-results'].innerHTML;
   assert.equal((rendered.match(/<a href=/g) || []).length, 30, 'real ranking path enforces its 30-result limit');
   assert.ok(rendered.indexOf('/rank-0/') < rendered.indexOf('/rank-1/'), 'real ranking path preserves stable tie order');
+});
+
+await withGeneratedClient(pages[0], [], {}, async (run) => {
+  assert.equal(run.hasAlphabet, true, 'HY fixture retains alphabet controls');
+  run.elements['quick-alpha'].fire('click');
+  assert.ok(run.elements['panel-alpha'].classList.contains('flex'), 'HY opens alphabet panel');
+  run.elements['quick-overlay'].fire('click');
+  assert.ok(run.elements['quick-overlay'].classList.contains('hidden'), 'HY closes alphabet through overlay');
 });
 
 for (const page of pages.slice(1)) await withGeneratedClient(page, [], {}, async (run) => {

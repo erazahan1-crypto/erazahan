@@ -1,6 +1,7 @@
 ---
 import { menu, ALPHABET, letterPathByLetter, normLetter } from "../lib/site";
 import { localeSearchUi, searchResultHref } from '../lib/search/locale-search-ui.mjs';
+import { listRealLocaleQuickToolsAlphabetItems } from '../lib/content-source/locale-quicktools-alphabet.mjs';
 
 const topMenu = menu.filter((m) => m.parent === "0");
 const { locale = 'hy' } = Astro.props;
@@ -13,6 +14,9 @@ const searchCopy = {
   en: { loading: 'Loading…', empty_query: 'Enter a search query.', no_results: 'No results found.', heading: 'Search', placeholder: 'Search dreams…' },
 }[locale];
 const clientConfig = JSON.stringify({ indexEndpoint: ui.indexPath, resultPathPrefix, searchCopy });
+const localeAlphabetItems = locale === 'hy' ? null : listRealLocaleQuickToolsAlphabetItems(locale);
+const localeAlphabetCopy = locale === 'ru' ? 'Алфавит' : 'Alphabet';
+const localeAlphabetGlyph = locale === 'ru' ? 'А' : 'A';
 ---
 
 <div class="fixed bottom-4 right-4 z-40 flex flex-col gap-2" aria-label="Արագ գործիքներ">
@@ -38,17 +42,31 @@ const clientConfig = JSON.stringify({ indexEndpoint: ui.indexPath, resultPathPre
   >
     <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.35-4.35"></path></svg>
   </button>
-  <button
-    id="quick-alpha"
-    type="button"
-    title="Այբուբեն"
-    aria-label="Այբուբեն"
-    aria-expanded="false"
-    aria-controls="panel-alpha"
-    class="grid size-11 place-items-center rounded-full border border-white/10 bg-night-800/80 font-display text-base font-bold text-slate-200 shadow-lg shadow-black/40 backdrop-blur transition hover:-translate-y-0.5 hover:border-violet-400/60 hover:bg-violet-500/20 hover:text-white"
-  >
-    Ա
-  </button>
+  {locale === 'hy' ? (
+    <button
+      id="quick-alpha"
+      type="button"
+      title="Այբուբեն"
+      aria-label="Այբուբեն"
+      aria-expanded="false"
+      aria-controls="panel-alpha"
+      class="grid size-11 place-items-center rounded-full border border-white/10 bg-night-800/80 font-display text-base font-bold text-slate-200 shadow-lg shadow-black/40 backdrop-blur transition hover:-translate-y-0.5 hover:border-violet-400/60 hover:bg-violet-500/20 hover:text-white"
+    >
+      Ա
+    </button>
+  ) : localeAlphabetItems.length ? (
+    <button
+      id="quick-alpha"
+      type="button"
+      title={localeAlphabetCopy}
+      aria-label={localeAlphabetCopy}
+      aria-expanded="false"
+      aria-controls="panel-alpha"
+      class="grid size-11 place-items-center rounded-full border border-white/10 bg-night-800/80 font-display text-base font-bold text-slate-200 shadow-lg shadow-black/40 backdrop-blur transition hover:-translate-y-0.5 hover:border-violet-400/60 hover:bg-violet-500/20 hover:text-white"
+    >
+      {localeAlphabetGlyph}
+    </button>
+  ) : null}
   <a
     href="/chgtnvac-erazner/"
     title="Նամակ"
@@ -113,27 +131,46 @@ const clientConfig = JSON.stringify({ indexEndpoint: ui.indexPath, resultPathPre
     </div>
   </div>
 
-  <div
-    id="panel-alpha"
-    class="hidden max-h-[85vh] w-full max-w-lg flex-col overflow-y-auto rounded-2xl border border-white/10 bg-night-900 p-5 shadow-2xl shadow-black/60"
-  >
-    <div class="flex items-center justify-between gap-4">
-      <h2 class="font-display text-xl font-bold text-white">Այբուբեն</h2>
-      <button type="button" class="quick-close grid size-9 place-items-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition hover:border-violet-400/60 hover:text-white" aria-label="Փակել">
-        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>
-      </button>
+  {locale === 'hy' ? (
+    <div
+      id="panel-alpha"
+      class="hidden max-h-[85vh] w-full max-w-lg flex-col overflow-y-auto rounded-2xl border border-white/10 bg-night-900 p-5 shadow-2xl shadow-black/60"
+    >
+      <div class="flex items-center justify-between gap-4">
+        <h2 class="font-display text-xl font-bold text-white">Այբուբեն</h2>
+        <button type="button" class="quick-close grid size-9 place-items-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition hover:border-violet-400/60 hover:text-white" aria-label="Փակել">
+          <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>
+        </button>
+      </div>
+      <div class="mt-4 grid grid-cols-7 gap-2 sm:grid-cols-8">
+        {ALPHABET.map((letter) => {
+          const path = letterPathByLetter.get(normLetter(letter));
+          return path ? (
+            <a href={`/${path}/`} class="grid aspect-square place-items-center rounded-xl border border-white/10 bg-white/5 font-semibold text-slate-200 transition hover:scale-105 hover:border-violet-400/60 hover:bg-violet-500/20 hover:text-white">{letter}</a>
+          ) : (
+            <span class="grid aspect-square cursor-default place-items-center rounded-xl border border-white/5 bg-white/5 font-semibold text-slate-600">{letter}</span>
+          );
+        })}
+      </div>
     </div>
-    <div class="mt-4 grid grid-cols-7 gap-2 sm:grid-cols-8">
-      {ALPHABET.map((letter) => {
-        const path = letterPathByLetter.get(normLetter(letter));
-        return path ? (
-          <a href={`/${path}/`} class="grid aspect-square place-items-center rounded-xl border border-white/10 bg-white/5 font-semibold text-slate-200 transition hover:scale-105 hover:border-violet-400/60 hover:bg-violet-500/20 hover:text-white">{letter}</a>
-        ) : (
-          <span class="grid aspect-square cursor-default place-items-center rounded-xl border border-white/5 bg-white/5 font-semibold text-slate-600">{letter}</span>
-        );
-      })}
+  ) : localeAlphabetItems.length ? (
+    <div
+      id="panel-alpha"
+      class="hidden max-h-[85vh] w-full max-w-lg flex-col overflow-y-auto rounded-2xl border border-white/10 bg-night-900 p-5 shadow-2xl shadow-black/60"
+    >
+      <div class="flex items-center justify-between gap-4">
+        <h2 class="font-display text-xl font-bold text-white">{localeAlphabetCopy}</h2>
+        <button type="button" class="quick-close grid size-9 place-items-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition hover:border-violet-400/60 hover:text-white" aria-label="Փակել">
+          <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>
+        </button>
+      </div>
+      <div class="mt-4 grid grid-cols-7 gap-2 sm:grid-cols-8">
+        {localeAlphabetItems.map((item) => (
+          <a href={item.href} class="grid aspect-square place-items-center rounded-xl border border-white/10 bg-white/5 font-semibold text-slate-200 transition hover:scale-105 hover:border-violet-400/60 hover:bg-violet-500/20 hover:text-white">{item.label}</a>
+        ))}
+      </div>
     </div>
-  </div>
+  ) : null}
 </div>
 
 <script>
