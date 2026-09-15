@@ -31,18 +31,27 @@ export interface MultiFileSnapshot {
   refSha: string;
   commitSha: string;
   treeSha: string;
-  files: Map<string, MultiFileSnapshotFile>;
+  files: Map<string, MultiFileSnapshotFile | null>;
 }
 
-export interface MultiFileChange {
+export interface LegacyMultiFileChange {
   path: string;
   content: string;
+}
+export interface UpdateMultiFileChange extends LegacyMultiFileChange { operation: 'update' }
+export interface CreateMultiFileChange extends LegacyMultiFileChange { operation: 'create' }
+export interface DeleteMultiFileChange { operation: 'delete'; path: string }
+export type MultiFileChange = LegacyMultiFileChange | UpdateMultiFileChange | CreateMultiFileChange | DeleteMultiFileChange;
+export interface MultiFileTransactionOptions {
+  expectedFileShas?: Record<string, string>;
+  changes: MultiFileChange[];
+  message: string;
 }
 
 interface GitObject { sha: string }
 interface GitRef { object: GitObject }
 interface GitCommit { tree: GitObject }
-interface TreeEntry { path: string; type: 'blob' | 'tree'; sha: string }
+interface TreeEntry { path: string; mode?: string; type?: 'blob' | 'tree'; sha: string | null }
 interface GitTree { tree: TreeEntry[] }
 interface GitBlob { sha: string; content: string; encoding: string }
 
@@ -70,6 +79,7 @@ export async function loadPostsSnapshot(config: GitHubConfig) {
   const ref = await github<GitRef>(config, `/git/ref/heads/${encodeURIComponent(config.branch)}`);
   const commit = await github<GitCommit>(config, `/git/commits/${ref.object.sha}`);
   const blobSha = await findBlob(config, commit.tree.sha, POSTS_PATH);
+  if (blobSha === null) throw new Error(`GitHub: не найден ${POSTS_PATH}.`);
   const blob = await github<GitBlob>(config, `/git/blobs/${blobSha}`);
   if (blob.encoding !== 'base64') throw new Error('GitHub вернул неподдерживаемую кодировку файла.');
   const source = decodeBase64(blob.content.replace(/\s/g, ''));
@@ -132,15 +142,18 @@ export async function loadSnapshotFiles(
 export async function commitMultiFileTransaction(
   config: GitHubConfig,
   snapshot: MultiFileSnapshot,
-  expectedPostsBlobSha: string,
-  changes: MultiFileChange[],
-  message: string,
+  expectedPostsBlobShaOrOptions: string | MultiFileTransactionOptions,
+  legacyChanges?: MultiFileChange[],
+  legacyMessage?: string,
 ) {
+  const legacy = typeof expectedPostsBlobShaOrOptions === 'string';
+  const options = legacy ? null : expectedPostsBlobShaOrOptions;
   return commitMultiFileTransactionWithTransport(githubTransport(config), {
     snapshot,
-    expectedPostsBlobSha,
-    changes,
-    message,
+    expectedPostsBlobSha: legacy ? expectedPostsBlobShaOrOptions : undefined,
+    expectedFileShas: options?.expectedFileShas,
+    changes: legacy ? legacyChanges : options?.changes,
+    message: legacy ? legacyMessage : options?.message,
   });
 }
 
@@ -179,14 +192,14 @@ function requiredString(value: unknown, label: string, max: number): string {
   return normalized;
 }
 
-async function findBlob(config: GitHubConfig, rootTreeSha: string, filePath: string): Promise<string> {
+async function findBlob(config: GitHubConfig, rootTreeSha: string, filePath: string): Promise<string | null> {
   const segments = filePath.split('/');
   let treeSha = rootTreeSha;
   for (let index = 0; index < segments.length; index += 1) {
     const tree = await github<GitTree>(config, `/git/trees/${treeSha}`);
     const entry = tree.tree.find((item) => item.path === segments[index]);
     const expected = index === segments.length - 1 ? 'blob' : 'tree';
-    if (!entry || entry.type !== expected) throw new Error(`GitHub: не найден ${POSTS_PATH}.`);
+    if (!entry || entry.type !== expected) return null;
     treeSha = entry.sha;
   }
   return treeSha;
@@ -204,6 +217,7 @@ function githubTransport(config: GitHubConfig) {
     },
     async readFileFromTree(treeSha: string, filePath: string) {
       const blobSha = await findBlob(config, treeSha, filePath);
+      if (blobSha === null) return null;
       const blob = await github<GitBlob>(config, `/git/blobs/${blobSha}`);
       if (blob.encoding !== 'base64') throw new Error(`GitHub returned unsupported encoding for ${filePath}`);
       return { sha: blobSha, content: decodeBase64(blob.content.replace(/\s/g, '')) };
@@ -237,7 +251,12 @@ function githubTransport(config: GitHubConfig) {
 }
 
 class GitHubError extends Error {
-  constructor(public status: number, message: string) { super(message); }
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
 }
 
 async function github<T>(config: GitHubConfig, path: string, init: RequestInit = {}): Promise<T> {
