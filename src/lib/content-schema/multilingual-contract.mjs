@@ -7,6 +7,10 @@ import {
   validateLocaleDocument,
 } from './schema.mjs';
 import { selectPublishedLocale } from './state.mjs';
+import {
+  reservedLocalizedDreamSlugs,
+  validateStoredAlphabetKey,
+} from './locale-alphabet.mjs';
 
 export const LOCALE_RESERVATION_VERSION = 1;
 export const LOCALE_RESERVATION_KINDS = Object.freeze(['active', 'redirect']);
@@ -59,7 +63,13 @@ export function assertRuPublicSlug(slug) {
 
 export function assertLocalePublicSlug(locale, slug) {
   assertSupportedLocale(locale);
-  return locale === 'ru' ? assertRuPublicSlug(slug) : assertPublicSlug(slug);
+  const canonicalSlug = locale === 'ru' ? assertRuPublicSlug(slug) : assertPublicSlug(slug);
+  if (locale === 'ru' || locale === 'en') {
+    if (reservedLocalizedDreamSlugs(locale).includes(canonicalSlug)) {
+      fail(`${locale.toUpperCase()} slug is reserved`);
+    }
+  }
+  return canonicalSlug;
 }
 
 export function publicPathFor(locale, slug) {
@@ -87,6 +97,12 @@ export function validateLocaleDocumentStorage({ item, filename, localeDocument }
   if (localeDocument.locale !== locale) fail(`${filename} must contain locale=${locale}`);
   for (const state of ['draft', 'published']) {
     if (localeDocument[state]) assertLocalePublicSlug(locale, localeDocument[state].slug);
+  }
+  // Drafts deliberately remain editable while incomplete. The repository's
+  // published snapshot is the authoritative publication boundary consumed by
+  // every public resolver.
+  if ((locale === 'ru' || locale === 'en') && localeDocument.published) {
+    validateStoredAlphabetKey(locale, localeDocument.published.title, localeDocument.published.alphabet_key);
   }
   return localeDocument;
 }
