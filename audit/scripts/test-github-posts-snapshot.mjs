@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { loadMultiFileSnapshot } from '../../functions/_lib/github-posts.ts';
+import { createGitHubTransactionClient, loadMultiFileSnapshot } from '../../functions/_lib/github-posts.ts';
 
 const POSTS = 'src/data/posts.json';
 const MISSING = 'src/data/content/dreams/aa/missing/ru.json';
@@ -29,6 +29,14 @@ function installFetch({ failDataTree = false } = {}) {
 
 let restore = installFetch();
 try {
+  const client = createGitHubTransactionClient(config);
+  for (const method of ['getBranchRef', 'getCommit', 'readFileFromTree', 'createBlob', 'createTree', 'createCommit', 'updateBranchRef']) {
+    assert.equal(typeof client[method], 'function', `${method} is available to C2/D1`);
+  }
+  assert.deepEqual(await client.getBranchRef('main'), { sha: 'commit-sha' });
+  assert.deepEqual(await client.getCommit('commit-sha'), { treeSha: 'root-tree' });
+  assert.deepEqual(await client.readFileFromTree('root-tree', POSTS), { sha: 'posts-sha', content: '[]' });
+  assert.equal(await client.readFileFromTree('root-tree', MISSING), null);
   const snapshot = await loadMultiFileSnapshot(config, [POSTS, MISSING]);
   assert.deepEqual(snapshot.files.get(POSTS), { sha: 'posts-sha', content: '[]' });
   assert.equal(snapshot.files.has(MISSING), true);
@@ -48,4 +56,4 @@ try {
 }
 
 console.log('GITHUB POSTS SNAPSHOT PASS');
-console.log(JSON.stringify({ existing_file_loaded: true, missing_file_is_null: true, transport_failure_throws: true }, null, 2));
+console.log(JSON.stringify({ existing_file_loaded: true, missing_file_is_null: true, transport_failure_throws: true, transaction_client_factory: true }, null, 2));

@@ -205,6 +205,10 @@ async function findBlob(config: GitHubConfig, rootTreeSha: string, filePath: str
   return treeSha;
 }
 
+export function createGitHubTransactionClient(config: GitHubConfig) {
+  return githubTransport(config);
+}
+
 function githubTransport(config: GitHubConfig) {
   return {
     async getBranchRef(branch: string) {
