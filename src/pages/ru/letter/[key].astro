@@ -1,0 +1,23 @@
+---
+import LocaleLetterPage from '../../../components/LocaleLetterPage.astro';
+import { CONTENT_STORE_ROOT } from '../../../lib/content-source/localized-dream-routes.mjs';
+import { listLocaleLetterRouteEntries } from '../../../lib/content-source/locale-letter-routes.mjs';
+import { scanContentStore } from '../../../lib/content-source/multilingual-store.mjs';
+import Layout from '../../../layouts/Layout.astro';
+
+export function getStaticPaths() {
+  const repository = scanContentStore(CONTENT_STORE_ROOT);
+  return listLocaleLetterRouteEntries(repository, 'ru').map((route) => ({
+    params: { key: route.key },
+    props: { group: route.group },
+  }));
+}
+
+const { group } = Astro.props;
+const title = `Сны на букву «${group.alphabet_key}»`;
+const description = `Толкования снов на букву «${group.alphabet_key}».`;
+---
+
+<Layout title={title} description={description} locale="ru" alternates={[]} robots="noindex, follow">
+  <LocaleLetterPage locale="ru" alphabetKey={group.alphabet_key} entries={group.entries} title={title} homeLabel="Главная" letterLabel={`Буква «${group.alphabet_key}»`} />
+</Layout>

@@ -1,0 +1,23 @@
+---
+import LocaleLetterPage from '../../../components/LocaleLetterPage.astro';
+import { CONTENT_STORE_ROOT } from '../../../lib/content-source/localized-dream-routes.mjs';
+import { listLocaleLetterRouteEntries } from '../../../lib/content-source/locale-letter-routes.mjs';
+import { scanContentStore } from '../../../lib/content-source/multilingual-store.mjs';
+import Layout from '../../../layouts/Layout.astro';
+
+export function getStaticPaths() {
+  const repository = scanContentStore(CONTENT_STORE_ROOT);
+  return listLocaleLetterRouteEntries(repository, 'en').map((route) => ({
+    params: { key: route.key },
+    props: { group: route.group },
+  }));
+}
+
+const { group } = Astro.props;
+const title = `Dreams Starting with “${group.alphabet_key}”`;
+const description = `Dream meanings starting with the letter “${group.alphabet_key}”.`;
+---
+
+<Layout title={title} description={description} locale="en" alternates={[]} robots="noindex, follow">
+  <LocaleLetterPage locale="en" alphabetKey={group.alphabet_key} entries={group.entries} title={title} homeLabel="Home" letterLabel={`Letter “${group.alphabet_key}”`} />
+</Layout>

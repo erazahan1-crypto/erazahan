@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { sourceFingerprintV1 } from '../../src/lib/content-schema/fingerprint.mjs';
@@ -7,6 +7,7 @@ import { listLocalizedDreamRouteEntries } from '../../src/lib/content-source/loc
 import { MultilingualStoreValidationError, scanContentStore } from '../../src/lib/content-source/multilingual-store.mjs';
 import { listPublishedLocaleEntries } from '../../src/lib/content-source/published-content.mjs';
 import { publicPathFor } from '../../src/lib/content-schema/multilingual-contract.mjs';
+import { listPublishedAlphabetGroups } from '../../src/lib/content-source/published-alphabet.mjs';
 
 const A = 'efa61838-86c8-56b8-815c-0a38b0a83242';
 const B = 'cadd4552-097e-5845-b59e-223c36c82488';
@@ -31,6 +32,18 @@ function add(rootPath, id, { ru = null, en = null } = {}) {
   if (en) write(rootPath, `${base}/en.json`, { schema_version: 1, content_id: id, locale: 'en', ...en(item.source_fingerprint) });
 }
 
+function assertLocaleLetterOutput(outputRoot, locale, groups) {
+  const localeRoot = path.join(outputRoot, locale);
+  const letterRoot = path.join(localeRoot, 'letter');
+  const expectedRoot = ['search', 'search-index.json', ...(groups.length ? ['letter'] : [])].sort();
+  assert.deepEqual(readdirSync(localeRoot).sort(), expectedRoot);
+  if (groups.length === 0) {
+    assert.equal(existsSync(letterRoot), false, `${locale} must not emit an empty letter hub`);
+    return;
+  }
+  assert.deepEqual(readdirSync(letterRoot).sort(), groups.map((group) => group.route_key).sort());
+}
+
 try {
   { const fixture = root(); add(fixture, A, { ru: draft('ru', 'draft-only') }); assert.deepEqual(listLocalizedDreamRouteEntries(scanContentStore(fixture), 'ru'), []); }
   { const fixture = root(); add(fixture, A); const repository = scanContentStore(fixture); assert.equal(listLocalizedDreamRouteEntries(repository, 'ru').length, 0); assert.equal(listLocalizedDreamRouteEntries(repository, 'en').length, 0); }
@@ -51,8 +64,15 @@ try {
     const hy = listPublishedLocaleEntries(real, 'hy');
     assert.equal(hy.length, 5800);
     assert.equal(hy.filter((entry) => entry.path !== publicPathFor('hy', entry.slug)).length, 0);
-    assert.deepEqual(readdirSync(path.resolve('dist/ru')).sort(), ['search', 'search-index.json']);
-    assert.deepEqual(readdirSync(path.resolve('dist/en')).sort(), ['search', 'search-index.json']);
+    assertLocaleLetterOutput(path.resolve('dist'), 'ru', listPublishedAlphabetGroups(real, 'ru'));
+    assertLocaleLetterOutput(path.resolve('dist'), 'en', listPublishedAlphabetGroups(real, 'en'));
+  }
+  {
+    const output = root();
+    mkdirSync(path.join(output, 'ru', 'search'), { recursive: true });
+    write(output, 'ru/search-index.json', '[]');
+    mkdirSync(path.join(output, 'ru', 'letter', 'unexpected'), { recursive: true });
+    assert.throws(() => assertLocaleLetterOutput(output, 'ru', [{ route_key: 'в' }]));
   }
   console.log('LOCALIZED DREAM ROUTES PASS');
 } finally { for (const fixture of roots) rmSync(fixture, { recursive: true, force: true }); }
