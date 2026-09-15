@@ -115,14 +115,22 @@ function assertSource(loaded, expectedSourceRevision, expectedSourceFingerprint)
     fail('SOURCE_CHANGED', 'HY source changed; reload before creating a draft');
   }
 }
-async function transact(client, loaded, changes, message, expectedLocaleBlobSha = undefined) {
+async function transact(client, loaded, changes, message, localeDocument, expectedLocaleBlobSha = undefined) {
   const transaction = await commitMultiFileTransaction(client, {
     snapshot: loaded.snapshot,
     expectedFileShas: expectedLocaleBlobSha ? { [loaded.paths.locale]: expectedLocaleBlobSha } : undefined,
     changes,
     message,
   });
-  return { changed: !transaction.noOp, code: transaction.noOp ? 'NO_CHANGES' : null, transaction };
+  const localeBlobSha = localeDocument === null
+    ? null
+    : transaction.noOp
+      ? loaded.localeBlobSha
+      : transaction.blobShas.get(loaded.paths.locale);
+  if (localeDocument !== null && (typeof localeBlobSha !== 'string' || !localeBlobSha)) {
+    fail('LOCALE_BLOB_SHA_MISSING', 'Transaction did not return the locale file blob SHA');
+  }
+  return { changed: !transaction.noOp, code: transaction.noOp ? 'NO_CHANGES' : null, transaction, localeBlobSha };
 }
 function localeChange(loaded, document, operation = 'update') { return { operation, path: loaded.paths.locale, content: canonicalJson(document) }; }
 function claimsChange(loaded, claims) {
@@ -137,7 +145,7 @@ export async function createLocaleDraftWrite(client, { branch, contentId, locale
   const result = createLocaleDraft({ item: loaded.item, locale, payload: structuredClone(payload), draftClaims: loaded.draftClaims, publishedReservations: loaded.publishedReservations });
   const claims = claimsChange(loaded, result.draftClaims);
   if (!claims) fail('INVALID_DRAFT_CLAIM_TRANSITION', 'First draft must create a draft claim');
-  return { ...await transact(client, loaded, [localeChange(loaded, result.localeDocument, 'create'), claims], 'Admin: create locale draft'), localeDocument: result.localeDocument };
+  return { ...await transact(client, loaded, [localeChange(loaded, result.localeDocument, 'create'), claims], 'Admin: create locale draft', result.localeDocument), localeDocument: result.localeDocument };
 }
 
 export async function updateLocaleDraftWrite(client, { branch, contentId, locale, payload, expectedLocaleBlobSha }) {
@@ -145,14 +153,14 @@ export async function updateLocaleDraftWrite(client, { branch, contentId, locale
   assertExisting(loaded, expectedLocaleBlobSha);
   const result = updateLocaleDraft({ item: loaded.item, locale, localeDocument: loaded.localeDocument, payload: structuredClone(payload), draftClaims: loaded.draftClaims, publishedReservations: loaded.publishedReservations });
   const claims = claimsChange(loaded, result.draftClaims);
-  return { ...await transact(client, loaded, [localeChange(loaded, result.localeDocument), ...claims ? [claims] : []], 'Admin: update locale draft', expectedLocaleBlobSha), localeDocument: result.localeDocument };
+  return { ...await transact(client, loaded, [localeChange(loaded, result.localeDocument), ...claims ? [claims] : []], 'Admin: update locale draft', result.localeDocument, expectedLocaleBlobSha), localeDocument: result.localeDocument };
 }
 
 export async function beginLocaleEditWrite(client, { branch, contentId, locale, expectedLocaleBlobSha }) {
   const loaded = await loadLocaleDraftSnapshot(client, { branch, contentId, locale });
   assertExisting(loaded, expectedLocaleBlobSha);
   const result = beginLocaleEdit({ item: loaded.item, locale, localeDocument: loaded.localeDocument, draftClaims: loaded.draftClaims, publishedReservations: loaded.publishedReservations });
-  return { ...await transact(client, loaded, [localeChange(loaded, result.localeDocument)], 'Admin: begin locale edit', expectedLocaleBlobSha), localeDocument: result.localeDocument };
+  return { ...await transact(client, loaded, [localeChange(loaded, result.localeDocument)], 'Admin: begin locale edit', result.localeDocument, expectedLocaleBlobSha), localeDocument: result.localeDocument };
 }
 
 export async function rebaseLocaleDraftWrite(client, { branch, contentId, locale, expectedLocaleBlobSha }) {
@@ -160,9 +168,9 @@ export async function rebaseLocaleDraftWrite(client, { branch, contentId, locale
   assertExisting(loaded, expectedLocaleBlobSha);
   try {
     const result = rebaseLocaleDraftToCurrentSource({ item: loaded.item, locale, localeDocument: loaded.localeDocument, draftClaims: loaded.draftClaims, publishedReservations: loaded.publishedReservations });
-    return { ...await transact(client, loaded, [localeChange(loaded, result.localeDocument)], 'Admin: rebase locale draft', expectedLocaleBlobSha), localeDocument: result.localeDocument };
+    return { ...await transact(client, loaded, [localeChange(loaded, result.localeDocument)], 'Admin: rebase locale draft', result.localeDocument, expectedLocaleBlobSha), localeDocument: result.localeDocument };
   } catch (error) {
-    if (error?.code === 'NO_CHANGES') return { changed: false, code: 'NO_CHANGES', transaction: null, localeDocument: loaded.localeDocument };
+    if (error?.code === 'NO_CHANGES') return { changed: false, code: 'NO_CHANGES', transaction: null, localeDocument: loaded.localeDocument, localeBlobSha: loaded.localeBlobSha };
     throw error;
   }
 }
@@ -174,5 +182,5 @@ export async function discardLocaleDraftWrite(client, { branch, contentId, local
   const changes = result.localeDocument === null
     ? [{ operation: 'delete', path: loaded.paths.locale }, claimsChange(loaded, result.draftClaims)]
     : [localeChange(loaded, result.localeDocument)];
-  return { ...await transact(client, loaded, changes.filter(Boolean), 'Admin: discard locale draft', expectedLocaleBlobSha), localeDocument: result.localeDocument };
+  return { ...await transact(client, loaded, changes.filter(Boolean), 'Admin: discard locale draft', result.localeDocument, expectedLocaleBlobSha), localeDocument: result.localeDocument };
 }
