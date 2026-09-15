@@ -1,0 +1,8 @@
+---
+import SearchPage from '../../components/SearchPage.astro';
+import { localeSearchUi, searchResultHref } from '../../lib/search/locale-search-ui.mjs';
+const locale = 'ru'; const ui = localeSearchUi(locale);
+const resultPathPrefix = searchResultHref(locale, { slug: 'тест' }).replace('тест/', '');
+const copy = { title: 'Поиск', description: 'Поиск толкований снов', heading: 'Поиск', placeholder: 'Поиск снов…', empty_query: 'Введите поисковый запрос.', no_results: 'Ничего не найдено.' };
+---
+<SearchPage locale={locale} indexEndpoint={ui.indexPath} resultPathPrefix={resultPathPrefix} copy={copy} />

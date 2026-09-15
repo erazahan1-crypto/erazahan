@@ -1,0 +1,8 @@
+---
+import SearchPage from '../../components/SearchPage.astro';
+import { localeSearchUi, searchResultHref } from '../../lib/search/locale-search-ui.mjs';
+const locale = 'en'; const ui = localeSearchUi(locale);
+const resultPathPrefix = searchResultHref(locale, { slug: 'search-result-slug' }).replace('search-result-slug/', '');
+const copy = { title: 'Search', description: 'Search dream interpretations', heading: 'Search', placeholder: 'Search dreams…', empty_query: 'Enter a search query.', no_results: 'No results found.' };
+---
+<SearchPage locale={locale} indexEndpoint={ui.indexPath} resultPathPrefix={resultPathPrefix} copy={copy} />

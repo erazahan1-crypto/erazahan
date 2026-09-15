@@ -51,8 +51,8 @@ try {
     const hy = listPublishedLocaleEntries(real, 'hy');
     assert.equal(hy.length, 5800);
     assert.equal(hy.filter((entry) => entry.path !== publicPathFor('hy', entry.slug)).length, 0);
-    assert.deepEqual(readdirSync(path.resolve('dist/ru')), ['search-index.json']);
-    assert.deepEqual(readdirSync(path.resolve('dist/en')), ['search-index.json']);
+    assert.deepEqual(readdirSync(path.resolve('dist/ru')).sort(), ['search', 'search-index.json']);
+    assert.deepEqual(readdirSync(path.resolve('dist/en')).sort(), ['search', 'search-index.json']);
   }
   console.log('LOCALIZED DREAM ROUTES PASS');
 } finally { for (const fixture of roots) rmSync(fixture, { recursive: true, force: true }); }

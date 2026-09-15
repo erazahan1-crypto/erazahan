@@ -14,6 +14,7 @@ interface Props {
   image?: string;
   locale?: 'hy' | 'ru' | 'en';
   alternates?: { locale: string; path: string }[] | null;
+  robots?: string | null;
 }
 
 const {
@@ -24,6 +25,7 @@ const {
   image,
   locale = 'hy',
   alternates: alternatesProp = [],
+  robots = ALLOW_INDEXING ? null : 'noindex, nofollow',
 } = Astro.props;
 
 const { html_lang, og_locale } = localeSeoMetadata(locale);
@@ -45,7 +47,7 @@ const ogImage = image ? (image.startsWith("http") ? image : `${SITE}${image}`) :
     <link rel="canonical" href={Astro.url} />
     {alternates.map((alternate) => <link rel="alternate" hreflang={alternate.locale} href={new URL(alternate.path, Astro.url)} />)}
 
-    {!ALLOW_INDEXING ? <meta name="robots" content="noindex, nofollow" /> : null}
+    {robots ? <meta name="robots" content={robots} /> : null}
 
     <!-- Open Graph -->
     <meta property="og:type" content={type} />

@@ -1,0 +1,35 @@
+---
+import Layout from '../layouts/Layout.astro';
+type SearchCopy = { title: string; description: string; heading: string; placeholder: string; empty_query: string; no_results: string; };
+interface Props { locale: 'hy' | 'ru' | 'en'; indexEndpoint: string; resultPathPrefix: string; copy: SearchCopy; }
+const { locale, indexEndpoint, resultPathPrefix, copy } = Astro.props;
+const clientConfig = JSON.stringify({ indexEndpoint, resultPathPrefix, copy });
+---
+<Layout title={copy.title} description={copy.description} locale={locale} robots="noindex, nofollow">
+  <div class="mx-auto max-w-3xl px-4 py-12 sm:px-6" data-search-config={clientConfig}>
+    <h1 class="font-display text-3xl font-bold text-white">{copy.heading}</h1>
+    <form class="mt-6" onsubmit="return false"><div class="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 transition focus-within:border-violet-400/60 focus-within:ring-2 focus-within:ring-violet-500/30"><svg class="ml-2 size-5 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.35-4.35"></path></svg><input id="search-input" type="search" placeholder={copy.placeholder} autocomplete="off" class="w-full bg-transparent px-2 py-2.5 text-white placeholder:text-slate-400 outline-none" /></div></form>
+    <div id="search-results" class="mt-6"></div>
+  </div>
+</Layout>
+<script>
+  import { prepareSearchIndex, rankPreparedSearch } from '../lib/public-search.mjs';
+  import { renderSearchResult } from '../lib/search/search-result-renderer.mjs';
+  type SearchIndexItem = { slug: string; title: string; text?: string; baseWord?: string; symbol?: string; keywords?: string[] | string; tags?: string[] | string; };
+  const configElement = document.querySelector('[data-search-config]') as HTMLElement;
+  const config = JSON.parse(configElement.dataset.searchConfig || '{}') as { indexEndpoint: string; resultPathPrefix: string; copy: { empty_query: string; no_results: string; }; };
+  const input = document.getElementById('search-input') as HTMLInputElement;
+  const results = document.getElementById('search-results') as HTMLDivElement;
+  const initialQ = new URLSearchParams(window.location.search).get('q') || '';
+  input.value = initialQ;
+  let preparedIndex: ReturnType<typeof prepareSearchIndex> = [];
+  function run() {
+    const term = input.value || '';
+    if (!term.trim()) { results.innerHTML = `<p class="text-slate-400">${config.copy.empty_query}</p>`; return; }
+    const matches = rankPreparedSearch(term, preparedIndex, 60) as SearchIndexItem[];
+    if (!matches.length) { results.innerHTML = `<p class="text-slate-400">${config.copy.no_results}</p>`; return; }
+    results.innerHTML = matches.map((item) => renderSearchResult(item, config.resultPathPrefix)).join('') || `<p class="text-slate-400">${config.copy.no_results}</p>`;
+  }
+  input.addEventListener('input', run);
+  fetch(config.indexEndpoint).then((r) => r.json()).then((d) => { preparedIndex = prepareSearchIndex(d); if (initialQ) run(); });
+</script>
