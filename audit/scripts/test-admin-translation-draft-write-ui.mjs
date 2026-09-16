@@ -10,6 +10,8 @@ assert.match(source, /expected_source_revision: loadedState\.source\.revision/);
 assert.match(source, /expected_source_fingerprint: loadedState\.source\.fingerprint/);
 assert.match(source, /expected_locale_blob_sha: localeBlobSha/);
 assert.match(source, /fetch\('\/api\/admin\/translations', \{ method: 'POST'/);
+assert.match(source, /data-draft-action[^>]*disabled:cursor-not-allowed[^>]*disabled:opacity-60/);
+assert.equal(/data-draft-action[^>]*\sopacity-60(?:\s|")/.test(source), false);
 assert.match(source, /localeBlobSha = typeof .*locale_blob_sha/s);
 assert.match(source, /await load\(\)/);
 assert.match(source, /if \(!await load\(\)\) \{ writeBlocked = true; writeError\.textContent = 'Draft may have been saved/);
