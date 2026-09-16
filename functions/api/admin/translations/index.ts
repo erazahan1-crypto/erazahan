@@ -1,5 +1,5 @@
 import { isContentId, isSourceFingerprint } from '../../../../src/lib/content-schema/schema.mjs';
-import { beginLocaleEditWrite, createLocaleDraftWrite, loadLocaleTranslationEditorState, updateLocaleDraftWrite } from '../../../_lib/admin-locale-draft-write.mjs';
+import { beginLocaleEditWrite, createLocaleDraftWrite, loadLocaleTranslationEditorState, rebaseLocaleDraftWrite, updateLocaleDraftWrite } from '../../../_lib/admin-locale-draft-write.mjs';
 import { createGitHubTransactionClient, getGitHubConfig, PostsConfigError, type GitHubPostsEnv } from '../../../_lib/github-posts.ts';
 
 interface Context { request: Request; env: GitHubPostsEnv & { ERAZAHAN_LOCALE_ADMIN_ATOMIC_BRANCH?: string }; }
@@ -46,7 +46,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
 
 function postInput(body: unknown) {
   if (!plainObject(body) || typeof body.action !== 'string') throw Object.assign(new Error(), { code: 'INVALID_REQUEST' });
-  if (!['create_draft', 'update_draft', 'begin_edit'].includes(body.action)) throw Object.assign(new Error(), { code: 'INVALID_ACTION' });
+  if (!['create_draft', 'update_draft', 'begin_edit', 'rebase'].includes(body.action)) throw Object.assign(new Error(), { code: 'INVALID_ACTION' });
   const identity = typeof body.content_id === 'string' && isContentId(body.content_id) && (body.locale === 'ru' || body.locale === 'en');
   if (!identity) throw Object.assign(new Error(), { code: 'INVALID_REQUEST' });
   const payload = body.payload;
@@ -87,11 +87,12 @@ export async function onRequestPost(context: Context): Promise<Response> {
     const input = postInput(body);
     const branch = writerGuard(context.env);
     const config = getGitHubConfig(context.env); const client = createGitHubTransactionClient(config);
-    const result = input.action === 'create_draft'
-      ? await createLocaleDraftWrite(client, { ...input, branch })
-      : input.action === 'update_draft'
-        ? await updateLocaleDraftWrite(client, { ...input, branch })
-        : await beginLocaleEditWrite(client, { ...input, branch });
+    let result;
+    if (input.action === 'create_draft') result = await createLocaleDraftWrite(client, { ...input, branch });
+    else if (input.action === 'update_draft') result = await updateLocaleDraftWrite(client, { ...input, branch });
+    else if (input.action === 'begin_edit') result = await beginLocaleEditWrite(client, { ...input, branch });
+    else if (input.action === 'rebase') result = await rebaseLocaleDraftWrite(client, { ...input, branch });
+    else throw Object.assign(new Error(), { code: 'INVALID_ACTION' });
     return json({ ok: true, changed: result.changed, ...(result.code ? { code: result.code } : {}), content_id: input.contentId, locale: input.locale, locale_document: result.localeDocument, locale_blob_sha: result.localeBlobSha });
   } catch (error) { return writeError(error); }
 }
