@@ -57,7 +57,8 @@ assert.match(source, /LOCALE_UNSUPPORTED/);
 assert.match(source, /Translation data is temporarily unavailable\./);
 assert.match(source, /function validPayload/);
 assert.match(source, /function validSource/);
-assert.equal(/method:\s*['"](?:POST|PUT|PATCH|DELETE)/.test(source), false);
+assert.match(source, /fetch\('\/api\/admin\/translations', \{ method: 'POST'/);
+assert.equal(/method:\s*['"](?:PUT|PATCH|DELETE)/.test(source), false);
 for (const action of ['Create Draft', 'Save Draft', 'Begin Edit', 'Rebase', 'Discard', 'Publish']) {
   assert.equal(new RegExp(`<(?:button|a)[^>]*>\\s*${action}\\s*<`, 'i').test(source), false);
 }

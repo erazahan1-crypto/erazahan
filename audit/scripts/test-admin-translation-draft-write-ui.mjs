@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+const source = readFileSync('src/pages/admin/translations/edit.astro', 'utf8');
+for (const action of ['create_draft', 'update_draft']) assert.match(source, new RegExp(`'${action}'`));
+assert.match(source, /state === 'NOT_CREATED' \? 'create_draft'/);
+assert.match(source, /state === 'DRAFT' \|\| state === 'PUBLISHED_WITH_DRAFT/);
+assert.match(source, /expected_locale_absent: true/);
+assert.match(source, /expected_source_revision: loadedState\.source\.revision/);
+assert.match(source, /expected_source_fingerprint: loadedState\.source\.fingerprint/);
+assert.match(source, /expected_locale_blob_sha: localeBlobSha/);
+assert.match(source, /fetch\('\/api\/admin\/translations', \{ method: 'POST'/);
+assert.match(source, /localeBlobSha = typeof .*locale_blob_sha/s);
+assert.match(source, /await load\(\)/);
+assert.match(source, /if \(!await load\(\)\) \{ writeBlocked = true; writeError\.textContent = 'Draft may have been saved/);
+assert.match(source, /draftForm\.querySelectorAll[\s\S]*control\.disabled = saving/);
+assert.match(source, /if \(saving \|\| \(isDirty\(\)/);
+assert.match(source, /!localeBlobSha \|\| !loadedState\.locale_document\?\.draft/);
+assert.match(source, /code === 'STALE_EDITOR'/);
+assert.match(source, /const preserved = structuredClone\(draftBuffer\); await load\(\); draftBuffer = preserved/);
+assert.match(source, /code === 'SOURCE_OUTDATED'/);
+for (const code of ['SLUG_INVALID', 'SLUG_CLAIMED', 'SLUG_PERMANENTLY_RESERVED', 'PUBLISHED_SLUG_LOCKED']) assert.match(source, new RegExp(`code === '${code}'`));
+assert.match(source, /saving \|\| writeBlocked/);
+for (const forbidden of ['begin_edit', 'rebase', 'discard', "method: 'PUT'", "method: 'PATCH'", "method: 'DELETE'", 'localStorage', 'sessionStorage']) assert.equal(source.includes(forbidden), false);
+assert.equal(/<(?:button|a)[^>]*>\s*Publish\s*</i.test(source), false);
+console.log('ADMIN TRANSLATION DRAFT WRITE UI PASS');
