@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+const source = readFileSync('src/pages/admin/translations/edit.astro', 'utf8');
+for (const field of ['slug', 'title', 'description', 'content', 'image_alts', 'tags', 'alphabet_key']) assert.match(source, new RegExp(`data-draft-field="${field}"`));
+assert.match(source, /state === 'NOT_CREATED' \|\| state === 'DRAFT' \|\| state === 'PUBLISHED_WITH_DRAFT'/);
+assert.match(source, /state === 'NOT_CREATED' \? emptyDraft\(\) : copyDraft\(data\.locale_document!\.draft!\)/);
+assert.match(source, /draftForm\.hidden = !editable/);
+assert.match(source, /slugField\.readOnly = data\.slug_locked/);
+assert.match(source, /draftAction\.textContent = state === 'NOT_CREATED' \? 'Create Draft' : 'Save Draft'/);
+assert.match(source, /structuredClone\(payload\.image_alts\)/);
+assert.match(source, /tags: \[\.\.\.payload\.tags\]/);
+assert.match(source, /function isDirty\(\).*serializeDraft\(draftBuffer\) !== draftBaseline/s);
+assert.match(source, /window\.onbeforeunload = dirty/);
+assert.match(source, /window\.confirm\('Discard unsaved changes and switch locale\?'/);
+assert.match(source, /useAlphabet\.addEventListener\('click'/);
+assert.match(source, /function locallyValidSlug/);
+assert.match(source, /function locallyValidAlphabet/);
+assert.match(source, /data-draft-action[^>]*disabled/);
+assert.equal(/method:\s*['"](?:POST|PUT|PATCH|DELETE)/.test(source), false);
+assert.match(source, /fetch\(`\/api\/admin\/translations\?\$\{new URLSearchParams/);
+assert.equal(/fetch\([\s\S]{0,240}\/api\/admin\/translations[\s\S]{0,240}method:\s*['"](?:POST|PUT|PATCH|DELETE)/.test(source), false);
+for (const action of ['Publish', 'Begin Edit', 'Rebase', 'Discard']) assert.equal(new RegExp(`<(?:button|a)[^>]*>\\s*${action}\\s*<`, 'i').test(source), false);
+for (const forbidden of ['localStorage', 'sessionStorage', 'indexedDB']) assert.equal(source.includes(forbidden), false);
+console.log('ADMIN TRANSLATION DRAFT FORM SHELL PASS');

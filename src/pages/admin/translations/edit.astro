@@ -55,6 +55,19 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     <section class="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
       <h2 class="font-display text-xl font-bold text-white">Translation document</h2>
       <p data-no-document class="mt-3 text-sm text-slate-400">No RU/EN translation document created yet.</p>
+      <form data-draft-form hidden class="mt-5 space-y-4" novalidate>
+        <div class="flex flex-wrap items-center justify-between gap-3"><div><h3 class="font-display text-lg font-bold text-white">Local draft</h3><p class="mt-1 text-xs text-slate-400">Changes stay in this browser until server save is enabled.</p></div><p data-dirty hidden class="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200">Unsaved changes</p></div>
+        <label class="block"><span class="mb-1 block text-sm font-semibold text-white">Slug</span><input data-draft-field="slug" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-white" /></label>
+        <label class="block"><span class="mb-1 block text-sm font-semibold text-white">Title</span><input data-draft-field="title" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-white" /></label>
+        <label class="block"><span class="mb-1 block text-sm font-semibold text-white">Description</span><textarea data-draft-field="description" rows="3" class="w-full rounded-xl border border-white/10 bg-night-950 p-3 text-white"></textarea></label>
+        <label class="block"><span class="mb-1 block text-sm font-semibold text-white">Content</span><textarea data-draft-field="content" rows="12" class="w-full rounded-xl border border-white/10 bg-night-950 p-3 font-mono text-white"></textarea></label>
+        <label class="block"><span class="mb-1 block text-sm font-semibold text-white">Image alts (JSON object)</span><textarea data-draft-field="image_alts" rows="4" class="w-full rounded-xl border border-white/10 bg-night-950 p-3 font-mono text-white"></textarea></label>
+        <label class="block"><span class="mb-1 block text-sm font-semibold text-white">Tags (JSON string array)</span><textarea data-draft-field="tags" rows="3" class="w-full rounded-xl border border-white/10 bg-night-950 p-3 font-mono text-white"></textarea></label>
+        <label class="block"><span class="mb-1 block text-sm font-semibold text-white">Alphabet key</span><input data-draft-field="alphabet_key" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-white" /></label>
+        <button data-use-alphabet type="button" hidden class="min-h-11 rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/5">Use suggestion</button>
+        <p data-form-error hidden class="rounded-xl border border-rose-400/30 bg-rose-500/10 p-3 text-sm text-rose-200"></p>
+        <div><button data-draft-action type="button" disabled class="min-h-11 rounded-xl bg-violet-600 px-4 text-sm font-semibold text-white opacity-60" aria-describedby="draft-save-help"></button><p id="draft-save-help" class="mt-2 text-xs text-slate-400">Server save will be enabled in the next stage.</p></div>
+      </form>
       <div data-locale-snapshots class="mt-5 space-y-5"></div>
     </section>
 
@@ -84,6 +97,14 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     const locale = params.get('locale');
     const status = document.querySelector<HTMLElement>('[data-status]')!;
     const editor = document.querySelector<HTMLElement>('[data-editor]')!;
+    const draftForm = document.querySelector<HTMLFormElement>('[data-draft-form]')!;
+    const dirtyIndicator = document.querySelector<HTMLElement>('[data-dirty]')!;
+    const formError = document.querySelector<HTMLElement>('[data-form-error]')!;
+    const draftAction = document.querySelector<HTMLButtonElement>('[data-draft-action]')!;
+    const useAlphabet = document.querySelector<HTMLButtonElement>('[data-use-alphabet]')!;
+    type EditablePayload = Omit<Payload, 'version' | 'published_at'>;
+    let draftBuffer: EditablePayload | null = null;
+    let draftBaseline = '';
 
     function showStatus(message: string, tone: 'neutral' | 'error' = 'neutral') {
       status.hidden = false;
@@ -130,7 +151,42 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         link.href = `/admin/translations/edit/?${new URLSearchParams({ content_id: id, locale: next })}`;
         link.classList.toggle('bg-violet-600', next === active);
         link.classList.toggle('text-white', next === active);
+        link.onclick = (event) => { if (isDirty() && !window.confirm('Discard unsaved changes and switch locale?')) event.preventDefault(); };
       });
+    }
+    function emptyDraft(): EditablePayload { return { slug: '', title: '', description: null, content: '', image_alts: {}, tags: [], alphabet_key: null }; }
+    function copyDraft(payload: Payload): EditablePayload { return { slug: payload.slug, title: payload.title, description: payload.description, content: payload.content, image_alts: structuredClone(payload.image_alts), tags: [...payload.tags], alphabet_key: payload.alphabet_key }; }
+    function serializeDraft(value: EditablePayload) { return JSON.stringify(value); }
+    function isDirty() { return draftBuffer !== null && serializeDraft(draftBuffer) !== draftBaseline; }
+    function updateDirty() { const dirty = isDirty(); dirtyIndicator.hidden = !dirty; window.onbeforeunload = dirty ? (event) => { event.preventDefault(); event.returnValue = ''; } : null; }
+    function parseJsonField(value: string, fallback: unknown) { try { return value.trim() ? JSON.parse(value) : fallback; } catch { return undefined; } }
+    function locallyValidSlug(value: string) {
+      if (!value) return true;
+      return locale === 'ru'
+        ? /^[\u0430-\u044f0-9]+(?:-[\u0430-\u044f0-9]+)*$/u.test(value)
+        : !/[\\/?#%\u0000-\u001f\u007f\s]/.test(value) && value !== '.' && value !== '..';
+    }
+    function locallyValidAlphabet(value: string) {
+      if (!value) return true;
+      return locale === 'en' ? /^[A-Z]$/.test(value) : /^[\u0410-\u042f\u0401]$/u.test(value);
+    }
+    function syncDraftFromForm() {
+      if (!draftBuffer) return;
+      const get = (name: string) => document.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-draft-field="${name}"]`)!.value;
+      const imageAlts = parseJsonField(get('image_alts'), {}); const tags = parseJsonField(get('tags'), []);
+      if (!imageAlts || typeof imageAlts !== 'object' || Array.isArray(imageAlts) || !Object.values(imageAlts).every((value) => typeof value === 'string') || !Array.isArray(tags) || !tags.every((value) => typeof value === 'string')) { formError.textContent = 'Image alts must be a JSON object of strings and tags a JSON string array.'; formError.hidden = false; return; }
+      if (!locallyValidSlug(get('slug')) || !locallyValidAlphabet(get('alphabet_key'))) { formError.textContent = 'Slug or alphabet key has an invalid shape for this locale.'; formError.hidden = false; return; }
+      formError.hidden = true; draftBuffer = { slug: get('slug'), title: get('title'), description: get('description') || null, content: get('content'), image_alts: imageAlts as Record<string, string>, tags, alphabet_key: get('alphabet_key') || null }; updateDirty();
+    }
+    function initializeDraft(data: TranslationResponse) {
+      const state = data.translation_state.publication_state; const editable = state === 'NOT_CREATED' || state === 'DRAFT' || state === 'PUBLISHED_WITH_DRAFT';
+      draftForm.hidden = !editable; draftBuffer = null; draftBaseline = ''; formError.hidden = true;
+      if (!editable) { updateDirty(); return; }
+      draftBuffer = state === 'NOT_CREATED' ? emptyDraft() : copyDraft(data.locale_document!.draft!); draftBaseline = serializeDraft(draftBuffer);
+      for (const name of ['slug', 'title', 'description', 'content', 'alphabet_key']) document.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-draft-field="${name}"]`)!.value = String(draftBuffer[name as keyof EditablePayload] ?? '');
+      document.querySelector<HTMLTextAreaElement>('[data-draft-field="image_alts"]')!.value = JSON.stringify(draftBuffer.image_alts, null, 2); document.querySelector<HTMLTextAreaElement>('[data-draft-field="tags"]')!.value = JSON.stringify(draftBuffer.tags, null, 2);
+      const slugField = document.querySelector<HTMLInputElement>('[data-draft-field="slug"]')!; slugField.readOnly = data.slug_locked; draftAction.textContent = state === 'NOT_CREATED' ? 'Create Draft' : 'Save Draft';
+      useAlphabet.hidden = data.alphabet_suggestion === null; updateDirty();
     }
     function addField(container: HTMLElement, label: string, value: string) {
       const section = document.createElement('section'); section.className = 'mt-4';
@@ -162,8 +218,11 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       const noDocument = document.querySelector<HTMLElement>('[data-no-document]')!; noDocument.hidden = data.locale_document !== null;
       if (data.locale_document?.published) renderPayload(snapshots, 'Published', data.locale_document.published, true);
       if (data.locale_document?.draft) renderPayload(snapshots, 'Draft', data.locale_document.draft, false);
+      initializeDraft(data);
       editor.hidden = false; status.hidden = true;
     }
+    document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('[data-draft-field]').forEach((field) => field.addEventListener('input', syncDraftFromForm));
+    useAlphabet.addEventListener('click', () => { const value = document.querySelector<HTMLInputElement>('[data-draft-field="alphabet_key"]')!; const suggestion = document.querySelector<HTMLElement>('[data-alphabet-suggestion]')!.textContent?.replace('Suggested alphabet key: ', '') || ''; value.value = suggestion; syncDraftFromForm(); });
     async function load() {
       if (!contentId || !CONTENT_ID_RE.test(contentId)) { showStatus('A valid content ID is required to open the translation editor.', 'error'); return; }
       if (!validLocale(locale)) { configureLocaleLinks(contentId, 'ru'); showStatus('Choose RU or EN to open this translation.', 'error'); return; }
