@@ -1,5 +1,5 @@
 import { isContentId, isSourceFingerprint } from '../../../../src/lib/content-schema/schema.mjs';
-import { beginLocaleEditWrite, createLocaleDraftWrite, discardLocaleDraftWrite, loadLocaleTranslationEditorState, rebaseLocaleDraftWrite, updateLocaleDraftWrite } from '../../../_lib/admin-locale-draft-write.mjs';
+import { beginLocaleEditWrite, createLocaleDraftWrite, discardLocaleDraftWrite, loadLocaleTranslationEditorState, publishLocaleDraftWrite, rebaseLocaleDraftWrite, updateLocaleDraftWrite } from '../../../_lib/admin-locale-draft-write.mjs';
 import { createGitHubTransactionClient, getGitHubConfig, PostsConfigError, type GitHubPostsEnv } from '../../../_lib/github-posts.ts';
 
 interface Context { request: Request; env: GitHubPostsEnv & { ERAZAHAN_LOCALE_ADMIN_ATOMIC_BRANCH?: string }; }
@@ -46,7 +46,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
 
 function postInput(body: unknown) {
   if (!plainObject(body) || typeof body.action !== 'string') throw Object.assign(new Error(), { code: 'INVALID_REQUEST' });
-  if (!['create_draft', 'update_draft', 'begin_edit', 'rebase', 'discard'].includes(body.action)) throw Object.assign(new Error(), { code: 'INVALID_ACTION' });
+  if (!['create_draft', 'update_draft', 'begin_edit', 'rebase', 'discard', 'publish'].includes(body.action)) throw Object.assign(new Error(), { code: 'INVALID_ACTION' });
   const identity = typeof body.content_id === 'string' && isContentId(body.content_id) && (body.locale === 'ru' || body.locale === 'en');
   if (!identity) throw Object.assign(new Error(), { code: 'INVALID_REQUEST' });
   const payload = body.payload;
@@ -68,8 +68,8 @@ function writeError(error: unknown) {
   const code = error && typeof error === 'object' ? (error as { code?: string }).code : undefined;
   if (code === 'INVALID_ACTION') return json({ ok: false, code }, 400);
   if (code === 'CONTENT_NOT_FOUND') return json({ ok: false, code }, 404);
-  if (['LOCALE_UNSUPPORTED', 'DRAFT_INVALID', 'NO_DRAFT', 'SLUG_INVALID', 'INVALID_REQUEST'].includes(code ?? '')) return json({ ok: false, code: code ?? 'INVALID_REQUEST' }, 400);
-  if (['SLUG_RESERVED', 'SLUG_CLAIMED', 'SLUG_PERMANENTLY_RESERVED', 'PUBLISHED_SLUG_LOCKED', 'SOURCE_CHANGED', 'STALE_EDITOR', 'STALE_FILE_VERSION', 'BRANCH_REF_CONFLICT'].includes(code ?? '')) return json({ ok: false, code }, 409);
+  if (['LOCALE_UNSUPPORTED', 'DRAFT_INVALID', 'NO_DRAFT', 'PUBLISH_INVALID', 'SLUG_INVALID', 'INVALID_REQUEST'].includes(code ?? '')) return json({ ok: false, code: code ?? 'INVALID_REQUEST' }, 400);
+  if (['SLUG_RESERVED', 'SLUG_CLAIMED', 'SLUG_PERMANENTLY_RESERVED', 'PUBLISHED_SLUG_LOCKED', 'SOURCE_CHANGED', 'SOURCE_OUTDATED', 'STALE_EDITOR', 'STALE_FILE_VERSION', 'BRANCH_REF_CONFLICT'].includes(code ?? '')) return json({ ok: false, code }, 409);
   if (error instanceof PostsConfigError || ['INVALID_ATOMIC_BRANCH_CONFIRMATION', 'SNAPSHOT_FILE_MISSING', 'INVALID_SNAPSHOT_JSON', 'INVALID_SNAPSHOT_STATE', 'INVALID_HY_SOURCE', 'INVALID_SNAPSHOT', 'INVALID_DRAFT_CLAIM_TRANSITION', 'LOCALE_BLOB_SHA_MISSING'].includes(code ?? '')) return json({ ok: false, code: code ?? 'SERVICE_UNAVAILABLE' }, 503);
   if (['REF_LOOKUP_FAILURE', 'COMMIT_LOOKUP_FAILURE', 'SNAPSHOT_FILE_FAILURE', 'BLOB_CREATION_FAILURE', 'TREE_CREATION_FAILURE', 'COMMIT_CREATION_FAILURE', 'BRANCH_REF_UPDATE_FAILURE'].includes(code ?? '')) return json({ ok: false, code: 'UPSTREAM_FAILURE' }, 502);
   return json({ ok: false, code: 'INTERNAL_ERROR' }, 500);
@@ -93,6 +93,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
     else if (input.action === 'begin_edit') result = await beginLocaleEditWrite(client, { ...input, branch });
     else if (input.action === 'rebase') result = await rebaseLocaleDraftWrite(client, { ...input, branch });
     else if (input.action === 'discard') result = await discardLocaleDraftWrite(client, { ...input, branch });
+    else if (input.action === 'publish') result = await publishLocaleDraftWrite(client, { branch, contentId: input.contentId, locale: input.locale, expectedLocaleBlobSha: input.expectedLocaleBlobSha });
     else throw Object.assign(new Error(), { code: 'INVALID_ACTION' });
     return json({ ok: true, changed: result.changed, ...(result.code ? { code: result.code } : {}), content_id: input.contentId, locale: input.locale, locale_document: result.localeDocument, locale_blob_sha: result.localeBlobSha });
   } catch (error) { return writeError(error); }
