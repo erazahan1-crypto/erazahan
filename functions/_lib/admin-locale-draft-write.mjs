@@ -3,6 +3,7 @@ import {
   beginLocaleEdit,
   createLocaleDraft,
   discardLocaleDraft,
+  publishLocaleDraft,
   rebaseLocaleDraftToCurrentSource,
   updateLocaleDraft,
 } from '../../src/lib/content-write/locale-writer-domain.mjs';
@@ -137,6 +138,16 @@ function claimsChange(loaded, claims) {
   const content = canonicalJson(claims);
   return loaded.snapshot.files.get(DRAFT_CLAIMS_PATH)?.content === content ? null : { operation: 'update', path: DRAFT_CLAIMS_PATH, content };
 }
+function reservationsChange(loaded, reservations) {
+  const content = canonicalJson(reservations);
+  return loaded.snapshot.files.get(PUBLISHED_RESERVATIONS_PATH)?.content === content ? null : { operation: 'update', path: PUBLISHED_RESERVATIONS_PATH, content };
+}
+function assertFirstPublishReservationConsistency(loaded) {
+  if (!loaded.localeDocument?.published && loaded.publishedReservations.reservations.some((entry) => (
+    entry.kind === 'active' && entry.locale === loaded.localeDocument?.locale
+      && entry.content_id === loaded.item.content_id && entry.slug !== loaded.localeDocument?.draft?.slug
+ ))) fail('PUBLISH_INVALID', 'First publication cannot replace an active permanent slug reservation');
+}
 
 export async function createLocaleDraftWrite(client, { branch, contentId, locale, payload, expectedLocaleAbsent, expectedSourceRevision, expectedSourceFingerprint }) {
   const loaded = await loadLocaleDraftSnapshot(client, { branch, contentId, locale });
@@ -183,4 +194,29 @@ export async function discardLocaleDraftWrite(client, { branch, contentId, local
     ? [{ operation: 'delete', path: loaded.paths.locale }, claimsChange(loaded, result.draftClaims)]
     : [localeChange(loaded, result.localeDocument)];
   return { ...await transact(client, loaded, changes.filter(Boolean), 'Admin: discard locale draft', result.localeDocument, expectedLocaleBlobSha), localeDocument: result.localeDocument };
+}
+
+export async function publishLocaleDraftWrite(client, { branch, contentId, locale, expectedLocaleBlobSha }) {
+  const loaded = await loadLocaleDraftSnapshot(client, { branch, contentId, locale });
+  assertExisting(loaded, expectedLocaleBlobSha);
+  assertFirstPublishReservationConsistency(loaded);
+  try {
+    const result = publishLocaleDraft({
+      item: loaded.item,
+      locale,
+      localeDocument: loaded.localeDocument,
+      draftClaims: loaded.draftClaims,
+      publishedReservations: loaded.publishedReservations,
+      publishedAt: new Date().toISOString().slice(0, 10),
+    });
+    const claims = claimsChange(loaded, result.draftClaims);
+    const reservations = reservationsChange(loaded, result.publishedReservations);
+    return {
+      ...await transact(client, loaded, [localeChange(loaded, result.localeDocument), claims, reservations].filter(Boolean), 'Admin: publish locale draft', result.localeDocument, expectedLocaleBlobSha),
+      localeDocument: result.localeDocument,
+    };
+  } catch (error) {
+    if (error?.code === 'NO_CHANGES') return { changed: false, code: 'NO_CHANGES', transaction: null, localeDocument: loaded.localeDocument, localeBlobSha: loaded.localeBlobSha };
+    throw error;
+  }
 }
