@@ -74,6 +74,14 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         <div data-readonly hidden class="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-200">
           Режим просмотра: GitHub-сохранение не настроено. Нужны server-side secrets, указанные ниже.
         </div>
+        <section class="rounded-xl border border-white/10 bg-night-950/60 p-3" aria-labelledby="translations-heading">
+          <h2 id="translations-heading" class="text-sm font-semibold text-white">Translations</h2>
+          <p data-translations-unavailable class="mt-2 text-xs text-slate-400">Translations unavailable</p>
+          <div data-translation-links hidden class="mt-3 flex gap-2" aria-label="Translation editor locales">
+            <a data-translation-link="ru" class="inline-flex min-h-11 items-center rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/5">RU</a>
+            <a data-translation-link="en" class="inline-flex min-h-11 items-center rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/5">EN</a>
+          </div>
+        </section>
         <label class="block">
           <span class="mb-1.5 block text-sm font-semibold text-white">Slug <span class="text-rose-300">*</span></span>
           <input name="slug" required maxlength="160" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 font-mono text-sm text-white outline-none focus:border-violet-400" />
@@ -192,7 +200,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       title: string; slug: string; date: string; letter: string | null;
       categories: string[]; content: string; sourceUrl: string;
     }
-    interface LoadResult { ok: boolean; post?: PostData; version?: string; writable?: boolean; error?: string }
+    interface LoadResult { ok: boolean; post?: PostData; version?: string; writable?: boolean; content_id?: string; error?: string }
     interface LinkPost { id: string; title: string; slug: string; categories: string[]; text: string }
     interface CategoryOption { name: string; count: number }
     interface PendingImage extends OptimizedImage { token: string; objectUrl: string }
@@ -206,6 +214,8 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     const readOnlyNotice = document.querySelector<HTMLElement>('[data-readonly]')!;
     const save = document.querySelector<HTMLButtonElement>('[data-save]')!;
     const openSite = document.querySelector<HTMLAnchorElement>('[data-open-site]')!;
+    const translationsUnavailable = document.querySelector<HTMLElement>('[data-translations-unavailable]')!;
+    const translationLinks = document.querySelector<HTMLElement>('[data-translation-links]')!;
     const preview = document.querySelector<HTMLIFrameElement>('[data-preview]')!;
     const content = form.elements.namedItem('content') as HTMLTextAreaElement;
     const contentSource = document.querySelector<HTMLTextAreaElement>('[data-content-source]')!;
@@ -261,6 +271,24 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       status.className = `mt-6 rounded-xl border p-4 text-sm ${tone === 'error' ? 'border-rose-400/30 bg-rose-400/10 text-rose-200' : tone === 'success' ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200' : 'border-white/10 bg-white/5 text-slate-300'}`;
     }
 
+    function validContentId(value: unknown): value is string {
+      return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[57][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+    }
+
+    function configureTranslationLinks(contentId: unknown) {
+      if (!validContentId(contentId)) {
+        translationLinks.hidden = true;
+        translationsUnavailable.hidden = false;
+        return;
+      }
+      document.querySelectorAll<HTMLAnchorElement>('[data-translation-link]').forEach((link) => {
+        const locale = link.dataset.translationLink as 'ru' | 'en';
+        link.href = `/admin/translations/edit/?${new URLSearchParams({ content_id: contentId, locale })}`;
+      });
+      translationsUnavailable.hidden = true;
+      translationLinks.hidden = false;
+    }
+
     function populate(post: PostData) {
       field('title').value = post.title || '';
       slug.value = post.slug || '';
@@ -306,6 +334,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       version = result.version || '';
       writable = Boolean(result.writable && version);
       populate(result.post);
+      configureTranslationLinks(result.content_id);
       form.hidden = false;
       status.hidden = true;
       readOnlyNotice.hidden = writable;
