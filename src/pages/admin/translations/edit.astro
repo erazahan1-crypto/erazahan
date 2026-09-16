@@ -1,0 +1,186 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="Translation Editor — Admin">
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <p class="text-sm font-medium text-violet-300">Read-only translation state</p>
+      <h1 class="mt-1 font-display text-3xl font-bold text-white">Translation Editor</h1>
+      <p class="mt-2 text-sm text-slate-400">Locale content and HY source are displayed without editing controls.</p>
+    </div>
+    <div class="flex gap-2" aria-label="Translation locale">
+      <a data-locale-link="ru" class="inline-flex min-h-11 items-center rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/5">RU</a>
+      <a data-locale-link="en" class="inline-flex min-h-11 items-center rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/5">EN</a>
+    </div>
+  </div>
+
+  <p data-status class="mt-6 rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300" role="status">Loading translation data…</p>
+
+  <div data-editor hidden class="mt-6 space-y-6">
+    <section class="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 class="font-display text-xl font-bold text-white">Locale state</h2>
+          <p data-publication-label class="mt-1 text-sm text-slate-300"></p>
+        </div>
+        <code data-publication-state class="rounded-lg bg-white/5 px-3 py-1.5 text-xs text-slate-300"></code>
+      </div>
+      <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+        <div><dt class="text-slate-400">Current locale</dt><dd data-current-locale class="mt-1 font-semibold text-white"></dd></div>
+        <div><dt class="text-slate-400">Content ID</dt><dd data-content-id class="mt-1 break-all font-mono text-xs text-slate-300"></dd></div>
+        <div><dt class="text-slate-400">Slug</dt><dd data-slug-lock class="mt-1 text-slate-200"></dd></div>
+        <div><dt class="text-slate-400">Alphabet</dt><dd data-alphabet-suggestion class="mt-1 text-slate-200"></dd></div>
+      </dl>
+    </section>
+
+    <section class="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+      <h2 class="font-display text-xl font-bold text-white">Synchronization</h2>
+      <p data-outdated-warning hidden class="mt-3 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-sm text-amber-200">HY source has changed. This screen does not make any automatic changes.</p>
+      <div class="mt-4 grid gap-3 sm:grid-cols-2">
+        <div class="rounded-xl border border-white/10 bg-night-950 p-3"><p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Draft</p><code data-draft-sync class="mt-2 block text-sm text-slate-200"></code></div>
+        <div class="rounded-xl border border-white/10 bg-night-950 p-3"><p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Published</p><code data-published-sync class="mt-2 block text-sm text-slate-200"></code></div>
+      </div>
+    </section>
+
+    <section class="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+      <div class="flex flex-wrap items-center justify-between gap-3"><h2 class="font-display text-xl font-bold text-white">HY source</h2><span class="text-xs text-slate-400">Read only</span></div>
+      <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+        <div><dt class="text-slate-400">Revision</dt><dd data-source-revision class="mt-1 text-slate-200"></dd></div>
+        <div><dt class="text-slate-400">Fingerprint</dt><dd data-source-fingerprint class="mt-1 break-all font-mono text-xs text-slate-300"></dd></div>
+      </dl>
+      <div data-source-fields class="mt-5"></div>
+    </section>
+
+    <section class="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+      <h2 class="font-display text-xl font-bold text-white">Translation document</h2>
+      <p data-no-document class="mt-3 text-sm text-slate-400">No RU/EN translation document created yet.</p>
+      <div data-locale-snapshots class="mt-5 space-y-5"></div>
+    </section>
+
+    <details class="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+      <summary class="cursor-pointer text-sm font-semibold text-slate-200">Technical metadata</summary>
+      <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2"><div><dt class="text-slate-400">Locale blob SHA</dt><dd data-locale-blob-sha class="mt-1 break-all font-mono text-xs text-slate-300"></dd></div><div><dt class="text-slate-400">Backend state</dt><dd data-derived-state class="mt-1 font-mono text-xs text-slate-300"></dd></div></dl>
+    </details>
+  </div>
+
+  <script>
+    type Locale = 'ru' | 'en';
+    type SyncState = 'CURRENT' | 'OUTDATED' | 'NOT_CREATED';
+    type PublicationState = 'NOT_CREATED' | 'DRAFT' | 'PUBLISHED' | 'PUBLISHED_WITH_DRAFT';
+    type Payload = { slug: string; title: string; description: string | null; content: string; image_alts: Record<string, string>; tags: string[]; alphabet_key: string | null; version?: number; published_at?: string };
+    type TranslationResponse = {
+      ok: true; content_id: string; locale: Locale;
+      source: { revision: number; fingerprint: string; title: string; description: string | null; content: string; image_alts: Record<string, string>; tags: string[]; alphabet_key: string | null };
+      locale_document: { draft: Payload | null; published: Payload | null } | null;
+      locale_blob_sha: string | null;
+      translation_state: { state: string; publication_state: PublicationState; draft_synchronization: SyncState; published_synchronization: SyncState };
+      slug_locked: boolean; alphabet_suggestion: string | null;
+    };
+
+    const CONTENT_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[57][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const params = new URLSearchParams(location.search);
+    const contentId = params.get('content_id');
+    const locale = params.get('locale');
+    const status = document.querySelector<HTMLElement>('[data-status]')!;
+    const editor = document.querySelector<HTMLElement>('[data-editor]')!;
+
+    function showStatus(message: string, tone: 'neutral' | 'error' = 'neutral') {
+      status.hidden = false;
+      status.textContent = message;
+      status.className = `mt-6 rounded-xl border p-4 text-sm ${tone === 'error' ? 'border-rose-400/30 bg-rose-400/10 text-rose-200' : 'border-white/10 bg-white/5 text-slate-300'}`;
+    }
+    function text(selector: string, value: string) { document.querySelector<HTMLElement>(selector)!.textContent = value; }
+    function validLocale(value: string | null): value is Locale { return value === 'ru' || value === 'en'; }
+    function validSync(value: unknown): value is SyncState { return value === 'CURRENT' || value === 'OUTDATED' || value === 'NOT_CREATED'; }
+    function validPublication(value: unknown): value is PublicationState { return value === 'NOT_CREATED' || value === 'DRAFT' || value === 'PUBLISHED' || value === 'PUBLISHED_WITH_DRAFT'; }
+    function stringMap(value: unknown): value is Record<string, string> { return !!value && typeof value === 'object' && !Array.isArray(value) && Object.values(value).every((entry) => typeof entry === 'string'); }
+    function validPayload(value: unknown, published = false): value is Payload {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+      const payload = value as Partial<Payload>;
+      return typeof payload.slug === 'string' && typeof payload.title === 'string' && (typeof payload.description === 'string' || payload.description === null)
+        && typeof payload.content === 'string' && stringMap(payload.image_alts) && Array.isArray(payload.tags) && payload.tags.every((tag) => typeof tag === 'string')
+        && (typeof payload.alphabet_key === 'string' || payload.alphabet_key === null)
+        && (!published || (Number.isInteger(payload.version) && typeof payload.published_at === 'string'));
+    }
+    function validSource(value: unknown): value is TranslationResponse['source'] {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+      const source = value as Partial<TranslationResponse['source']>;
+      return Number.isInteger(source.revision) && typeof source.fingerprint === 'string' && typeof source.title === 'string'
+        && (typeof source.description === 'string' || source.description === null) && typeof source.content === 'string'
+        && stringMap(source.image_alts) && Array.isArray(source.tags) && source.tags.every((tag) => typeof tag === 'string')
+        && (typeof source.alphabet_key === 'string' || source.alphabet_key === null);
+    }
+    function validResponse(value: unknown): value is TranslationResponse {
+      if (!value || typeof value !== 'object') return false;
+      const data = value as Partial<TranslationResponse>;
+      return data.ok === true && typeof data.content_id === 'string' && CONTENT_ID_RE.test(data.content_id) && validLocale(data.locale ?? null)
+        && validSource(data.source) && !!data.translation_state && typeof data.translation_state === 'object'
+        && validPublication(data.translation_state.publication_state) && validSync(data.translation_state.draft_synchronization) && validSync(data.translation_state.published_synchronization)
+        && typeof data.slug_locked === 'boolean' && (typeof data.alphabet_suggestion === 'string' || data.alphabet_suggestion === null)
+        && (typeof data.locale_blob_sha === 'string' || data.locale_blob_sha === null) && (data.locale_document === null || (
+          typeof data.locale_document === 'object' && !Array.isArray(data.locale_document)
+          && (data.locale_document.draft === null || validPayload(data.locale_document.draft))
+          && (data.locale_document.published === null || validPayload(data.locale_document.published, true))
+        ));
+    }
+    function configureLocaleLinks(id: string, active: Locale) {
+      document.querySelectorAll<HTMLAnchorElement>('[data-locale-link]').forEach((link) => {
+        const next = link.dataset.localeLink as Locale;
+        link.href = `/admin/translations/edit/?${new URLSearchParams({ content_id: id, locale: next })}`;
+        link.classList.toggle('bg-violet-600', next === active);
+        link.classList.toggle('text-white', next === active);
+      });
+    }
+    function addField(container: HTMLElement, label: string, value: string) {
+      const section = document.createElement('section'); section.className = 'mt-4';
+      const heading = document.createElement('h3'); heading.className = 'text-xs font-semibold uppercase tracking-wide text-slate-400'; heading.textContent = label;
+      const body = document.createElement('pre'); body.className = 'mt-2 whitespace-pre-wrap break-words rounded-xl border border-white/10 bg-night-950 p-3 text-sm leading-6 text-slate-200'; body.textContent = value;
+      section.append(heading, body); container.append(section);
+    }
+    function renderPayload(container: HTMLElement, label: string, payload: Payload, published: boolean) {
+      const section = document.createElement('section'); section.className = 'rounded-xl border border-white/10 bg-night-950 p-4';
+      const heading = document.createElement('h3'); heading.className = 'font-display text-lg font-bold text-white'; heading.textContent = label; section.append(heading);
+      const metadata = document.createElement('p'); metadata.className = 'mt-1 text-xs text-slate-400'; metadata.textContent = published ? `Version ${payload.version ?? '—'} · Published ${payload.published_at ?? '—'}` : 'Read-only draft snapshot'; section.append(metadata);
+      const fields = document.createElement('div');
+      addField(fields, 'Slug', payload.slug); addField(fields, 'Title', payload.title); addField(fields, 'Description', payload.description ?? ''); addField(fields, 'Content', payload.content);
+      addField(fields, 'Image alts', JSON.stringify(payload.image_alts, null, 2)); addField(fields, 'Tags', payload.tags.join(', ')); addField(fields, 'Alphabet key', payload.alphabet_key ?? '—');
+      section.append(fields); container.append(section);
+    }
+    function render(data: TranslationResponse) {
+      configureLocaleLinks(data.content_id, data.locale);
+      text('[data-current-locale]', data.locale.toUpperCase()); text('[data-content-id]', data.content_id); text('[data-publication-state]', data.translation_state.publication_state);
+      text('[data-publication-label]', ({ NOT_CREATED: 'No translation document', DRAFT: 'Draft only', PUBLISHED: 'Published', PUBLISHED_WITH_DRAFT: 'Published with draft' } as Record<PublicationState, string>)[data.translation_state.publication_state]);
+      text('[data-slug-lock]', data.slug_locked ? 'Published slug is locked.' : 'Slug may still change before first publication.');
+      text('[data-alphabet-suggestion]', data.alphabet_suggestion === null ? 'No suggestion.' : `Suggested alphabet key: ${data.alphabet_suggestion}`);
+      text('[data-draft-sync]', data.translation_state.draft_synchronization); text('[data-published-sync]', data.translation_state.published_synchronization);
+      document.querySelector<HTMLElement>('[data-outdated-warning]')!.hidden = data.translation_state.draft_synchronization !== 'OUTDATED' && data.translation_state.published_synchronization !== 'OUTDATED';
+      text('[data-source-revision]', String(data.source.revision)); text('[data-source-fingerprint]', data.source.fingerprint);
+      const source = document.querySelector<HTMLElement>('[data-source-fields]')!; source.replaceChildren(); addField(source, 'Title', data.source.title); addField(source, 'Description', data.source.description ?? ''); addField(source, 'Content', data.source.content); addField(source, 'Image alts', JSON.stringify(data.source.image_alts, null, 2)); addField(source, 'Tags', data.source.tags.join(', ')); addField(source, 'Alphabet key', data.source.alphabet_key ?? '—');
+      text('[data-locale-blob-sha]', data.locale_blob_sha ?? 'Not created'); text('[data-derived-state]', data.translation_state.state);
+      const snapshots = document.querySelector<HTMLElement>('[data-locale-snapshots]')!; snapshots.replaceChildren();
+      const noDocument = document.querySelector<HTMLElement>('[data-no-document]')!; noDocument.hidden = data.locale_document !== null;
+      if (data.locale_document?.published) renderPayload(snapshots, 'Published', data.locale_document.published, true);
+      if (data.locale_document?.draft) renderPayload(snapshots, 'Draft', data.locale_document.draft, false);
+      editor.hidden = false; status.hidden = true;
+    }
+    async function load() {
+      if (!contentId || !CONTENT_ID_RE.test(contentId)) { showStatus('A valid content ID is required to open the translation editor.', 'error'); return; }
+      if (!validLocale(locale)) { configureLocaleLinks(contentId, 'ru'); showStatus('Choose RU or EN to open this translation.', 'error'); return; }
+      configureLocaleLinks(contentId, locale);
+      try {
+        const response = await fetch(`/api/admin/translations?${new URLSearchParams({ content_id: contentId, locale })}`, { headers: { accept: 'application/json' } });
+        let body: unknown; try { body = await response.json(); } catch { throw new Error('Translation data is temporarily unavailable.'); }
+        if (!response.ok) {
+          const code = body && typeof body === 'object' ? (body as { code?: unknown }).code : undefined;
+          if (code === 'CONTENT_NOT_FOUND') throw new Error('Translation content was not found.');
+          if (code === 'LOCALE_UNSUPPORTED') throw new Error('Choose RU or EN to open this translation.');
+          throw new Error('Translation data is temporarily unavailable.');
+        }
+        if (!validResponse(body)) throw new Error('Translation data is temporarily unavailable.');
+        render(body);
+      } catch (error) { showStatus(error instanceof Error ? error.message : 'Translation data is temporarily unavailable.', 'error'); }
+    }
+    load();
+  </script>
+</AdminLayout>
