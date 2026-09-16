@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { createServer } from 'vite';
 import { sourceFingerprintV1 } from '../../src/lib/content-schema/fingerprint.mjs';
 import { canonicalJson } from '../../src/lib/content-write/canonical-json.mjs';
 import { HyWriteProjectionError, hyStorePaths } from '../../src/lib/content-write/project-hy-post.mjs';
@@ -98,6 +99,65 @@ function assertNoGitCalls(calls) {
   assert.equal(calls.updates.length, 0);
 }
 
+function base64(value) {
+  return btoa(unescape(encodeURIComponent(value)));
+}
+
+function installAdminPostGetFetch({ posts, registry }) {
+  const original = globalThis.fetch;
+  const calls = [];
+  const tree = (entries) => new Response(JSON.stringify({ tree: entries }), { status: 200 });
+  const blob = (content) => new Response(JSON.stringify({ encoding: 'base64', content: base64(content) }), { status: 200 });
+  globalThis.fetch = async (input, init = {}) => {
+    const url = new URL(input);
+    calls.push({ path: url.pathname, method: init.method ?? 'GET' });
+    const path = url.pathname;
+    if (path.endsWith('/git/ref/heads/main')) return new Response(JSON.stringify({ object: { sha: 'commit-sha' } }), { status: 200 });
+    if (path.endsWith('/git/commits/commit-sha')) return new Response(JSON.stringify({ tree: { sha: 'root-tree' } }), { status: 200 });
+    if (path.endsWith('/git/trees/root-tree')) return tree([{ path: 'src', type: 'tree', sha: 'src-tree' }]);
+    if (path.endsWith('/git/trees/src-tree')) return tree([{ path: 'data', type: 'tree', sha: 'data-tree' }]);
+    if (path.endsWith('/git/trees/data-tree')) return tree([
+      { path: 'posts.json', type: 'blob', sha: 'posts-sha' },
+      { path: 'migrations', type: 'tree', sha: 'migrations-tree' },
+    ]);
+    if (path.endsWith('/git/trees/migrations-tree')) return tree([{ path: 'content-id-registry.v1.json', type: 'blob', sha: 'registry-sha' }]);
+    if (path.endsWith('/git/blobs/posts-sha')) return blob(JSON.stringify(posts));
+    if (path.endsWith('/git/blobs/registry-sha')) return blob(JSON.stringify(registry));
+    return new Response('not found', { status: 404 });
+  };
+  return { calls, restore: () => { globalThis.fetch = original; } };
+}
+
+async function getAdminPost(id, fixture) {
+  const mock = installAdminPostGetFetch(fixture);
+  try {
+    const endpoint = await getAdminPostEndpoint();
+    const response = await endpoint({
+      request: new Request(`https://site.test/api/admin/posts/${id}`),
+      params: { id },
+      env: { GITHUB_TOKEN: 'test-token', ADMIN_GITHUB_REPO: 'test-owner/test-repo', ADMIN_GITHUB_BRANCH: 'main' },
+    });
+    return { response, body: await response.json(), calls: mock.calls };
+  } finally {
+    mock.restore();
+  }
+}
+
+let adminPostEndpointPromise;
+async function getAdminPostEndpoint() {
+  if (!adminPostEndpointPromise) {
+    adminPostEndpointPromise = (async () => {
+      const server = await createServer({ server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' });
+      try {
+        return (await server.ssrLoadModule('/functions/api/admin/posts/[id].ts')).onRequestGet;
+      } finally {
+        await server.close();
+      }
+    })();
+  }
+  return adminPostEndpointPromise;
+}
+
 async function mockedEndpoint({ transport, mode, env, changes = {}, expectedVersion = POSTS_SHA, deleteAfterSuccess = false }) {
   try {
     const selectedEnv = env ?? (mode === undefined ? {} : { ERAZAHAN_HY_ADMIN_WRITE_MODE: mode });
@@ -139,6 +199,48 @@ assert.ok(
   endpointSource.lastIndexOf('resolveAtomicGitHubBranch(context.env)') < endpointSource.lastIndexOf('getGitHubConfig(context.env)'),
   'atomic branch confirmation precedes GitHub configuration and repository access',
 );
+
+const getPosts = [
+  { slug: 'first', title: 'First', date: '2026-09-01', letter: null, categories: [], content: '', sourceUrl: 'https://erazahan.info/first/' },
+  { slug: 'second', title: 'Second', date: '2026-09-02', letter: null, categories: [], content: '', sourceUrl: 'https://erazahan.info/second/' },
+];
+const getRegistry = { entries: [
+  { content_id: 'efa61838-86c8-56b8-815c-0a38b0a83242', legacy: { original_array_index: 0, original_hy_slug: 'first', original_source_url: getPosts[0].sourceUrl } },
+  { content_id: 'cadd4552-097e-5845-b59e-223c36c82488', legacy: { original_array_index: 1, original_hy_slug: 'second', original_source_url: getPosts[1].sourceUrl } },
+] };
+const getFirst = await getAdminPost('0', { posts: getPosts, registry: getRegistry });
+assert.equal(getFirst.response.status, 200);
+assert.equal(getFirst.body.ok, true);
+assert.deepEqual(getFirst.body.post, getPosts[0]);
+assert.equal(getFirst.body.version, 'posts-sha');
+assert.equal(getFirst.body.writable, true);
+assert.equal(getFirst.body.content_id, getRegistry.entries[0].content_id);
+assert.equal(getFirst.calls.every((call) => call.method === 'GET'), true);
+const getSecond = await getAdminPost('1', { posts: getPosts, registry: getRegistry });
+assert.equal(getSecond.response.status, 200);
+assert.equal(getSecond.body.content_id, getRegistry.entries[1].content_id);
+assert.notEqual(getSecond.body.content_id, getFirst.body.content_id);
+const invalidGet = await getAdminPost('invalid', { posts: getPosts, registry: getRegistry });
+assert.equal(invalidGet.response.status, 400);
+assert.equal(invalidGet.body.ok, false);
+assert.equal(invalidGet.calls.length, 0);
+const missingGet = await getAdminPost('2', { posts: getPosts, registry: getRegistry });
+assert.equal(missingGet.response.status, 404);
+assert.equal(missingGet.body.ok, false);
+assert.equal(missingGet.body.error, 'Статья не найдена.');
+const registryBefore = JSON.stringify(getRegistry);
+const unresolvedGet = await getAdminPost('1', { posts: getPosts, registry: { entries: [getRegistry.entries[0]] } });
+assert.equal(unresolvedGet.response.status, 503);
+assert.equal(unresolvedGet.body.ok, false);
+assert.equal(Object.hasOwn(unresolvedGet.body, 'content_id'), false);
+const ambiguousGet = await getAdminPost('1', { posts: getPosts, registry: { entries: [getRegistry.entries[1], { ...getRegistry.entries[1], content_id: getRegistry.entries[0].content_id }] } });
+assert.equal(ambiguousGet.response.status, 503);
+assert.equal(ambiguousGet.body.ok, false);
+assert.equal(Object.hasOwn(ambiguousGet.body, 'content_id'), false);
+const invalidRegistryIdGet = await getAdminPost('1', { posts: getPosts, registry: { entries: [{ ...getRegistry.entries[1], content_id: 'not-a-generated-id' }] } });
+assert.equal(invalidRegistryIdGet.response.status, 503);
+assert.equal(Object.hasOwn(invalidRegistryIdGet.body, 'content_id'), false);
+assert.equal(JSON.stringify(getRegistry), registryBefore);
 assert.ok(
   endpointSource.indexOf('const deletedKeys') > endpointSource.indexOf('commitMultiFileTransaction'),
   'post-commit R2 cleanup remains after the atomic transaction',

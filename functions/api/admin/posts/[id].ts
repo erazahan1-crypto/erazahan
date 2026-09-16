@@ -37,6 +37,7 @@ import {
   validateProcessedWebp,
   type PostImagesBucket,
 } from '../../../_lib/post-images';
+import { isContentId } from '../../../../src/lib/content-schema/schema.mjs';
 
 interface Context {
   request: Request;
@@ -47,10 +48,15 @@ interface Context {
 export async function onRequestGet(context: Context): Promise<Response> {
   try {
     const id = parsePostId(context.params.id);
-    const snapshot = await loadPostsSnapshot(getGitHubConfig(context.env));
+    const config = getGitHubConfig(context.env);
+    const snapshot = await loadAtomicHyWriteSnapshot((paths) => loadMultiFileSnapshot(config, paths));
     const post = snapshot.posts[id];
     if (!post) return json({ ok: false, error: 'Статья не найдена.' }, 404);
-    return json({ ok: true, post, version: snapshot.blobSha, writable: true });
+    const matches = snapshot.registryEntries.filter((entry) => entry?.legacy?.original_array_index === id);
+    if (matches.length !== 1 || !isContentId(matches[0]?.content_id)) {
+      throw new PostsConfigError('Translation identity is unavailable for this article.');
+    }
+    return json({ ok: true, post, version: snapshot.blobSha, writable: true, content_id: matches[0].content_id });
   } catch (error) {
     return handleError(error);
   }
