@@ -59,7 +59,10 @@ assert.match(source, /function validPayload/);
 assert.match(source, /function validSource/);
 assert.match(source, /fetch\('\/api\/admin\/translations', \{ method: 'POST'/);
 assert.equal(/method:\s*['"](?:PUT|PATCH|DELETE)/.test(source), false);
-for (const action of ['Create Draft', 'Save Draft', 'Begin Edit', 'Rebase', 'Discard', 'Publish']) {
+assert.match(source, /publishAction\.hidden = state !== 'DRAFT' && state !== 'PUBLISHED_WITH_DRAFT'/);
+assert.match(source, /state === 'DRAFT' \|\| state === 'PUBLISHED_WITH_DRAFT'/);
+assert.match(source, /data-publish-action[^>]*>Publish<\/button>/);
+for (const action of ['Create Draft', 'Save Draft', 'Begin Edit', 'Rebase', 'Discard']) {
   assert.equal(new RegExp(`<(?:button|a)[^>]*>\\s*${action}\\s*<`, 'i').test(source), false);
 }
 for (const forbidden of ['localStorage', 'sessionStorage', 'GITHUB_TOKEN', 'CF_ACCESS', 'ADMIN_GITHUB_BRANCH', 'github.com']) assert.equal(source.includes(forbidden), false);
