@@ -62,7 +62,10 @@ assert.equal(/method:\s*['"](?:PUT|PATCH|DELETE)/.test(source), false);
 assert.match(source, /publishAction\.hidden = state !== 'DRAFT' && state !== 'PUBLISHED_WITH_DRAFT'/);
 assert.match(source, /state === 'DRAFT' \|\| state === 'PUBLISHED_WITH_DRAFT'/);
 assert.match(source, /data-publish-action[^>]*>Publish<\/button>/);
-for (const action of ['Create Draft', 'Save Draft', 'Begin Edit', 'Rebase', 'Discard']) {
+assert.match(source, /data-begin-edit-action[^>]*>Begin Edit<\/button>/);
+assert.match(source, /beginEditAction\.hidden = state !== 'PUBLISHED'/);
+assert.match(source, /beginEditAction\.addEventListener\('click', beginEdit\)/);
+for (const action of ['Create Draft', 'Save Draft', 'Rebase', 'Discard']) {
   assert.equal(new RegExp(`<(?:button|a)[^>]*>\\s*${action}\\s*<`, 'i').test(source), false);
 }
 for (const forbidden of ['localStorage', 'sessionStorage', 'GITHUB_TOKEN', 'CF_ACCESS', 'ADMIN_GITHUB_BRANCH', 'github.com']) assert.equal(source.includes(forbidden), false);
