@@ -44,6 +44,13 @@
           "bucket_name": "erazahan-images"
         }
       ]
+    },
+    "preview": {
+      "vars": {
+        "ADMIN_GITHUB_REPO": "erazahan1-crypto/erazahan",
+        "ADMIN_GITHUB_BRANCH": "main",
+        "PUBLIC_ALLOW_INDEXING": "false"
+      }
     }
   }
 }
