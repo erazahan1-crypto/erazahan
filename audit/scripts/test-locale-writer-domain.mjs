@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
 import { createLocaleDraft, updateLocaleDraft, beginLocaleEdit, rebaseLocaleDraftToCurrentSource, discardLocaleDraft, publishLocaleDraft } from '../../src/lib/content-write/locale-writer-domain.mjs';
+import { deriveTranslationState } from '../../src/lib/content-schema/state.mjs';
 
 const A = 'efa61838-86c8-56b8-815c-0a38b0a83242'; const B = 'cadd4552-097e-5845-b59e-223c36c82488'; const fp = 'a'.repeat(64);
 const item = { schema_version: 1, content_id: A, type: 'dream_dictionary', source_locale: 'hy', source_revision: 7, source_fingerprint: fp, fingerprint_spec_version: 1 };
 const emptyClaims = { version: 1, claims: [] }; const emptyReservations = { version: 1, reservations: [] };
 const payload = (locale, slug, title, alphabet_key = null) => ({ slug, title, description: null, content: `<p>${title}</p>`, image_alts: {}, tags: [], alphabet_key, based_on_source_revision: 1, based_on_source_fingerprint: 'b'.repeat(64) });
+const translatedFields = ['slug', 'title', 'description', 'content', 'image_alts', 'tags', 'alphabet_key'];
+const expectedRebasedDraft = (draft, revision, fingerprint) => ({ ...structuredClone(draft), based_on_source_revision: revision, based_on_source_fingerprint: fingerprint });
 const first = createLocaleDraft({ item, locale: 'ru', payload: payload('ru', 'ворона', 'Ворона', 'Г'), draftClaims: emptyClaims, publishedReservations: emptyReservations });
 assert.equal(first.localeDocument.published, null); assert.equal(first.localeDocument.draft.based_on_source_revision, 7); assert.equal(first.localeDocument.draft.based_on_source_fingerprint, fp); assert.equal(first.localeDocument.draft.alphabet_key, 'Г'); assert.equal(first.draftClaims.claims.length, 1);
 assert.equal(payload('ru', 'x', 'x').based_on_source_revision, 1);
@@ -33,6 +36,36 @@ assert.equal(rebased.localeDocument.draft.content, began.localeDocument.draft.co
 const beforeRebase = structuredClone(began.localeDocument); const afterRebase = structuredClone(rebased.localeDocument);
 delete beforeRebase.draft.based_on_source_revision; delete beforeRebase.draft.based_on_source_fingerprint; delete afterRebase.draft.based_on_source_revision; delete afterRebase.draft.based_on_source_fingerprint;
 assert.deepEqual(afterRebase, beforeRebase); assert.deepEqual(began.localeDocument.published, rebased.localeDocument.published);
+const richDraft = {
+  slug: 'сложный-сон', title: 'Сложный сон', description: 'Необычное описание', content: '<p>Нетривиальное <strong>содержание</strong></p>',
+  image_alts: { hero: 'Сова на ветке', detail: 'Лунный свет' }, tags: ['Сны', 'Символы'], alphabet_key: 'С',
+  updated_at: '2026-09-17T12:34:56Z', generation: { kind: 'human', generated_at: '2026-09-17T12:34:56Z' }, based_on_source_revision: 7, based_on_source_fingerprint: fp,
+};
+const richPublished = { ...structuredClone(richDraft), title: 'Опубликованный сложный сон', version: 9, published_at: '2026-09-10' };
+const richDocument = { schema_version: 1, content_id: A, locale: 'ru', draft: structuredClone(richDraft), published: structuredClone(richPublished) };
+const richClaims = { version: 1, claims: [] }; const richReservations = { version: 1, reservations: [{ locale: 'ru', slug: 'сложный-сон', content_id: A, kind: 'active' }] };
+const richDraftBefore = structuredClone(richDocument.draft); const richClaimsBefore = structuredClone(richClaims); const richReservationsBefore = structuredClone(richReservations);
+const rebasedRich = rebaseLocaleDraftToCurrentSource({ item: { ...item, source_revision: 8, source_fingerprint: 'c'.repeat(64) }, locale: 'ru', localeDocument: richDocument, draftClaims: richClaims, publishedReservations: richReservations });
+for (const field of translatedFields) assert.deepEqual(rebasedRich.localeDocument.draft[field], richDraft[field], `rebase preserves draft ${field}`);
+assert.deepEqual(rebasedRich.localeDocument.draft, expectedRebasedDraft(richDraftBefore, 8, 'c'.repeat(64)), 'rebase changes only draft provenance');
+assert.equal(rebasedRich.localeDocument.draft.updated_at, richDraftBefore.updated_at, 'rebase preserves draft updated_at');
+assert.deepEqual(rebasedRich.localeDocument.draft.generation, richDraftBefore.generation, 'rebase preserves draft generation');
+assert.deepEqual(rebasedRich.localeDocument.published, richPublished, 'rebase preserves the complete published snapshot');
+assert.equal(rebasedRich.localeDocument.published.version, 9, 'rebase preserves published version');
+assert.equal(deriveTranslationState(richDocument, item).publication_state, 'PUBLISHED_WITH_DRAFT');
+assert.equal(deriveTranslationState(rebasedRich.localeDocument, { ...item, source_revision: 8, source_fingerprint: 'c'.repeat(64) }).publication_state, 'PUBLISHED_WITH_DRAFT', 'rebase preserves lifecycle');
+assert.deepEqual(rebasedRich.draftClaims, richClaimsBefore, 'rebase returns unchanged draft slug claims');
+assert.deepEqual(rebasedRich.publishedReservations, richReservationsBefore, 'rebase returns unchanged published slug reservations');
+assert.deepEqual(richClaims, richClaimsBefore, 'rebase does not mutate input draft slug claims');
+assert.deepEqual(richReservations, richReservationsBefore, 'rebase does not mutate input published slug reservations');
+const draftOnlyRich = { ...structuredClone(richDocument), published: null };
+const draftOnlyClaims = { version: 1, claims: [{ locale: 'ru', slug: 'сложный-сон', content_id: A }] };
+const draftOnlyBefore = structuredClone(draftOnlyRich.draft);
+const rebasedDraftOnlyRich = rebaseLocaleDraftToCurrentSource({ item: { ...item, source_revision: 8, source_fingerprint: 'c'.repeat(64) }, locale: 'ru', localeDocument: draftOnlyRich, draftClaims: draftOnlyClaims, publishedReservations: emptyReservations });
+for (const field of translatedFields) assert.deepEqual(rebasedDraftOnlyRich.localeDocument.draft[field], richDraft[field], `draft-only rebase preserves ${field}`);
+assert.deepEqual(rebasedDraftOnlyRich.localeDocument.draft, expectedRebasedDraft(draftOnlyBefore, 8, 'c'.repeat(64)), 'draft-only rebase changes only provenance');
+assert.equal(deriveTranslationState(draftOnlyRich, item).publication_state, 'DRAFT');
+assert.equal(deriveTranslationState(rebasedDraftOnlyRich.localeDocument, { ...item, source_revision: 8, source_fingerprint: 'c'.repeat(64) }).publication_state, 'DRAFT', 'draft-only rebase preserves lifecycle');
 const republished = publishLocaleDraft({ item: { ...item, source_revision: 8, source_fingerprint: 'c'.repeat(64) }, locale: 'ru', localeDocument: rebased.localeDocument, draftClaims: rebased.draftClaims, publishedReservations: rebased.publishedReservations, publishedAt: '2026-09-16' });
 assert.equal(republished.localeDocument.published.version, 2); assert.equal(republished.localeDocument.draft, null);
 const draftOnlyDiscard = discardLocaleDraft({ item, locale: 'ru', localeDocument: first.localeDocument, draftClaims: first.draftClaims, publishedReservations: emptyReservations }); assert.equal(draftOnlyDiscard.localeDocument, null); assert.equal(draftOnlyDiscard.draftClaims.claims.length, 0);
