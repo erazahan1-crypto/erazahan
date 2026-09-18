@@ -81,11 +81,12 @@ function edit(post, changes = {}) {
 }
 
 // This mirrors the endpoint's injected atomic branch. Repository and R2 operations stay mocked.
-function atomicEnv(branch = 'migration/hy-atomic-drill') {
+function atomicEnv(branch = 'migration/hy-atomic-drill', deploymentClass = branch === 'main' ? 'production' : 'preview') {
   return {
     ERAZAHAN_HY_ADMIN_WRITE_MODE: 'atomic',
     ADMIN_GITHUB_BRANCH: branch,
     ERAZAHAN_HY_ADMIN_ATOMIC_BRANCH: branch,
+    ERAZAHAN_ADMIN_DEPLOYMENT_CLASS: deploymentClass,
   };
 }
 
@@ -132,7 +133,7 @@ async function getAdminPost(id, fixture) {
   const mock = installAdminPostGetFetch(fixture);
   try {
     const endpoint = await getAdminPostEndpoint();
-    const response = await endpoint({
+    const response = await endpoint.onRequestGet({
       request: new Request(`https://site.test/api/admin/posts/${id}`),
       params: { id },
       env: { GITHUB_TOKEN: 'test-token', ADMIN_GITHUB_REPO: 'test-owner/test-repo', ADMIN_GITHUB_BRANCH: 'main' },
@@ -149,7 +150,7 @@ async function getAdminPostEndpoint() {
     adminPostEndpointPromise = (async () => {
       const server = await createServer({ server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' });
       try {
-        return (await server.ssrLoadModule('/functions/api/admin/posts/[id].ts')).onRequestGet;
+        return await server.ssrLoadModule('/functions/api/admin/posts/[id].ts');
       } finally {
         await server.close();
       }
@@ -182,7 +183,7 @@ async function mockedEndpoint({ transport, mode, env, changes = {}, expectedVers
     return { status: 200, route: 'atomic', ...result };
   } catch (error) {
     if (error instanceof AdminAtomicHyWriteError) {
-      return { status: ['INVALID_WRITE_MODE', 'INVALID_ATOMIC_BRANCH_CONFIRMATION'].includes(error.code) ? 503 : 400, error };
+      return { status: ['INVALID_WRITE_MODE', 'INVALID_ATOMIC_BRANCH_CONFIRMATION', 'INVALID_WRITE_ENVIRONMENT'].includes(error.code) ? 503 : 400, error };
     }
     if (error instanceof HyWriteProjectionError) return { status: 400, error };
     if (error?.code === 'STALE_POSTS_VERSION' || error?.code === 'BRANCH_REF_CONFLICT') return { status: 409, error };
@@ -220,6 +221,23 @@ const getSecond = await getAdminPost('1', { posts: getPosts, registry: getRegist
 assert.equal(getSecond.response.status, 200);
 assert.equal(getSecond.body.content_id, getRegistry.entries[1].content_id);
 assert.notEqual(getSecond.body.content_id, getFirst.body.content_id);
+{ const mock = installAdminPostGetFetch({ posts: getPosts, registry: getRegistry }); let r2Mutations = 0; try {
+  const endpoint = await getAdminPostEndpoint();
+  const response = await endpoint.onRequestPut({
+    request: new Request('https://site.test/api/admin/posts/0', {
+      method: 'PUT', headers: { origin: 'https://site.test', 'content-type': 'application/json' },
+      body: JSON.stringify({ version: POSTS_SHA, originalSlug: getPosts[0].slug, post: getPosts[0] }),
+    }),
+    params: { id: '0' },
+    env: {
+      GITHUB_TOKEN: 'test-token', ADMIN_GITHUB_REPO: 'test-owner/test-repo', ADMIN_GITHUB_BRANCH: 'main',
+      ERAZAHAN_HY_ADMIN_WRITE_MODE: 'atomic', ERAZAHAN_HY_ADMIN_ATOMIC_BRANCH: 'main', ERAZAHAN_ADMIN_DEPLOYMENT_CLASS: 'preview',
+      POST_IMAGES: { delete: async () => { r2Mutations += 1; } },
+    },
+  });
+  assert.equal(response.status, 503); const body = await response.json(); assert.equal(body.ok, false); assert.equal(body.writable, false);
+  assert.equal(mock.calls.length, 0, 'real HY endpoint rejects before GitHub access'); assert.equal(r2Mutations, 0, 'real HY endpoint rejects before R2 mutation');
+} finally { mock.restore(); } }
 const invalidGet = await getAdminPost('invalid', { posts: getPosts, registry: getRegistry });
 assert.equal(invalidGet.response.status, 400);
 assert.equal(invalidGet.body.ok, false);
@@ -291,6 +309,10 @@ for (const env of [
   { ERAZAHAN_HY_ADMIN_WRITE_MODE: 'atomic', ADMIN_GITHUB_BRANCH: 'migration/hy-atomic-drill', ERAZAHAN_HY_ADMIN_ATOMIC_BRANCH: '   ' },
   { ERAZAHAN_HY_ADMIN_WRITE_MODE: 'atomic', ADMIN_GITHUB_BRANCH: 'main', ERAZAHAN_HY_ADMIN_ATOMIC_BRANCH: 'migration/hy-atomic-drill' },
   { ERAZAHAN_HY_ADMIN_WRITE_MODE: 'atomic', ADMIN_GITHUB_BRANCH: 'migration/hy-atomic-drill', ERAZAHAN_HY_ADMIN_ATOMIC_BRANCH: 'typo-branch' },
+  { ...atomicEnv('migration/hy-atomic-drill', 'production') },
+  { ...atomicEnv('main', 'preview') },
+  (() => { const env = atomicEnv('main'); delete env.ERAZAHAN_ADMIN_DEPLOYMENT_CLASS; return env; })(),
+  { ...atomicEnv('main', 'unknown') },
 ]) {
   const guarded = fakeTransport();
   assert.equal((await mockedEndpoint({ transport: guarded, env })).status, 503);

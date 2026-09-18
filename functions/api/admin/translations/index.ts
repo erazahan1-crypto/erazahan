@@ -1,8 +1,9 @@
 import { isContentId, isSourceFingerprint } from '../../../../src/lib/content-schema/schema.mjs';
 import { beginLocaleEditWrite, createLocaleDraftWrite, discardLocaleDraftWrite, loadLocaleTranslationEditorState, publishLocaleDraftWrite, rebaseLocaleDraftWrite, updateLocaleDraftWrite } from '../../../_lib/admin-locale-draft-write.mjs';
 import { createGitHubTransactionClient, getGitHubConfig, PostsConfigError, type GitHubPostsEnv } from '../../../_lib/github-posts.ts';
+import { resolveAdminWriteBranch } from '../../../_lib/admin-write-environment-guard.mjs';
 
-interface Context { request: Request; env: GitHubPostsEnv & { ERAZAHAN_LOCALE_ADMIN_ATOMIC_BRANCH?: string }; }
+interface Context { request: Request; env: GitHubPostsEnv & { ERAZAHAN_LOCALE_ADMIN_ATOMIC_BRANCH?: string; ERAZAHAN_ADMIN_DEPLOYMENT_CLASS?: string }; }
 
 function json(body: unknown, status = 200, headers: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...headers } });
@@ -12,12 +13,8 @@ const BODY_LIMIT = 2_100_000;
 const PAYLOAD_KEYS = ['slug', 'title', 'description', 'content', 'image_alts', 'tags', 'alphabet_key'];
 function plainObject(value: unknown): value is Record<string, unknown> { return !!value && typeof value === 'object' && !Array.isArray(value) && (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null); }
 function exactKeys(value: Record<string, unknown>, keys: string[]) { return Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key)); }
-function writerGuard(env: GitHubPostsEnv & { ERAZAHAN_LOCALE_ADMIN_ATOMIC_BRANCH?: string }) {
-  const branch = env.ADMIN_GITHUB_BRANCH; const confirmation = env.ERAZAHAN_LOCALE_ADMIN_ATOMIC_BRANCH;
-  if (typeof branch !== 'string' || !branch.trim() || typeof confirmation !== 'string' || !confirmation.trim() || branch.trim() !== confirmation.trim()) {
-    throw Object.assign(new Error('Locale atomic branch confirmation is invalid'), { code: 'INVALID_ATOMIC_BRANCH_CONFIRMATION' });
-  }
-  return branch.trim();
+function writerGuard(env: GitHubPostsEnv & { ERAZAHAN_LOCALE_ADMIN_ATOMIC_BRANCH?: string; ERAZAHAN_ADMIN_DEPLOYMENT_CLASS?: string }) {
+  return resolveAdminWriteBranch(env, 'ERAZAHAN_LOCALE_ADMIN_ATOMIC_BRANCH');
 }
 function query(request: Request) {
   const url = new URL(request.url);
@@ -70,7 +67,7 @@ function writeError(error: unknown) {
   if (code === 'CONTENT_NOT_FOUND') return json({ ok: false, code }, 404);
   if (['LOCALE_UNSUPPORTED', 'DRAFT_INVALID', 'NO_DRAFT', 'PUBLISH_INVALID', 'SLUG_INVALID', 'INVALID_REQUEST'].includes(code ?? '')) return json({ ok: false, code: code ?? 'INVALID_REQUEST' }, 400);
   if (['SLUG_RESERVED', 'SLUG_CLAIMED', 'SLUG_PERMANENTLY_RESERVED', 'PUBLISHED_SLUG_LOCKED', 'SOURCE_CHANGED', 'SOURCE_OUTDATED', 'STALE_EDITOR', 'STALE_FILE_VERSION', 'BRANCH_REF_CONFLICT'].includes(code ?? '')) return json({ ok: false, code }, 409);
-  if (error instanceof PostsConfigError || ['INVALID_ATOMIC_BRANCH_CONFIRMATION', 'SNAPSHOT_FILE_MISSING', 'INVALID_SNAPSHOT_JSON', 'INVALID_SNAPSHOT_STATE', 'INVALID_HY_SOURCE', 'INVALID_SNAPSHOT', 'INVALID_DRAFT_CLAIM_TRANSITION', 'LOCALE_BLOB_SHA_MISSING'].includes(code ?? '')) return json({ ok: false, code: code ?? 'SERVICE_UNAVAILABLE' }, 503);
+  if (error instanceof PostsConfigError || ['INVALID_ATOMIC_BRANCH_CONFIRMATION', 'INVALID_WRITE_ENVIRONMENT', 'SNAPSHOT_FILE_MISSING', 'INVALID_SNAPSHOT_JSON', 'INVALID_SNAPSHOT_STATE', 'INVALID_HY_SOURCE', 'INVALID_SNAPSHOT', 'INVALID_DRAFT_CLAIM_TRANSITION', 'LOCALE_BLOB_SHA_MISSING'].includes(code ?? '')) return json({ ok: false, code: code ?? 'SERVICE_UNAVAILABLE' }, 503);
   if (['REF_LOOKUP_FAILURE', 'COMMIT_LOOKUP_FAILURE', 'SNAPSHOT_FILE_FAILURE', 'BLOB_CREATION_FAILURE', 'TREE_CREATION_FAILURE', 'COMMIT_CREATION_FAILURE', 'BRANCH_REF_UPDATE_FAILURE'].includes(code ?? '')) return json({ ok: false, code: 'UPSTREAM_FAILURE' }, 502);
   return json({ ok: false, code: 'INTERNAL_ERROR' }, 500);
 }

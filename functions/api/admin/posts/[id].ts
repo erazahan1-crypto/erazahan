@@ -266,7 +266,7 @@ async function parseSaveRequest(request: Request, contentType: string): Promise<
 
 function handleError(error: unknown): Response {
   if (error instanceof AdminAtomicHyWriteError && (
-    error.code === 'INVALID_WRITE_MODE' || error.code === 'INVALID_ATOMIC_BRANCH_CONFIRMATION'
+    error.code === 'INVALID_WRITE_MODE' || error.code === 'INVALID_ATOMIC_BRANCH_CONFIRMATION' || error.code === 'INVALID_WRITE_ENVIRONMENT'
   )) {
     return json({ ok: false, error: error.message, writable: false }, 503);
   }

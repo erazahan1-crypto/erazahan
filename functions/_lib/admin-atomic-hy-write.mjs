@@ -3,6 +3,7 @@ import {
   projectExistingHyPostUpdate,
 } from '../../src/lib/content-write/project-hy-post.mjs';
 import { canonicalJsonEqual } from '../../src/lib/content-write/canonical-json.mjs';
+import { resolveAdminWriteBranch } from './admin-write-environment-guard.mjs';
 
 export const HY_ADMIN_WRITE_MODE_ENV = 'ERAZAHAN_HY_ADMIN_WRITE_MODE';
 export const HY_ADMIN_ATOMIC_BRANCH_ENV = 'ERAZAHAN_HY_ADMIN_ATOMIC_BRANCH';
@@ -28,23 +29,13 @@ export function resolveHyAdminWriteMode(env) {
   fail('INVALID_WRITE_MODE', `${HY_ADMIN_WRITE_MODE_ENV} must be legacy or atomic`);
 }
 
-function requiredBranch(env, name) {
-  const value = env?.[name];
-  if (typeof value !== 'string' || !value.trim()) {
-    fail('INVALID_ATOMIC_BRANCH_CONFIRMATION', `${name} must be explicitly configured for atomic writes`);
-  }
-  return value.trim();
-}
-
-// Atomic writes deliberately do not inherit the legacy main fallback. Both
-// independently configured values must name the same explicit target branch.
 export function resolveAtomicGitHubBranch(env) {
-  const configuredBranch = requiredBranch(env, 'ADMIN_GITHUB_BRANCH');
-  const confirmedBranch = requiredBranch(env, HY_ADMIN_ATOMIC_BRANCH_ENV);
-  if (configuredBranch !== confirmedBranch) {
-    fail('INVALID_ATOMIC_BRANCH_CONFIRMATION', 'ADMIN_GITHUB_BRANCH must match ERAZAHAN_HY_ADMIN_ATOMIC_BRANCH for atomic writes');
+  try {
+    return resolveAdminWriteBranch(env, HY_ADMIN_ATOMIC_BRANCH_ENV);
+  } catch (error) {
+    if (error?.code) fail(error.code, error.message);
+    throw error;
   }
-  return configuredBranch;
 }
 
 function parseSnapshotJson(snapshot, path, label) {
