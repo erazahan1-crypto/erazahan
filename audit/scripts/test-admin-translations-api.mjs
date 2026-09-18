@@ -16,7 +16,7 @@ const localeDocument = ({ draft = null, published = null } = {}) => ({ schema_ve
 function json(body, status = 200) { return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } }); }
 function base64(value) { return btoa(unescape(encodeURIComponent(value))); }
 function installFetch({ missing = false, malformed = false, transportFailure = false, allowWrites = false, locale = null, currentItem = item, claims = { version: 1, claims: [] }, reservations = { version: 1, reservations: [] }, branchConflict = false } = {}) {
-  const original = globalThis.fetch; const calls = [];
+  const original = globalThis.fetch; const calls = []; const trees = [];
   const files = new Map([
     [`${BASE}/item.json`, canonicalJson(currentItem)], [`${BASE}/hy.json`, canonicalJson(hy)],
     [`${BASE}/ru.json`, null], [`${BASE}/en.json`, locale === null ? null : canonicalJson(locale)],
@@ -35,7 +35,7 @@ function installFetch({ missing = false, malformed = false, transportFailure = f
     if (init.method && init.method !== 'GET') {
       if (!allowWrites) throw new Error('write API called');
       if (path.endsWith('/git/blobs')) return json({ sha: `${(calls.filter((call) => call.path.endsWith('/git/blobs')).length).toString(16).padStart(40, 'a')}` });
-      if (path.endsWith('/git/trees')) return json({ sha: 'tree-next' });
+      if (path.endsWith('/git/trees')) { trees.push(JSON.parse(init.body)); return json({ sha: 'tree-next' }); }
       if (path.endsWith('/git/commits')) return json({ sha: 'commit-next' });
       if (path.endsWith('/git/refs/heads/main')) return branchConflict ? json({ message: 'advanced' }, 422) : json({ object: { sha: 'commit-next' } });
     }
@@ -52,7 +52,7 @@ function installFetch({ missing = false, malformed = false, transportFailure = f
     }
     throw new Error(`Unexpected GitHub request: ${path}`);
   };
-  return { calls, restore: () => { globalThis.fetch = original; } };
+  return { calls, trees, restore: () => { globalThis.fetch = original; } };
 }
 async function response(url, options = {}) { return onRequestGet({ request: new Request(url, options), env: options.env ?? env }); }
 async function post(body, options = {}) { return onRequestPost({ request: new Request('https://site.test/api/admin/translations', { method: 'POST', headers: { origin: 'https://site.test', 'content-type': 'application/json', ...(options.headers ?? {}) }, body: typeof body === 'string' ? body : JSON.stringify(body) }), env: options.env ?? env }); }
@@ -90,7 +90,7 @@ const publishBody = (overrides = {}) => ({ action: 'publish', content_id: A, loc
 { const published = { ...localized(), version: 1, published_at: '2026-09-15' }; const mock = installFetch({ allowWrites: true, locale: localeDocument({ published }) }); try { const res = await post({ action: 'begin_edit', content_id: A, locale: 'en', expected_locale_blob_sha: localeSha }, { env: postEnv }); const body = await res.json(); assert.equal(res.status, 200); assert.equal(body.changed, true); assert.match(body.locale_blob_sha, /^[0-9a-f]{40}$/); } finally { mock.restore(); } }
 { const currentItem = { ...item, source_revision: 2, source_fingerprint: 'c'.repeat(64) }; const mock = installFetch({ allowWrites: true, currentItem, locale: existingDraft, claims: { version: 1, claims: [{ locale: 'en', slug: 'crow', content_id: A }] } }); try { const res = await post(rebaseBody(), { env: postEnv }); const body = await res.json(); assert.equal(res.status, 200); assert.equal(body.ok, true); assert.equal(body.changed, true); assert.equal(body.locale_document.draft.content, existingDraft.draft.content); assert.equal(body.locale_document.draft.slug, 'crow'); assert.equal(body.locale_document.draft.based_on_source_revision, 2); assert.equal(body.locale_document.draft.based_on_source_fingerprint, 'c'.repeat(64)); assert.match(body.locale_blob_sha, /^[0-9a-f]{40}$/); } finally { mock.restore(); } }
 { const mock = installFetch({ locale: existingDraft, claims: { version: 1, claims: [{ locale: 'en', slug: 'crow', content_id: A }] } }); try { const res = await post(rebaseBody(), { env: postEnv }); const body = await res.json(); assert.equal(res.status, 200); assert.equal(body.ok, true); assert.equal(body.changed, false); assert.equal(body.code, 'NO_CHANGES'); assert.deepEqual(body.locale_document, existingDraft); assert.equal(body.locale_blob_sha, localeSha); assert.equal(mock.calls.some((call) => call.method !== 'GET'), false); } finally { mock.restore(); } }
-{ const mock = installFetch({ allowWrites: true, locale: existingDraft, claims: { version: 1, claims: [{ locale: 'en', slug: 'crow', content_id: A }] } }); try { const res = await post(discardBody(), { env: postEnv }); const body = await res.json(); const firstWrite = mock.calls.findIndex((call) => call.method !== 'GET'); assert.equal(res.status, 200); assert.equal(body.ok, true); assert.equal(body.changed, true); assert.equal(body.content_id, A); assert.equal(body.locale, 'en'); assert.equal(body.locale_document, null); assert.equal(body.locale_blob_sha, null); assert.equal(mock.calls.slice(firstWrite + 1).some((call) => call.method === 'GET'), false); } finally { mock.restore(); } }
+{ const mock = installFetch({ allowWrites: true, locale: existingDraft, claims: { version: 1, claims: [{ locale: 'en', slug: 'crow', content_id: A }] } }); try { const res = await post(discardBody(), { env: postEnv }); const body = await res.json(); const firstWrite = mock.calls.findIndex((call) => call.method !== 'GET'); assert.equal(res.status, 200); assert.equal(body.ok, true); assert.equal(body.changed, true); assert.equal(body.content_id, A); assert.equal(body.locale, 'en'); assert.equal(body.locale_document, null); assert.equal(body.locale_blob_sha, null); assert.deepEqual(mock.trees[0].tree.find((entry) => entry.path === `${BASE}/en.json`), { path: `${BASE}/en.json`, mode: '100644', type: 'blob', sha: null }); assert.equal(mock.calls.slice(firstWrite + 1).some((call) => call.method === 'GET'), false); } finally { mock.restore(); } }
 { const published = { ...localized(), version: 1, published_at: '2026-09-15' }; const document = localeDocument({ draft: localized(), published }); const mock = installFetch({ allowWrites: true, locale: document, claims: { version: 1, claims: [{ locale: 'en', slug: 'crow', content_id: A }] } }); try { const res = await post(discardBody(), { env: postEnv }); const body = await res.json(); const firstWrite = mock.calls.findIndex((call) => call.method !== 'GET'); assert.equal(res.status, 200); assert.equal(body.ok, true); assert.equal(body.changed, true); assert.equal(body.locale_document.draft, null); assert.deepEqual(body.locale_document.published, published); assert.equal(body.locale_blob_sha, `${'a'.repeat(39)}1`); assert.equal(mock.calls.slice(firstWrite + 1).some((call) => call.method === 'GET'), false); } finally { mock.restore(); } }
 for (const bad of [
   () => { const value = discardBody(); delete value.expected_locale_blob_sha; return value; },

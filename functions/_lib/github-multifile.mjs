@@ -166,7 +166,7 @@ export async function commitMultiFileTransaction(client, {
     blobShas.set(change.path, blob.sha);
   }
   const entries = changed.map((change) => change.operation === 'delete'
-    ? { path: change.path, sha: null }
+    ? { path: change.path, mode: '100644', type: 'blob', sha: null }
     : { path: change.path, mode: '100644', type: 'blob', sha: blobShas.get(change.path) });
   const tree = await atStage('TREE_CREATION_FAILURE', () => client.createTree({
     baseTreeSha: snapshot.treeSha,
