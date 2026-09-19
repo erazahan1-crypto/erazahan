@@ -32,7 +32,7 @@ assert.equal(validateStoredAlphabetKey('ru', '123 Ворона', 'В'), 'В');
 assert.equal(validateStoredAlphabetKey('en', '🪶 Crow', null), null);
 assert.equal(validateStoredAlphabetKey('en', '🪶 Crow', 'C'), 'C');
 
-for (const [locale, slug] of [['ru', 'search'], ['ru', 'letter'], ['en', 'search'], ['en', 'letter'], ['en', 'search-index.json']]) {
+for (const [locale, slug] of [['ru', 'search'], ['ru', 'letter'], ['ru', 'o-proekte'], ['en', 'search'], ['en', 'letter'], ['en', 'search-index.json'], ['en', 'about']]) {
   assert.throws(() => assertLocalePublicSlug(locale, slug));
 }
 assert.equal(assertLocalePublicSlug('en', 'searching'), 'searching');

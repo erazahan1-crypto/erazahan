@@ -32,10 +32,10 @@ function add(rootPath, id, { ru = null, en = null } = {}) {
   if (en) write(rootPath, `${base}/en.json`, { schema_version: 1, content_id: id, locale: 'en', ...en(item.source_fingerprint) });
 }
 
-function assertLocaleLetterOutput(outputRoot, locale, groups) {
+function assertLocaleLetterOutput(outputRoot, locale, groups, staticPages = []) {
   const localeRoot = path.join(outputRoot, locale);
   const letterRoot = path.join(localeRoot, 'letter');
-  const expectedRoot = ['index.html', 'search', 'search-index.json', 'letter'].sort();
+  const expectedRoot = ['index.html', 'search', 'search-index.json', 'letter', ...staticPages].sort();
   assert.deepEqual(readdirSync(localeRoot).sort(), expectedRoot);
   if (groups.length === 0) {
     assert.deepEqual(readdirSync(letterRoot).sort(), ['index.html'], `${locale} emits only its safe alphabet root when no groups are published`);
@@ -64,8 +64,8 @@ try {
     const hy = listPublishedLocaleEntries(real, 'hy');
     assert.equal(hy.length, 5800);
     assert.equal(hy.filter((entry) => entry.path !== publicPathFor('hy', entry.slug)).length, 0);
-    assertLocaleLetterOutput(path.resolve('dist'), 'ru', listPublishedAlphabetGroups(real, 'ru'));
-    assertLocaleLetterOutput(path.resolve('dist'), 'en', listPublishedAlphabetGroups(real, 'en'));
+    assertLocaleLetterOutput(path.resolve('dist'), 'ru', listPublishedAlphabetGroups(real, 'ru'), ['o-proekte']);
+    assertLocaleLetterOutput(path.resolve('dist'), 'en', listPublishedAlphabetGroups(real, 'en'), ['about']);
   }
   {
     const output = root();

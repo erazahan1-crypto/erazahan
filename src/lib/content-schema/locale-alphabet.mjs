@@ -4,8 +4,8 @@ const RU_ALPHABET = Object.freeze([
 const EN_ALPHABET = Object.freeze(Array.from({ length: 26 }, (_, index) => String.fromCharCode(65 + index)));
 const ALPHABETS = Object.freeze({ ru: RU_ALPHABET, en: EN_ALPHABET });
 const RESERVED_DREAM_SLUGS = Object.freeze({
-  ru: Object.freeze(['search', 'letter']),
-  en: Object.freeze(['search', 'letter', 'search-index.json']),
+  ru: Object.freeze(['search', 'letter', 'o-proekte']),
+  en: Object.freeze(['search', 'letter', 'search-index.json', 'about']),
 });
 
 function fail(message) {
