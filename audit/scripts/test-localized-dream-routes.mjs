@@ -35,13 +35,13 @@ function add(rootPath, id, { ru = null, en = null } = {}) {
 function assertLocaleLetterOutput(outputRoot, locale, groups) {
   const localeRoot = path.join(outputRoot, locale);
   const letterRoot = path.join(localeRoot, 'letter');
-  const expectedRoot = ['index.html', 'search', 'search-index.json', ...(groups.length ? ['letter'] : [])].sort();
+  const expectedRoot = ['index.html', 'search', 'search-index.json', 'letter'].sort();
   assert.deepEqual(readdirSync(localeRoot).sort(), expectedRoot);
   if (groups.length === 0) {
-    assert.equal(existsSync(letterRoot), false, `${locale} must not emit an empty letter hub`);
+    assert.deepEqual(readdirSync(letterRoot).sort(), ['index.html'], `${locale} emits only its safe alphabet root when no groups are published`);
     return;
   }
-  assert.deepEqual(readdirSync(letterRoot).sort(), groups.map((group) => group.route_key).sort());
+  assert.deepEqual(readdirSync(letterRoot).sort(), ['index.html', ...groups.map((group) => group.route_key)].sort());
 }
 
 try {

@@ -1,0 +1,16 @@
+---
+import LocaleAlphabetPage from '../../../components/LocaleAlphabetPage.astro';
+import { CONTENT_STORE_ROOT } from '../../../lib/content-source/localized-dream-routes.mjs';
+import { scanContentStore } from '../../../lib/content-source/multilingual-store.mjs';
+import { listPublishedAlphabetGroups } from '../../../lib/content-source/published-alphabet.mjs';
+import { localeUiCopy } from '../../../lib/public-locale.mjs';
+import Layout from '../../../layouts/Layout.astro';
+
+const locale = 'ru';
+const copy = localeUiCopy(locale);
+const groups = listPublishedAlphabetGroups(scanContentStore(CONTENT_STORE_ROOT), locale);
+---
+
+<Layout title={copy.alphabet.title} description={copy.alphabet.description} locale={locale} alternates={[]}>
+  <LocaleAlphabetPage locale={locale} groups={groups} />
+</Layout>

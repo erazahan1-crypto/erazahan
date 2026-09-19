@@ -29,8 +29,16 @@ assert.match(home, /action=\{searchHref\}/);
 assert.match(home, /copy\.empty\.unavailable/);
 for (const forbidden of ['scanContentStore', 'listPublishedLocaleEntries', 'dreamPosts', 'featured']) assert.doesNotMatch(home, new RegExp(forbidden));
 
-assert.deepEqual(localeNavigation('ru'), [{ id: 'search', label: 'Поиск', href: '/ru/search/' }]);
-assert.deepEqual(localeNavigation('en'), [{ id: 'search', label: 'Search', href: '/en/search/' }]);
+assert.deepEqual(localeNavigation('ru'), [
+  { id: 'home', label: 'Главная', href: '/ru/' },
+  { id: 'search', label: 'Поиск', href: '/ru/search/' },
+  { id: 'alphabet', label: 'Алфавит', href: '/ru/letter/' },
+]);
+assert.deepEqual(localeNavigation('en'), [
+  { id: 'home', label: 'Home', href: '/en/' },
+  { id: 'search', label: 'Search', href: '/en/search/' },
+  { id: 'alphabet', label: 'Alphabet', href: '/en/letter/' },
+]);
 assert.equal(localeSearch('ru'), '/ru/search/');
 assert.equal(localeSearch('en'), '/en/search/');
 

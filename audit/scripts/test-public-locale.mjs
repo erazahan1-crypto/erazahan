@@ -75,8 +75,8 @@ try {
   assert.equal(localeSearch('ru'), '/ru/search/');
   assert.equal(localeSearch('en'), '/en/search/');
   assert.equal(localeAlphabet('hy'), '/erazahan-online/');
-  assert.equal(localeAlphabet('ru'), null);
-  assert.equal(localeAlphabet('en'), null);
+  assert.equal(localeAlphabet('ru'), '/ru/letter/');
+  assert.equal(localeAlphabet('en'), '/en/letter/');
 
   assert.equal(localeDream('hy', 'hy-dream'), '/hy-dream/');
   assert.equal(localeDream('ru', ruFixtureSlug('ru-dream')), `/ru/${ruFixtureSlug('ru-dream')}/`);
@@ -89,8 +89,16 @@ try {
     { id: 'search', label: '\u0548\u0580\u0578\u0576\u0578\u0582\u0574', href: '/search/' },
     { id: 'alphabet', label: '\u0531\u0575\u0562\u0578\u0582\u0562\u0565\u0576', href: '/erazahan-online/' },
   ]);
-  assert.deepEqual(localeNavigation('ru'), [{ id: 'search', label: '\u041f\u043e\u0438\u0441\u043a', href: '/ru/search/' }]);
-  assert.deepEqual(localeNavigation('en'), [{ id: 'search', label: 'Search', href: '/en/search/' }]);
+  assert.deepEqual(localeNavigation('ru'), [
+    { id: 'home', label: '\u0413\u043b\u0430\u0432\u043d\u0430\u044f', href: '/ru/' },
+    { id: 'search', label: '\u041f\u043e\u0438\u0441\u043a', href: '/ru/search/' },
+    { id: 'alphabet', label: '\u0410\u043b\u0444\u0430\u0432\u0438\u0442', href: '/ru/letter/' },
+  ]);
+  assert.deepEqual(localeNavigation('en'), [
+    { id: 'home', label: 'Home', href: '/en/' },
+    { id: 'search', label: 'Search', href: '/en/search/' },
+    { id: 'alphabet', label: 'Alphabet', href: '/en/letter/' },
+  ]);
   assert.throws(() => localeNavigation('fr'));
   for (const locale of PUBLIC_LOCALES) {
     assert.ok(localeUiCopy(locale).search.heading);

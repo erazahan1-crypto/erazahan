@@ -47,6 +47,7 @@ assert.deepEqual(listLocaleLetterRouteEntries(repo([record(A, 'en', published('e
 
 const ruPage = readFileSync('src/pages/ru/letter/[key].astro', 'utf8');
 const enPage = readFileSync('src/pages/en/letter/[key].astro', 'utf8');
+const letterComponent = readFileSync('src/components/LocaleLetterPage.astro', 'utf8');
 for (const source of [ruPage, enPage]) {
   assert.match(source, /alternates=\{\[\]\}/);
   assert.match(source, /robots="noindex, follow"/);
@@ -54,9 +55,12 @@ for (const source of [ruPage, enPage]) {
 }
 assert.match(ruPage, /Сны на букву «\$\{group\.alphabet_key\}»/);
 assert.match(ruPage, /Толкования снов на букву «\$\{group\.alphabet_key\}»\./);
-assert.match(ruPage, /homeLabel="Главная"/);
 assert.match(enPage, /Dreams Starting with “\$\{group\.alphabet_key\}”/);
 assert.match(enPage, /Dream meanings starting with the letter “\$\{group\.alphabet_key\}”\./);
-assert.match(enPage, /homeLabel="Home"/);
+assert.match(letterComponent, /localeHome\(locale\)/);
+assert.match(letterComponent, /localeAlphabet\(locale\)/);
+assert.match(letterComponent, /href=\{homeHref\}/);
+assert.match(letterComponent, /href=\{alphabetHref\}/);
+assert.doesNotMatch(letterComponent, /href="\/"/);
 
 console.log('LOCALE LETTER ROUTES PASS');
