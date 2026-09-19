@@ -28,6 +28,7 @@
         "ADMIN_GITHUB_BRANCH": "main",
         "PUBLIC_ALLOW_INDEXING": "true",
         "ERAZAHAN_ADMIN_DEPLOYMENT_CLASS": "production",
+        "ERAZAHAN_LOCALE_ADMIN_ATOMIC_BRANCH": "main",
         "ERAZAHAN_HY_ADMIN_WRITE_MODE": "atomic",
         "ERAZAHAN_HY_ADMIN_ATOMIC_BRANCH": "main",
         "ERAZAHAN_HY_CONTENT_SOURCE": "new"
