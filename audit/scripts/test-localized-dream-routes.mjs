@@ -32,10 +32,10 @@ function add(rootPath, id, { ru = null, en = null } = {}) {
   if (en) write(rootPath, `${base}/en.json`, { schema_version: 1, content_id: id, locale: 'en', ...en(item.source_fingerprint) });
 }
 
-function assertLocaleLetterOutput(outputRoot, locale, groups, staticPages = []) {
+function assertLocaleLetterOutput(outputRoot, locale, groups, staticPages = [], dreamSlugs = []) {
   const localeRoot = path.join(outputRoot, locale);
   const letterRoot = path.join(localeRoot, 'letter');
-  const expectedRoot = ['index.html', 'search', 'search-index.json', 'letter', ...staticPages].sort();
+  const expectedRoot = ['index.html', 'search', 'search-index.json', 'letter', ...staticPages, ...dreamSlugs].sort();
   assert.deepEqual(readdirSync(localeRoot).sort(), expectedRoot);
   if (groups.length === 0) {
     assert.deepEqual(readdirSync(letterRoot).sort(), ['index.html'], `${locale} emits only its safe alphabet root when no groups are published`);
@@ -60,12 +60,15 @@ try {
   {
     const real = scanContentStore('src/data/content/dreams');
     assert.equal(listLocalizedDreamRouteEntries(real, 'ru').length, 0);
-    assert.equal(listLocalizedDreamRouteEntries(real, 'en').length, 0);
+    const enRoutes = listLocalizedDreamRouteEntries(real, 'en');
+    assert.deepEqual(enRoutes.map((route) => ({ path: route.path, title: route.entry.published.title })), [
+      { path: '/en/tar-musical-instrument-dream-meaning/', title: 'Tar Musical Instrument Dream Meaning' },
+    ]);
     const hy = listPublishedLocaleEntries(real, 'hy');
     assert.equal(hy.length, 5800);
     assert.equal(hy.filter((entry) => entry.path !== publicPathFor('hy', entry.slug)).length, 0);
     assertLocaleLetterOutput(path.resolve('dist'), 'ru', listPublishedAlphabetGroups(real, 'ru'), ['o-proekte']);
-    assertLocaleLetterOutput(path.resolve('dist'), 'en', listPublishedAlphabetGroups(real, 'en'), ['about']);
+    assertLocaleLetterOutput(path.resolve('dist'), 'en', listPublishedAlphabetGroups(real, 'en'), ['about'], enRoutes.map((route) => route.slug));
   }
   {
     const output = root();

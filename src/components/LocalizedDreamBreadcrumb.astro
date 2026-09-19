@@ -1,0 +1,22 @@
+---
+import { localizedDreamBreadcrumb } from '../lib/localized-dream-breadcrumb.mjs';
+
+interface Props {
+  locale: 'ru' | 'en';
+  entry: { published: { title: string; alphabet_key: string | null } };
+}
+
+const { locale, entry } = Astro.props;
+const items = localizedDreamBreadcrumb(locale, entry);
+---
+
+<nav aria-label="Breadcrumb" class="mb-5 text-sm text-slate-400">
+  <ol class="flex flex-wrap items-center gap-x-2 gap-y-1">
+    {items.map((item, index) => (
+      <li class="flex items-center gap-x-2">
+        {index > 0 && <span aria-hidden="true">→</span>}
+        {item.href ? <a href={item.href} class="transition hover:text-white">{item.label}</a> : <span aria-current="page" class="text-slate-300">{item.label}</span>}
+      </li>
+    ))}
+  </ol>
+</nav>
