@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { localeNavigation, localeSearch } from '../../src/lib/public-locale.mjs';
+import { loadPublishedLocaleAvailability } from '../../src/lib/content-source/published-locale-availability.mjs';
 
 const read = (file) => readFileSync(file, 'utf8');
 const layout = read('src/layouts/Layout.astro');
@@ -27,7 +28,16 @@ assert.match(en, /robots="noindex, nofollow"/);
 assert.match(home, /data-locale-home=\{locale\}/);
 assert.match(home, /action=\{searchHref\}/);
 assert.match(home, /copy\.empty\.unavailable/);
+assert.match(home, /loadPublishedLocaleAvailability/);
 for (const forbidden of ['scanContentStore', 'listPublishedLocaleEntries', 'dreamPosts', 'featured']) assert.doesNotMatch(home, new RegExp(forbidden));
+
+const enAvailability = loadPublishedLocaleAvailability('en');
+const ruAvailability = loadPublishedLocaleAvailability('ru');
+assert.equal(enAvailability.available, true);
+assert.deepEqual(enAvailability.entries.map((entry) => ({ title: entry.published.title, path: entry.path })), [
+  { title: 'Tar Musical Instrument Dream Meaning', path: '/en/tar-musical-instrument-dream-meaning/' },
+]);
+assert.equal(ruAvailability.available, false);
 
 assert.deepEqual(localeNavigation('ru'), [
   { id: 'home', label: 'Главная', href: '/ru/' },
@@ -73,4 +83,15 @@ const hy = read('dist/index.html');
 assert.match(hy, /<script type="application\/ld\+json">/);
 assert.match(hy, /https:\/\/erazahan\.info\/search\?q=\{search_term_string\}/);
 assert.equal(hy.includes('<meta name="robots" content="noindex, nofollow">'), false, 'production HY output remains indexable when PUBLIC_ALLOW_INDEXING=true');
+
+const enHome = read('dist/en/index.html');
+assert.equal(enHome.includes('Not available in this language yet.'), false, 'EN home and footer do not claim published content is unavailable');
+assert.match(enHome, /href="\/en\/tar-musical-instrument-dream-meaning\/"[^>]*>Tar Musical Instrument Dream Meaning<\/a>/);
+assert.match(enHome, /Published dream meanings are available in English\./);
+
+const ruHome = read('dist/ru/index.html');
+assert.ok(ruHome.includes('\u041d\u0430 \u044d\u0442\u043e\u043c \u044f\u0437\u044b\u043a\u0435 \u043f\u043e\u043a\u0430 \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u043e.'), 'RU home and footer retain their zero-content state');
+
+const enDream = read('dist/en/tar-musical-instrument-dream-meaning/index.html');
+assert.match(enDream, /<meta name="robots" content="noindex, nofollow">/);
 console.log('LOCALIZED SITE SHELL PASS');

@@ -8,6 +8,7 @@ import {
   listPublishedLocaleEntries,
   listPublishedLocalesForContent,
 } from '../../src/lib/content-source/published-content.mjs';
+import { publishedLocaleAvailability } from '../../src/lib/content-source/published-locale-availability.mjs';
 import { MultilingualStoreValidationError, scanContentStore } from '../../src/lib/content-source/multilingual-store.mjs';
 
 const A = 'efa61838-86c8-56b8-815c-0a38b0a83242';
@@ -107,6 +108,7 @@ try {
     const repository = scanContentStore(fixture);
     assert.equal(getPublishedLocaleEntry(repository, A, 'ru'), null);
     assert.deepEqual(listPublishedLocaleEntries(repository, 'ru'), []);
+    assert.equal(publishedLocaleAvailability(repository, 'ru').available, false);
     assert.deepEqual(listPublishedLocalesForContent(repository, A), ['hy']);
   }
   { // C/D/E: canonical locale order only includes published documents.
@@ -151,6 +153,8 @@ try {
     const repository = scanContentStore(fixture);
     assert.equal(getPublishedLocaleEntry(repository, A, 'ru').freshness, 'OUTDATED');
     assert.equal(getPublishedLocaleEntry(repository, A, 'en'), null);
+    assert.equal(publishedLocaleAvailability(repository, 'ru').available, true);
+    assert.equal(publishedLocaleAvailability(repository, 'en').available, false);
   }
   {
     const fixture = root();

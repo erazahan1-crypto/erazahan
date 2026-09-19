@@ -52,6 +52,11 @@ const PUBLIC_UI_COPY = Object.freeze({
   }),
 });
 
+const PUBLISHED_AVAILABILITY_COPY = Object.freeze({
+  ru: '\u041e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u043d\u043d\u044b\u0435 \u0442\u043e\u043b\u043a\u043e\u0432\u0430\u043d\u0438\u044f \u0441\u043d\u043e\u0432 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u044b \u043d\u0430 \u0440\u0443\u0441\u0441\u043a\u043e\u043c \u044f\u0437\u044b\u043a\u0435.',
+  en: 'Published dream meanings are available in English.',
+});
+
 const NAVIGATION_ITEMS = Object.freeze([
   Object.freeze({ id: 'home', locales: PUBLIC_LOCALES, href: localeHome }),
   Object.freeze({ id: 'search', locales: PUBLIC_LOCALES, href: localeSearch }),
@@ -70,6 +75,12 @@ export function localeMetadata(locale) {
 export function localeUiCopy(locale) {
   assertPublicLocale(locale);
   return PUBLIC_UI_COPY[locale];
+}
+
+export function publishedLocaleAvailabilityCopy(locale) {
+  assertPublicLocale(locale);
+  if (locale === 'hy') throw new TypeError('Published locale availability copy supports ru and en only');
+  return PUBLISHED_AVAILABILITY_COPY[locale];
 }
 
 export function localeHome(locale) {
