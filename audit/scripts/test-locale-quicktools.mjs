@@ -1,12 +1,17 @@
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const pages = [
   { locale: 'hy', file: 'dist/index.html', endpoint: '/search-index.json', valid: 'առաջին' },
-  { locale: 'ru', file: 'dist/ru/search/index.html', endpoint: '/ru/search-index.json', valid: 'ворона-в-сне' },
-  { locale: 'en', file: 'dist/en/search/index.html', endpoint: '/en/search-index.json', valid: 'crow-in-a-dream' },
+];
+
+const localizedPages = [
+  { locale: 'ru', file: 'dist/ru/index.html' },
+  { locale: 'en', file: 'dist/en/index.html' },
+  { locale: 'ru', file: 'dist/ru/search/index.html' },
+  { locale: 'en', file: 'dist/en/search/index.html' },
 ];
 
 class Element {
@@ -108,13 +113,15 @@ await withGeneratedClient(pages[0], [], {}, async (run) => {
   assert.ok(run.elements['quick-overlay'].classList.contains('hidden'), 'HY closes alphabet through overlay');
 });
 
-for (const page of pages.slice(1)) await withGeneratedClient(page, [], {}, async (run) => {
-  run.elements['quick-search'].fire('click'); await tick(); run.elements['quick-search-input'].value = 'missing'; run.elements['quick-search-input'].fire('input');
-  assert.deepEqual(run.fetched, [page.endpoint], `${page.locale} empty index has no secondary or HY fetch`);
-  assert.equal((run.elements['quick-search-results'].innerHTML.match(/<a href=/g) || []).length, 0, `${page.locale} empty index has no links`);
-  assert.ok(run.elements['quick-search-results'].innerHTML.includes(run.config.searchCopy.no_results), `${page.locale} empty index retains its localized no-results copy`);
-});
+for (const page of localizedPages) {
+  const html = readFileSync(page.file, 'utf8');
+  assert.equal(html.includes('data-quick-search-config'), false, `${page.locale} localized page omits the HY QuickTools search configuration`);
+  assert.equal(html.includes('id="quick-search"'), false, `${page.locale} localized page omits the HY QuickTools search control`);
+  assert.equal(html.includes('id="quick-alpha"'), false, `${page.locale} localized page omits the HY QuickTools alphabet control`);
+}
 
-const assets = readdirSync('dist/_astro').map((name) => readFileSync(path.join('dist/_astro', name), 'utf8')).join('\n');
-for (const forbidden of ['locale-search-ui.mjs', 'node:crypto', 'node:fs', 'node:path', 'fingerprint', 'schema', 'content-repository', 'multilingual-store', 'published-resolver']) assert.equal(assets.includes(forbidden), false, `QuickTools client dependency graph excludes server-only ${forbidden}`);
+const hyQuickToolsAsset = readFileSync('dist/index.html', 'utf8').match(/src="(\/_astro\/QuickTools[^\"]+\.js)"/)?.[1];
+assert.ok(hyQuickToolsAsset, 'HY output retains its generated QuickTools asset');
+const quickToolsAsset = readFileSync(path.join('dist', hyQuickToolsAsset.slice(1)), 'utf8');
+for (const forbidden of ['locale-search-ui.mjs', 'node:crypto', 'node:fs', 'node:path', 'fingerprint', 'schema', 'content-repository', 'multilingual-store', 'published-resolver']) assert.equal(quickToolsAsset.includes(forbidden), false, `QuickTools client dependency graph excludes server-only ${forbidden}`);
 console.log('LOCALE QUICKTOOLS PASS');

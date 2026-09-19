@@ -35,7 +35,7 @@ function add(rootPath, id, { ru = null, en = null } = {}) {
 function assertLocaleLetterOutput(outputRoot, locale, groups) {
   const localeRoot = path.join(outputRoot, locale);
   const letterRoot = path.join(localeRoot, 'letter');
-  const expectedRoot = ['search', 'search-index.json', ...(groups.length ? ['letter'] : [])].sort();
+  const expectedRoot = ['index.html', 'search', 'search-index.json', ...(groups.length ? ['letter'] : [])].sort();
   assert.deepEqual(readdirSync(localeRoot).sort(), expectedRoot);
   if (groups.length === 0) {
     assert.equal(existsSync(letterRoot), false, `${locale} must not emit an empty letter hub`);

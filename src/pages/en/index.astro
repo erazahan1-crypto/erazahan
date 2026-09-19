@@ -1,0 +1,12 @@
+---
+import LocaleHomePage from '../../components/LocaleHomePage.astro';
+import Layout from '../../layouts/Layout.astro';
+import { localeUiCopy } from '../../lib/public-locale.mjs';
+
+const locale = 'en';
+const copy = localeUiCopy(locale);
+---
+
+<Layout title={copy.home.title} description={copy.home.description} locale={locale} alternates={[]} robots="noindex, nofollow">
+  <LocaleHomePage locale={locale} />
+</Layout>

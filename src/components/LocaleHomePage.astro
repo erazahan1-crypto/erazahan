@@ -1,0 +1,35 @@
+---
+import { assertPublicLocale, localeSearch, localeUiCopy } from '../lib/public-locale.mjs';
+
+interface Props { locale: 'ru' | 'en'; }
+
+const { locale } = Astro.props;
+assertPublicLocale(locale);
+if (locale === 'hy') throw new TypeError('LocaleHomePage supports ru and en only');
+const copy = localeUiCopy(locale);
+const searchHref = localeSearch(locale);
+---
+
+<section data-locale-home={locale} class="relative overflow-hidden">
+  <div class="pointer-events-none absolute inset-0" aria-hidden="true">
+    <div class="starfield absolute inset-0 opacity-70 animate-twinkle"></div>
+    <div class="starfield-2 absolute inset-0 animate-twinkle-alt"></div>
+    <div class="animate-blob absolute -top-24 left-1/2 h-96 w-[42rem] -translate-x-1/2 rounded-full bg-violet-600/20 blur-3xl"></div>
+  </div>
+  <div class="relative mx-auto max-w-3xl px-4 py-16 text-center sm:px-6 sm:py-24">
+    <span class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-sm text-slate-300">🌙 Erazahan</span>
+    <h1 class="mt-5 font-display text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl">{copy.home.heading}</h1>
+    <p class="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-slate-400 sm:text-lg">{copy.home.intro}</p>
+    <form action={searchHref} method="get" role="search" class="mx-auto mt-9 max-w-2xl">
+      <div class="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 backdrop-blur transition focus-within:border-violet-400/60 focus-within:ring-2 focus-within:ring-violet-500/30">
+        <input type="search" name="q" placeholder={copy.search.placeholder} autocomplete="off" class="w-full bg-transparent px-4 py-2.5 text-white placeholder:text-slate-400 outline-none" />
+        <button type="submit" class="shrink-0 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-600 px-5 py-2.5 font-semibold text-white shadow-lg shadow-violet-900/40 transition hover:from-violet-400 hover:to-indigo-500 active:scale-95">{copy.navigation.search}</button>
+      </div>
+    </form>
+    <section class="mx-auto mt-10 max-w-xl rounded-2xl border border-white/10 bg-white/[0.035] p-6 text-left">
+      <h2 class="font-display text-xl font-bold text-white">{copy.home.discovery_heading}</h2>
+      <p class="mt-3 leading-relaxed text-slate-400">{copy.empty.unavailable}</p>
+      <a href={searchHref} class="mt-5 inline-flex font-semibold text-violet-200 transition hover:text-white">{copy.navigation.search} →</a>
+    </section>
+  </div>
+</section>

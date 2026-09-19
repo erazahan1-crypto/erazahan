@@ -1,107 +1,52 @@
 ---
-import { menu } from "../lib/site";
+import { menu } from '../lib/site';
+import { localeHome, localeNavigation, localeSearch, localeUiCopy } from '../lib/public-locale.mjs';
 
-const topMenu = menu.filter((m) => m.parent === "0");
+interface Props { locale?: 'hy' | 'ru' | 'en'; }
+
+const { locale = 'hy' } = Astro.props;
+const copy = localeUiCopy(locale);
+const topMenu = locale === 'hy'
+  ? menu.filter((item) => item.parent === '0')
+  : localeNavigation(locale);
+const homeHref = localeHome(locale);
+const searchHref = locale === 'hy' ? '/search' : localeSearch(locale);
+const brandName = locale === 'hy' ? '\u0535\u0580\u0561\u0566\u0561\u0570\u0561\u0576' : 'Erazahan';
+const searchPlaceholder = locale === 'hy' ? '\u0543\u0576\u057f\u0580\u0565\u056c \u0565\u0580\u0561\u0566\u2026' : copy.search.placeholder;
+const menuButtonLabel = locale === 'hy' ? '\u0532\u0561\u0581\u0565\u056c \u0574\u0565\u0576\u0575\u0578\u0582\u0576' : copy.navigation.menu;
+const desktopNavLabel = locale === 'hy' ? '\u0533\u056c\u056d\u0561\u057e\u0578\u0580 \u0576\u0561\u057e\u056b\u0563\u0561\u0581\u056b\u0561' : copy.navigation.menu;
+const mobileNavLabel = locale === 'hy' ? '\u0544\u0578\u0562\u0561\u0575\u056c \u0576\u0561\u057e\u056b\u0563\u0561\u0581\u056b\u0561' : copy.navigation.menu;
 ---
 
 <header class="sticky top-0 z-50 border-b border-white/5 bg-night-950/70 backdrop-blur-xl">
   <div class="mx-auto max-w-6xl px-4 sm:px-6">
     <div class="flex items-center justify-between gap-4 py-4">
-      <a href="/" class="flex shrink-0 items-center gap-2.5">
-        <span
-          class="grid size-10 place-items-center rounded-xl border border-amber-400/25 bg-gradient-to-br from-violet-500 to-amber-400/60 text-xl shadow-lg shadow-black/20"
-          aria-hidden="true"
-        >
-          🌙
-        </span>
-        <span class="font-display text-2xl font-bold tracking-tight text-white">Երազահան</span>
+      <a href={homeHref} class="flex shrink-0 items-center gap-2.5">
+        <span class="grid size-10 place-items-center rounded-xl border border-amber-400/25 bg-gradient-to-br from-violet-500 to-amber-400/60 text-xl shadow-lg shadow-black/20" aria-hidden="true">🌙</span>
+        <span class="font-display text-2xl font-bold tracking-tight text-white">{brandName}</span>
       </a>
 
-      <form action="/search" method="get" role="search" class="hidden w-full max-w-xs sm:max-w-sm md:block">
+      <form action={searchHref} method="get" role="search" class="hidden w-full max-w-xs sm:max-w-sm md:block">
         <div class="relative">
-          <input
-            type="search"
-            name="q"
-            placeholder="Փնտրել երազ…"
-            class="w-full rounded-full border border-white/10 bg-white/5 py-2 pl-10 pr-4 text-sm text-white placeholder:text-slate-400 outline-none transition focus:border-violet-400/60 focus:bg-white/10 focus:ring-2 focus:ring-violet-500/30"
-          />
-          <svg
-            class="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <circle cx="11" cy="11" r="7"></circle>
-            <path d="M21 21l-4.35-4.35"></path>
-          </svg>
+          <input type="search" name="q" placeholder={searchPlaceholder} class="w-full rounded-full border border-white/10 bg-white/5 py-2 pl-10 pr-4 text-sm text-white placeholder:text-slate-400 outline-none transition focus:border-violet-400/60 focus:bg-white/10 focus:ring-2 focus:ring-violet-500/30" />
+          <svg class="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.35-4.35"></path></svg>
         </div>
       </form>
 
-      <button
-        id="menu-toggle"
-        type="button"
-        aria-expanded="false"
-        aria-controls="mobile-menu"
-        aria-label="Բացել մենյուն"
-        class="grid size-10 place-items-center rounded-xl border border-white/10 bg-white/5 text-slate-200 transition hover:border-violet-400/60 hover:bg-violet-500/20 md:hidden"
-      >
-        <svg
-          id="menu-icon-open"
-          class="size-5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M4 6h16"></path>
-          <path d="M4 12h16"></path>
-          <path d="M4 18h16"></path>
-        </svg>
-        <svg
-          id="menu-icon-close"
-          class="hidden size-5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M6 6l12 12"></path>
-          <path d="M18 6L6 18"></path>
-        </svg>
+      <button id="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label={menuButtonLabel} class="grid size-10 place-items-center rounded-xl border border-white/10 bg-white/5 text-slate-200 transition hover:border-violet-400/60 hover:bg-violet-500/20 md:hidden">
+        <svg id="menu-icon-open" class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path></svg>
+        <svg id="menu-icon-close" class="hidden size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>
       </button>
     </div>
 
-    <nav
-      class="hidden flex-wrap items-center gap-x-5 gap-y-1.5 pb-3 text-sm font-medium text-slate-300 md:flex"
-      aria-label="Գլխավոր նավիգացիա"
-    >
-      {topMenu.map((m) => (
-        <a href={m.href} class="transition hover:text-white">{m.label}</a>
-      ))}
+    <nav class="hidden flex-wrap items-center gap-x-5 gap-y-1.5 pb-3 text-sm font-medium text-slate-300 md:flex" aria-label={desktopNavLabel}>
+      {topMenu.map((item) => <a href={item.href} class="transition hover:text-white">{item.label}</a>)}
     </nav>
 
-    <nav
-      id="mobile-menu"
-      class="hidden flex-col gap-1 border-t border-white/5 pb-4 pt-2 md:hidden"
-      aria-label="Մոբայլ նավիգացիա"
-    >
-      {topMenu.map((m) => (
-        <a
-          href={m.href}
-          class="flex items-center justify-between rounded-xl px-3 py-2.5 text-base font-medium text-slate-200 transition hover:bg-white/5 hover:text-white"
-        >
-          {m.label}
-          <span class="text-slate-500" aria-hidden="true">→</span>
+    <nav id="mobile-menu" class="hidden flex-col gap-1 border-t border-white/5 pb-4 pt-2 md:hidden" aria-label={mobileNavLabel}>
+      {topMenu.map((item) => (
+        <a href={item.href} class="flex items-center justify-between rounded-xl px-3 py-2.5 text-base font-medium text-slate-200 transition hover:bg-white/5 hover:text-white">
+          {item.label}<span class="text-slate-500" aria-hidden="true">→</span>
         </a>
       ))}
     </nav>
@@ -115,35 +60,15 @@ const topMenu = menu.filter((m) => m.parent === "0");
   const iconClose = document.getElementById('menu-icon-close');
 
   function closeMenu() {
-    mobileMenu.classList.add('hidden');
-    mobileMenu.classList.remove('flex');
-    menuToggle.setAttribute('aria-expanded', 'false');
-    iconOpen.classList.remove('hidden');
-    iconClose.classList.add('hidden');
+    mobileMenu?.classList.add('hidden'); mobileMenu?.classList.remove('flex');
+    menuToggle?.setAttribute('aria-expanded', 'false'); iconOpen?.classList.remove('hidden'); iconClose?.classList.add('hidden');
   }
-
-  menuToggle.addEventListener('click', () => {
-    const isOpen = !mobileMenu.classList.contains('hidden');
-    if (isOpen) {
-      closeMenu();
-    } else {
-      mobileMenu.classList.remove('hidden');
-      mobileMenu.classList.add('flex');
-      menuToggle.setAttribute('aria-expanded', 'true');
-      iconOpen.classList.add('hidden');
-      iconClose.classList.remove('hidden');
-    }
+  menuToggle?.addEventListener('click', () => {
+    const isOpen = !mobileMenu?.classList.contains('hidden');
+    if (isOpen) closeMenu(); else { mobileMenu?.classList.remove('hidden'); mobileMenu?.classList.add('flex'); menuToggle.setAttribute('aria-expanded', 'true'); iconOpen?.classList.add('hidden'); iconClose?.classList.remove('hidden'); }
   });
-
-  mobileMenu.querySelectorAll('a').forEach((a) => a.addEventListener('click', closeMenu));
-
-  document.addEventListener('click', (e) => {
-    if (
-      mobileMenu.classList.contains('flex') &&
-      !mobileMenu.contains(e.target) &&
-      !menuToggle.contains(e.target)
-    ) {
-      closeMenu();
-    }
+  mobileMenu?.querySelectorAll('a').forEach((anchor) => anchor.addEventListener('click', closeMenu));
+  document.addEventListener('click', (event) => {
+    if (mobileMenu?.classList.contains('flex') && !mobileMenu.contains(event.target as Node) && !menuToggle?.contains(event.target as Node)) closeMenu();
   });
 </script>

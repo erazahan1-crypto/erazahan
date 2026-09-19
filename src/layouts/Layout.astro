@@ -25,11 +25,14 @@ const {
   image,
   locale = 'hy',
   alternates: alternatesProp = [],
-  robots = ALLOW_INDEXING ? null : 'noindex, nofollow',
+  robots: requestedRobots = ALLOW_INDEXING ? null : 'noindex, nofollow',
 } = Astro.props;
 
 const { html_lang, og_locale } = localeSeoMetadata(locale);
 const alternates = alternatesProp ?? [];
+// RU/EN remain deliberately non-indexable until a future multilingual release
+// changes this shared rendering-boundary policy.
+const effectiveRobots = locale === 'hy' ? requestedRobots : 'noindex, nofollow';
 
 const ogImage = image ? (image.startsWith("http") ? image : `${SITE}${image}`) : undefined;
 ---
@@ -47,7 +50,7 @@ const ogImage = image ? (image.startsWith("http") ? image : `${SITE}${image}`) :
     <link rel="canonical" href={Astro.url} />
     {alternates.map((alternate) => <link rel="alternate" hreflang={alternate.locale} href={new URL(alternate.path, Astro.url)} />)}
 
-    {robots ? <meta name="robots" content={robots} /> : null}
+    {effectiveRobots ? <meta name="robots" content={effectiveRobots} /> : null}
 
     <!-- Open Graph -->
     <meta property="og:type" content={type} />
@@ -65,7 +68,7 @@ const ogImage = image ? (image.startsWith("http") ? image : `${SITE}${image}`) :
     {ogImage ? <meta name="twitter:image" content={ogImage} /> : null}
 
     <!-- Structured data -->
-    <script type="application/ld+json" set:html={JSON.stringify(websiteSchema())} />
+    {locale === 'hy' ? <script type="application/ld+json" set:html={JSON.stringify(websiteSchema())} /> : null}
 
     <link
       rel="icon"
@@ -89,15 +92,15 @@ const ogImage = image ? (image.startsWith("http") ? image : `${SITE}${image}`) :
   </head>
 
   <body class="flex min-h-screen flex-col bg-night-950 font-sans text-slate-200">
-    <Header />
+    <Header locale={locale} />
 
     <main class="flex-1">
       <slot />
     </main>
 
-    <Footer />
+    <Footer locale={locale} />
 
-    <QuickTools locale={locale} />
+    {locale === 'hy' ? <QuickTools locale={locale} /> : null}
 
     <script>
       const revealEls = document.querySelectorAll('.reveal');

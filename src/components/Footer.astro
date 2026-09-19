@@ -1,45 +1,47 @@
 ---
-import { menu } from "../lib/site";
+import { menu } from '../lib/site';
+import { localeNavigation, localeUiCopy } from '../lib/public-locale.mjs';
 
-const topMenu = menu.filter((m) => m.parent === "0");
+interface Props { locale?: 'hy' | 'ru' | 'en'; }
+
+const { locale = 'hy' } = Astro.props;
+const copy = localeUiCopy(locale);
+const topMenu = locale === 'hy'
+  ? menu.filter((item) => item.parent === '0')
+  : localeNavigation(locale);
 const currentYear = new Date().getFullYear();
+const isHy = locale === 'hy';
 ---
 
 <footer class="border-t border-white/5 bg-night-900/40">
   <div class="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-    <div class="grid gap-8 md:grid-cols-3">
-      <div>
-        <p class="flex items-center gap-2 font-display text-xl font-bold text-white">
-          <span aria-hidden="true">🌙</span> Երազահան
-        </p>
-        <p class="mt-3 text-sm leading-relaxed text-slate-400">
-          Ավելի քան 4000 երազների մեկնաբանություն՝ այբբենական կարգով: Օգնում ենք հասկանալ ձեր երազների
-          թաքնված պատկերներն ու ուղերձները:
-        </p>
-      </div>
-
-      <nav class="text-sm" aria-label="Նավիգացիա">
-        <p class="font-semibold text-white">Բաժիններ</p>
-        <ul class="mt-3 space-y-2 text-slate-400">
-          {topMenu.map((m) => (
-            <li>
-              <a href={m.href} class="transition hover:text-white">{m.label}</a>
-            </li>
-          ))}
-        </ul>
-      </nav>
-
-      <div class="text-sm">
-        <p class="font-semibold text-white">Ուշադրություն</p>
-        <p class="mt-3 leading-relaxed text-slate-400">
-          Երազների մեկնաբանությունները կրում են տեղեկատվական բնույթ և չեն հանդիսանում բժշկական կամ
-          հոգեբանական խորհրդատվություն:
-        </p>
-      </div>
-    </div>
-
-    <div class="mt-8 border-t border-white/5 pt-6 text-center text-xs text-slate-400">
-      © {currentYear} Երազահան. Բոլոր իրավունքները պաշտպանված են:
-    </div>
+    {isHy ? (
+      <>
+        <div class="grid gap-8 md:grid-cols-3">
+          <div>
+            <p class="flex items-center gap-2 font-display text-xl font-bold text-white"><span aria-hidden="true">🌙</span> {'\u0535\u0580\u0561\u0566\u0561\u0570\u0561\u0576'}</p>
+            <p class="mt-3 text-sm leading-relaxed text-slate-400">{'\u0531\u057e\u0565\u056c\u056b \u0584\u0561\u0576 4000 \u0565\u0580\u0561\u0566\u0576\u0565\u0580\u056b \u0574\u0565\u056f\u0576\u0561\u0562\u0561\u0576\u0578\u0582\u0569\u0575\u0578\u0582\u0576\u055d \u0561\u0575\u0562\u0562\u0565\u0576\u0561\u056f\u0561\u0576 \u056f\u0561\u0580\u0563\u0578\u057e\u0589 \u0555\u0563\u0576\u0578\u0582\u0574 \u0565\u0576\u0584 \u0570\u0561\u057d\u056f\u0561\u0576\u0561\u056c \u0571\u0565\u0580 \u0565\u0580\u0561\u0566\u0576\u0565\u0580\u056b \u0569\u0561\u0584\u0576\u057e\u0561\u056e \u057a\u0561\u057f\u056f\u0565\u0580\u0576\u0565\u0580\u0576 \u0578\u0582 \u0578\u0582\u0572\u0565\u0580\u0571\u0576\u0565\u0580\u0568\u0589'}</p>
+          </div>
+          <nav class="text-sm" aria-label={'\u0546\u0561\u057e\u056b\u0563\u0561\u0581\u056b\u0561'}>
+            <p class="font-semibold text-white">{'\u0532\u0561\u056a\u056b\u0576\u0576\u0565\u0580'}</p>
+            <ul class="mt-3 space-y-2 text-slate-400">{topMenu.map((item) => <li><a href={item.href} class="transition hover:text-white">{item.label}</a></li>)}</ul>
+          </nav>
+          <div class="text-sm">
+            <p class="font-semibold text-white">{'\u0548\u0582\u0577\u0561\u0564\u0580\u0578\u0582\u0569\u0575\u0578\u0582\u0576'}</p>
+            <p class="mt-3 leading-relaxed text-slate-400">{'\u0535\u0580\u0561\u0566\u0576\u0565\u0580\u056b \u0574\u0565\u056f\u0576\u0561\u0562\u0561\u0576\u0578\u0582\u0569\u0575\u0578\u0582\u0576\u0576\u0565\u0580\u0568 \u056f\u0580\u0578\u0582\u0574 \u0565\u0576 \u057f\u0565\u0572\u0565\u056f\u0561\u057f\u057e\u0561\u056f\u0561\u0576 \u0562\u0576\u0578\u0582\u0575\u0569 \u0587 \u0579\u0565\u0576 \u0570\u0561\u0576\u0564\u056b\u057d\u0561\u0576\u0578\u0582\u0574 \u0562\u056a\u0577\u056f\u0561\u056f\u0561\u0576 \u056f\u0561\u0574 \u0570\u0578\u0563\u0565\u0562\u0561\u0576\u0561\u056f\u0561\u0576 \u056d\u0578\u0580\u0570\u0580\u0564\u0561\u057f\u057e\u0578\u0582\u0569\u0575\u0578\u0582\u0576\u0589'}</p>
+          </div>
+        </div>
+        <div class="mt-8 border-t border-white/5 pt-6 text-center text-xs text-slate-400">© {currentYear} {'\u0535\u0580\u0561\u0566\u0561\u0570\u0561\u0576'}. {'\u0532\u0578\u056c\u0578\u0580 \u056b\u0580\u0561\u057e\u0578\u0582\u0576\u0584\u0576\u0565\u0580\u0568 \u057a\u0561\u0577\u057f\u057a\u0561\u0576\u057e\u0561\u056e \u0565\u0576\u0589'}</div>
+      </>
+    ) : (
+      <>
+        <div class="grid gap-8 md:grid-cols-3">
+          <div><p class="flex items-center gap-2 font-display text-xl font-bold text-white"><span aria-hidden="true">🌙</span> Erazahan</p><p class="mt-3 text-sm leading-relaxed text-slate-400">{copy.home.intro}</p></div>
+          <nav class="text-sm" aria-label={copy.footer.navigation}><p class="font-semibold text-white">{copy.footer.navigation}</p><ul class="mt-3 space-y-2 text-slate-400">{topMenu.map((item) => <li><a href={item.href} class="transition hover:text-white">{item.label}</a></li>)}</ul></nav>
+          <div class="text-sm"><p class="font-semibold text-white">{copy.footer.about_heading}</p><p class="mt-3 leading-relaxed text-slate-400">{copy.empty.unavailable}</p></div>
+        </div>
+        <div class="mt-8 border-t border-white/5 pt-6 text-center text-xs text-slate-400">© {currentYear} Erazahan.</div>
+      </>
+    )}
   </div>
 </footer>

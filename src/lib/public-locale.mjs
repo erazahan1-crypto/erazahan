@@ -18,28 +18,34 @@ const PUBLIC_LOCALE_METADATA = Object.freeze({
 // can do so without becoming a second locale or routing authority.
 const PUBLIC_UI_COPY = Object.freeze({
   hy: Object.freeze({
-    navigation: Object.freeze({ home: '\u0533\u056c\u056d\u0561\u057e\u0578\u0580', search: '\u0548\u0580\u0578\u0576\u0578\u0582\u0574', alphabet: '\u0531\u0575\u0562\u0578\u0582\u0562\u0565\u0576' }),
+    navigation: Object.freeze({ home: '\u0533\u056c\u056d\u0561\u057e\u0578\u0580', search: '\u0548\u0580\u0578\u0576\u0578\u0582\u0574', alphabet: '\u0531\u0575\u0562\u0578\u0582\u0562\u0565\u0576', menu: '\u0544\u0565\u0576\u0575\u0578\u0582' }),
     breadcrumbs: Object.freeze({ home: '\u0533\u056c\u056d\u0561\u057e\u0578\u0580' }),
     search: Object.freeze({ heading: '\u0548\u0580\u0578\u0576\u0578\u0582\u0574', placeholder: '\u0553\u0576\u057f\u0580\u0565\u056c \u0565\u0580\u0561\u0566\u2026', empty_query: '\u0544\u0578\u0582\u057f\u0584\u0561\u0563\u0580\u0565\u0584 \u0578\u0580\u0578\u0576\u0574\u0561\u0576 \u0562\u0561\u057c\u0568:', no_results: '\u0548\u0579\u056b\u0576\u0579 \u0579\u056b \u0563\u057f\u0576\u057e\u0565\u056c:' }),
     related: Object.freeze({ heading: '\u0546\u0574\u0561\u0576\u0561\u057f\u056b\u057a \u0565\u0580\u0561\u0566\u0576\u0565\u0580' }),
     language: Object.freeze({ label: '\u053c\u0565\u0566\u0578\u0582' }),
     empty: Object.freeze({ unavailable: '\u0531\u0575\u057d \u056c\u0565\u0566\u057e\u0578\u057e \u0564\u0565\u057c \u0570\u0561\u057d\u0561\u0576\u0565\u056c\u056b \u0579\u0567\u0589' }),
+    home: Object.freeze({ title: '\u0535\u0580\u0561\u0566\u0561\u0570\u0561\u0576', description: '\u0535\u0580\u0561\u0566\u0576\u0565\u0580\u056b \u0574\u0565\u056f\u0576\u0561\u0562\u0561\u0576\u0578\u0582\u0569\u0575\u0578\u0582\u0576', heading: '\u0535\u0580\u0561\u0566\u0561\u0570\u0561\u0576', intro: '\u0533\u057f\u0565\u0584 \u0565\u0580\u0561\u0566\u0576\u0565\u0580\u056b \u0574\u0565\u056f\u0576\u0561\u0562\u0561\u0576\u0578\u0582\u0569\u0575\u0578\u0582\u0576\u0576\u0565\u0580\u0568\u0589', discovery_heading: '\u0546\u0575\u0578\u0582\u0569\u0565\u0580\u056b \u0570\u0561\u057d\u0561\u0576\u0565\u056c\u056b\u0578\u0582\u0569\u0575\u0578\u0582\u0576' }),
+    footer: Object.freeze({ navigation: '\u0546\u0561\u057e\u056b\u0563\u0561\u0581\u056b\u0561', about_heading: '\u0535\u0580\u0561\u0566\u0561\u0570\u0561\u0576' }),
   }),
   ru: Object.freeze({
-    navigation: Object.freeze({ home: '\u0413\u043b\u0430\u0432\u043d\u0430\u044f', search: '\u041f\u043e\u0438\u0441\u043a', alphabet: '\u0410\u043b\u0444\u0430\u0432\u0438\u0442' }),
+    navigation: Object.freeze({ home: '\u0413\u043b\u0430\u0432\u043d\u0430\u044f', search: '\u041f\u043e\u0438\u0441\u043a', alphabet: '\u0410\u043b\u0444\u0430\u0432\u0438\u0442', menu: '\u041c\u0435\u043d\u044e' }),
     breadcrumbs: Object.freeze({ home: '\u0413\u043b\u0430\u0432\u043d\u0430\u044f' }),
     search: Object.freeze({ heading: '\u041f\u043e\u0438\u0441\u043a', placeholder: '\u041f\u043e\u0438\u0441\u043a \u0441\u043d\u043e\u0432\u2026', empty_query: '\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043f\u043e\u0438\u0441\u043a\u043e\u0432\u044b\u0439 \u0437\u0430\u043f\u0440\u043e\u0441.', no_results: '\u041d\u0438\u0447\u0435\u0433\u043e \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e.' }),
     related: Object.freeze({ heading: '\u041f\u043e\u0445\u043e\u0436\u0438\u0435 \u0441\u043d\u044b' }),
     language: Object.freeze({ label: '\u042f\u0437\u044b\u043a' }),
     empty: Object.freeze({ unavailable: '\u041d\u0430 \u044d\u0442\u043e\u043c \u044f\u0437\u044b\u043a\u0435 \u043f\u043e\u043a\u0430 \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u043e.' }),
+    home: Object.freeze({ title: 'Erazahan \u2014 \u0442\u043e\u043b\u043a\u043e\u0432\u0430\u043d\u0438\u0435 \u0441\u043d\u043e\u0432', description: '\u041f\u043e\u0438\u0441\u043a \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u043d\u043d\u044b\u0445 \u0442\u043e\u043b\u043a\u043e\u0432\u0430\u043d\u0438\u0439 \u0441\u043d\u043e\u0432.', heading: '\u0422\u043e\u043b\u043a\u043e\u0432\u0430\u043d\u0438\u0435 \u0441\u043d\u043e\u0432', intro: '\u0418\u0449\u0438\u0442\u0435 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u043d\u043d\u044b\u0435 \u0442\u043e\u043b\u043a\u043e\u0432\u0430\u043d\u0438\u044f \u0441\u043d\u043e\u0432.', discovery_heading: '\u041d\u043e\u0432\u044b\u0435 \u0442\u043e\u043b\u043a\u043e\u0432\u0430\u043d\u0438\u044f' }),
+    footer: Object.freeze({ navigation: '\u041d\u0430\u0432\u0438\u0433\u0430\u0446\u0438\u044f', about_heading: 'Erazahan' }),
   }),
   en: Object.freeze({
-    navigation: Object.freeze({ home: 'Home', search: 'Search', alphabet: 'Alphabet' }),
+    navigation: Object.freeze({ home: 'Home', search: 'Search', alphabet: 'Alphabet', menu: 'Menu' }),
     breadcrumbs: Object.freeze({ home: 'Home' }),
     search: Object.freeze({ heading: 'Search', placeholder: 'Search dreams\u2026', empty_query: 'Enter a search query.', no_results: 'No results found.' }),
     related: Object.freeze({ heading: 'Related dreams' }),
     language: Object.freeze({ label: 'Language' }),
     empty: Object.freeze({ unavailable: 'Not available in this language yet.' }),
+    home: Object.freeze({ title: 'Erazahan — dream meanings', description: 'Search published dream meanings.', heading: 'Dream meanings', intro: 'Search published dream meanings.', discovery_heading: 'New translations' }),
+    footer: Object.freeze({ navigation: 'Navigation', about_heading: 'Erazahan' }),
   }),
 });
 
