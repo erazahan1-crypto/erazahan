@@ -32,7 +32,6 @@
         "ERAZAHAN_ADMIN_DEPLOYMENT_CLASS": "production",
         "ERAZAHAN_HY_ADMIN_WRITE_MODE": "atomic",
         "ERAZAHAN_HY_ADMIN_ATOMIC_BRANCH": "main",
-        "ERAZAHAN_LOCALE_ADMIN_ATOMIC_BRANCH": "main",
         "ERAZAHAN_HY_CONTENT_SOURCE": "new"
       },
       "d1_databases": [
