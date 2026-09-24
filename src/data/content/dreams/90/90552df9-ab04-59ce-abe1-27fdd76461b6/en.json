@@ -1,6 +1,8 @@
 {
   "content_id": "90552df9-ab04-59ce-abe1-27fdd76461b6",
-  "draft": {
+  "draft": null,
+  "locale": "en",
+  "published": {
     "alphabet_key": "D",
     "based_on_source_fingerprint": "c8f3090aaa37cb797ac12598ab0904aa6e908e2dd930179eda9b72c2d76000d7",
     "based_on_source_revision": 1,
@@ -9,13 +11,13 @@
     "image_alts": {
       "019c2a10-4e61-7b48-9e26-8d51ca0743f9": "A duck, illustrating the dream symbol"
     },
+    "published_at": "2026-09-24",
     "slug": "duck-dream-meaning",
     "tags": [
       "Dreams starting with D"
     ],
-    "title": "Duck Dream Meaning"
+    "title": "Duck Dream Meaning",
+    "version": 1
   },
-  "locale": "en",
-  "published": null,
   "schema_version": 1
 }
