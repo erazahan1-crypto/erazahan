@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "assets": [
+    {
+      "asset_id": "019c2a10-4e61-7a32-8c15-2a37bcf94d02",
+      "public_url": "https://images.erazahan.info/posts/erazahan-bexer-2.webp",
+      "source_url": "https://images.erazahan.info/posts/erazahan-bexer-2.webp",
+      "mime_type": "image/webp",
+      "width": 1600,
+      "height": 900
+    },
+    {
+      "asset_id": "019c2a10-4e61-7b48-9e26-8d51ca0743f9",
+      "public_url": "https://images.erazahan.info/posts/erazahan-bad.webp",
+      "source_url": "https://images.erazahan.info/posts/erazahan-bad.webp",
+      "mime_type": "image/webp",
+      "width": 1600,
+      "height": 900
+    }
+  ]
+}

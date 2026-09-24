@@ -49,3 +49,19 @@ export function listPublishedLocalesForContent(repository, contentId) {
     record.locales[locale] && publishedEntry(record, locale) !== null
   )));
 }
+
+// One build-context scan of the published-only projection. knownContentIds is
+// retained solely to distinguish an absent record from an unpublished locale.
+export function buildPublishedContentLinkIndex(repository) {
+  const knownContentIds = new Set(listContentRecords(repository).map((record) => record.content_id));
+  const pathsByContentId = new Map();
+  for (const locale of CONTENT_LOCALES) {
+    for (const entry of listPublishedLocaleEntries(repository, locale)) {
+      const paths = pathsByContentId.get(entry.content_id) ?? new Map();
+      if (paths.has(locale)) throw new TypeError(`Published content index duplicate path for ${entry.content_id}/${locale}`);
+      paths.set(locale, entry.path);
+      pathsByContentId.set(entry.content_id, paths);
+    }
+  }
+  return Object.freeze({ knownContentIds, pathsByContentId });
+}
