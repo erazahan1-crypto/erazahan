@@ -1,6 +1,7 @@
-import contentRegistry from '../../src/data/migrations/content-id-registry.v1.json' with { type: 'json' };
-import mediaManifest from '../../src/data/content/media-manifest.v1.json' with { type: 'json' };
 import { createMediaManifestIndex } from '../../src/lib/content-source/media-manifest.mjs';
+import referenceData from './localized-reference-data.cjs';
+
+const { contentRegistry, mediaManifest } = referenceData;
 
 // Both inputs are immutable repository data bundled with this writer build.
 // Publication paths are deliberately not needed for authoring validation.
