@@ -1,4 +1,4 @@
-import { createMediaManifestIndex } from '../../src/lib/content-source/media-manifest.mjs';
+import { createMediaManifestIndex } from '../../src/lib/content-source/media-manifest-contract.mjs';
 import referenceData from './localized-reference-data.cjs';
 
 const { contentRegistry, mediaManifest } = referenceData;

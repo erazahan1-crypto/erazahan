@@ -6,7 +6,7 @@ import {
   resolveLogicalContentReference,
   imageAltState,
 } from './content-schema/logical-references.mjs';
-import { resolveLogicalAssetReference } from './content-source/media-manifest.mjs';
+import { resolveLogicalAssetReference } from './content-source/media-manifest-contract.mjs';
 
 export class LocalizedContentValidationError extends Error {
   constructor(code, message) { super(message); this.name = 'LocalizedContentValidationError'; this.code = code; }
