@@ -62,7 +62,10 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         <label class="block"><span class="mb-1 block text-sm font-semibold text-white">Slug</span><input data-draft-field="slug" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-white" /></label>
         <label class="block"><span class="mb-1 block text-sm font-semibold text-white">Title</span><input data-draft-field="title" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-white" /></label>
         <label class="block"><span class="mb-1 block text-sm font-semibold text-white">Description</span><textarea data-draft-field="description" rows="3" class="w-full rounded-xl border border-white/10 bg-night-950 p-3 text-white"></textarea></label>
-        <label class="block"><span class="mb-1 block text-sm font-semibold text-white">Content</span><textarea data-draft-field="content" rows="12" class="w-full rounded-xl border border-white/10 bg-night-950 p-3 font-mono text-white"></textarea></label>
+        <div>
+          <div class="mb-1 flex flex-wrap items-center justify-between gap-2"><span class="block text-sm font-semibold text-white">Content</span><button data-internal-link-action type="button" class="min-h-11 rounded-xl border border-white/10 px-3 text-sm font-semibold text-slate-200 hover:bg-white/5">Internal Link</button></div>
+          <textarea data-draft-field="content" rows="12" class="w-full rounded-xl border border-white/10 bg-night-950 p-3 font-mono text-white"></textarea>
+        </div>
         <label class="block"><span class="mb-1 block text-sm font-semibold text-white">Image alts (JSON object)</span><textarea data-draft-field="image_alts" rows="4" class="w-full rounded-xl border border-white/10 bg-night-950 p-3 font-mono text-white"></textarea></label>
         <label class="block"><span class="mb-1 block text-sm font-semibold text-white">Tags (JSON string array)</span><textarea data-draft-field="tags" rows="3" class="w-full rounded-xl border border-white/10 bg-night-950 p-3 font-mono text-white"></textarea></label>
         <label class="block"><span class="mb-1 block text-sm font-semibold text-white">Alphabet key</span><input data-draft-field="alphabet_key" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-white" /></label>
@@ -73,6 +76,19 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       <div data-locale-snapshots class="mt-5 space-y-5"></div>
     </section>
 
+    <dialog data-internal-link-dialog class="m-auto w-[min(42rem,calc(100vw-2rem))] max-w-none overflow-hidden rounded-2xl border border-white/10 bg-night-900 p-0 text-slate-200 shadow-2xl backdrop:bg-black/70">
+      <div class="flex max-h-[min(44rem,calc(100vh-2rem))] flex-col">
+        <div class="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-5"><h2 class="font-display text-xl font-bold text-white">Internal Link</h2><button data-internal-link-close type="button" aria-label="Close" class="grid min-h-11 min-w-11 place-items-center rounded-xl border border-white/10 text-xl hover:bg-white/5">×</button></div>
+        <section class="min-h-0 overflow-y-auto p-4 sm:p-5">
+          <label class="block"><span class="mb-1.5 block text-sm font-semibold text-white">Find HY record</span><input data-internal-link-search type="search" autocomplete="off" placeholder="Search HY title" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-white outline-none placeholder:text-slate-500 focus:border-violet-400" /></label>
+          <p data-internal-link-status class="mt-3 text-sm text-slate-400" role="status">Search the HY dictionary to select a logical content identity.</p>
+          <div data-internal-link-results class="mt-3 divide-y divide-white/10 overflow-hidden rounded-xl border border-white/10"></div>
+          <label data-internal-link-anchor-wrap hidden class="mt-4 block"><span class="mb-1.5 block text-sm font-semibold text-white">Anchor text</span><input data-internal-link-anchor type="text" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-white outline-none focus:border-violet-400" /><span data-internal-link-anchor-error hidden class="mt-2 block text-xs text-rose-300">Enter anchor text before inserting.</span></label>
+        </section>
+        <div class="flex flex-wrap justify-end gap-3 border-t border-white/10 px-4 py-3 sm:px-5"><button data-internal-link-cancel type="button" class="min-h-11 rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/5">Cancel</button><button data-internal-link-insert type="button" disabled class="min-h-11 rounded-xl bg-violet-600 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">Insert</button></div>
+      </div>
+    </dialog>
+
     <details class="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
       <summary class="cursor-pointer text-sm font-semibold text-slate-200">Technical metadata</summary>
       <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2"><div><dt class="text-slate-400">Locale blob SHA</dt><dd data-locale-blob-sha class="mt-1 break-all font-mono text-xs text-slate-300"></dd></div><div><dt class="text-slate-400">Backend state</dt><dd data-derived-state class="mt-1 font-mono text-xs text-slate-300"></dd></div></dl>
@@ -80,6 +96,8 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
   </div>
 
   <script>
+    // @ts-ignore Shared client-side ranking helper.
+    import { prepareSearchIndex, rankPreparedSearch } from '../../../lib/public-search.mjs';
     type Locale = 'ru' | 'en';
     type SyncState = 'CURRENT' | 'OUTDATED' | 'NOT_CREATED';
     type PublicationState = 'NOT_CREATED' | 'DRAFT' | 'PUBLISHED' | 'PUBLISHED_WITH_DRAFT';
@@ -111,6 +129,18 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     const rebaseHelp = document.querySelector<HTMLElement>('#rebase-help')!;
     const rebaseDirtyHelp = document.querySelector<HTMLElement>('#rebase-dirty-help')!;
     const useAlphabet = document.querySelector<HTMLButtonElement>('[data-use-alphabet]')!;
+    const contentField = document.querySelector<HTMLTextAreaElement>('[data-draft-field="content"]')!;
+    const internalLinkAction = document.querySelector<HTMLButtonElement>('[data-internal-link-action]')!;
+    const internalLinkDialog = document.querySelector<HTMLDialogElement>('[data-internal-link-dialog]')!;
+    const internalLinkClose = document.querySelector<HTMLButtonElement>('[data-internal-link-close]')!;
+    const internalLinkCancel = document.querySelector<HTMLButtonElement>('[data-internal-link-cancel]')!;
+    const internalLinkSearch = document.querySelector<HTMLInputElement>('[data-internal-link-search]')!;
+    const internalLinkStatus = document.querySelector<HTMLElement>('[data-internal-link-status]')!;
+    const internalLinkResults = document.querySelector<HTMLElement>('[data-internal-link-results]')!;
+    const internalLinkAnchorWrap = document.querySelector<HTMLElement>('[data-internal-link-anchor-wrap]')!;
+    const internalLinkAnchor = document.querySelector<HTMLInputElement>('[data-internal-link-anchor]')!;
+    const internalLinkAnchorError = document.querySelector<HTMLElement>('[data-internal-link-anchor-error]')!;
+    const internalLinkInsert = document.querySelector<HTMLButtonElement>('[data-internal-link-insert]')!;
     const writeError = document.querySelector<HTMLElement>('[data-write-error]')!;
     type EditablePayload = Omit<Payload, 'version' | 'published_at'>;
     let draftBuffer: EditablePayload | null = null;
@@ -119,6 +149,14 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     let localeBlobSha: string | null = null;
     let saving = false;
     let writeBlocked = false;
+    type TranslationLinkRecord = { content_id: string; title: string; slug: string };
+    let translationLinkIndex: TranslationLinkRecord[] | null = null;
+    let preparedTranslationLinkIndex: ReturnType<typeof prepareSearchIndex> | null = null;
+    let translationLinkIndexRequest: Promise<TranslationLinkRecord[]> | null = null;
+    let internalLinkSearchTimer = 0;
+    let internalLinkSession = 0;
+    let savedContentSelection = { start: 0, end: 0, text: '' };
+    let selectedLinkTarget: TranslationLinkRecord | null = null;
 
     function showStatus(message: string, tone: 'neutral' | 'error' = 'neutral') {
       status.hidden = false;
@@ -219,6 +257,63 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       if (!imageAlts || typeof imageAlts !== 'object' || Array.isArray(imageAlts) || !Object.values(imageAlts).every((value) => typeof value === 'string') || !Array.isArray(tags) || !tags.every((value) => typeof value === 'string')) { formError.textContent = 'Image alts must be a JSON object of strings and tags a JSON string array.'; formError.hidden = false; return; }
       if (!locallyValidSlug(get('slug')) || !locallyValidAlphabet(get('alphabet_key'))) { formError.textContent = 'Slug or alphabet key has an invalid shape for this locale.'; formError.hidden = false; return; }
       formError.hidden = true; draftBuffer = { slug: get('slug'), title: get('title'), description: get('description') || null, content: get('content'), image_alts: imageAlts as Record<string, string>, tags, alphabet_key: get('alphabet_key') || null }; updateDirty();
+    }
+    function validLinkIndex(value: unknown): value is TranslationLinkRecord[] {
+      return Array.isArray(value) && value.every((row) => !!row && typeof row === 'object' && CONTENT_ID_RE.test((row as TranslationLinkRecord).content_id)
+        && typeof (row as TranslationLinkRecord).title === 'string' && typeof (row as TranslationLinkRecord).slug === 'string');
+    }
+    function loadTranslationLinkIndex(): Promise<TranslationLinkRecord[]> {
+      if (translationLinkIndex) return Promise.resolve(translationLinkIndex);
+      if (!translationLinkIndexRequest) {
+        translationLinkIndexRequest = fetch('/admin/translations/link-index.json', { headers: { accept: 'application/json' } })
+          .then(async (response) => { if (!response.ok) throw new Error('Unable to load the HY link index.'); const body: unknown = await response.json(); if (!validLinkIndex(body)) throw new Error('The HY link index is unavailable.'); return body; })
+          .then((rows) => { translationLinkIndex = rows; preparedTranslationLinkIndex = prepareSearchIndex(rows); return rows; });
+      }
+      return translationLinkIndexRequest;
+    }
+    function clearInternalLinkTarget() { selectedLinkTarget = null; internalLinkInsert.disabled = true; internalLinkAnchorWrap.hidden = savedContentSelection.text.length > 0; internalLinkAnchorError.hidden = true; }
+    async function renderInternalLinkResults() {
+      const query = internalLinkSearch.value.trim(); const session = internalLinkSession; internalLinkResults.replaceChildren(); clearInternalLinkTarget();
+      if (!query) { internalLinkStatus.hidden = false; internalLinkStatus.textContent = 'Enter a HY title or term to search.'; return; }
+      internalLinkStatus.hidden = false; internalLinkStatus.textContent = 'Searching…';
+      try {
+        await loadTranslationLinkIndex();
+        if (session !== internalLinkSession || !internalLinkDialog.open || query !== internalLinkSearch.value.trim()) return;
+        const matches = rankPreparedSearch(query, preparedTranslationLinkIndex!, 12)
+          .filter((row) => row.content_id !== loadedState?.content_id) as TranslationLinkRecord[];
+        if (!matches.length) { internalLinkStatus.textContent = 'No matching HY records found.'; return; }
+        internalLinkStatus.hidden = true;
+        internalLinkResults.append(...matches.map((row) => {
+          const button = document.createElement('button'); button.type = 'button'; button.className = 'block min-h-11 w-full px-3 py-3 text-left transition hover:bg-white/5 focus:bg-white/5';
+          const title = document.createElement('strong'); title.className = 'block break-words text-sm text-white'; title.textContent = row.title;
+          const slug = document.createElement('span'); slug.className = 'mt-1 block break-all text-xs text-slate-400'; slug.textContent = `/${row.slug}/`;
+          button.append(title, slug); button.addEventListener('click', () => selectInternalLinkTarget(row)); return button;
+        }));
+      } catch (error) { internalLinkStatus.textContent = error instanceof Error ? error.message : 'Unable to search the HY link index.'; internalLinkStatus.className = 'mt-3 text-sm text-rose-300'; }
+    }
+    function selectInternalLinkTarget(row: TranslationLinkRecord) {
+      if (row.content_id === loadedState?.content_id) return;
+      selectedLinkTarget = row; internalLinkAnchorError.hidden = true;
+      if (!savedContentSelection.text.length) { internalLinkAnchorWrap.hidden = false; internalLinkAnchor.value = row.title; internalLinkAnchor.focus(); }
+      internalLinkInsert.disabled = false;
+    }
+    async function openInternalLinkDialog() {
+      if (!loadedState || !draftBuffer || saving) return;
+      internalLinkSession += 1;
+      savedContentSelection = { start: contentField.selectionStart, end: contentField.selectionEnd, text: contentField.value.slice(contentField.selectionStart, contentField.selectionEnd) };
+      selectedLinkTarget = null; internalLinkAnchor.value = ''; internalLinkAnchorError.hidden = true; internalLinkAnchorWrap.hidden = savedContentSelection.text.length > 0;
+      internalLinkSearch.value = savedContentSelection.text.trim(); internalLinkResults.replaceChildren(); internalLinkDialog.showModal(); internalLinkSearch.focus();
+      await renderInternalLinkResults();
+    }
+    function closeInternalLinkDialog() { internalLinkDialog.close(); }
+    function escapeMarkdownAnchor(value: string) { return value.replace(/\\/g, '\\\\').replace(/\[/g, '\\[').replace(/\]/g, '\\]'); }
+    function insertInternalLink() {
+      if (!selectedLinkTarget || selectedLinkTarget.content_id === loadedState?.content_id) return;
+      const anchor = savedContentSelection.text || internalLinkAnchor.value;
+      if (!anchor.trim()) { internalLinkAnchorError.hidden = false; internalLinkAnchor.focus(); return; }
+      const markdown = `[${escapeMarkdownAnchor(anchor)}](content://${selectedLinkTarget.content_id})`;
+      contentField.setRangeText(markdown, savedContentSelection.start, savedContentSelection.end, 'end');
+      internalLinkDialog.close(); contentField.focus(); syncDraftFromForm();
     }
     function initializeDraft(data: TranslationResponse) {
       const state = data.translation_state.publication_state; const editable = state === 'NOT_CREATED' || state === 'DRAFT' || state === 'PUBLISHED_WITH_DRAFT';
@@ -378,6 +473,13 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       editor.hidden = false; status.hidden = true;
     }
     document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('[data-draft-field]').forEach((field) => field.addEventListener('input', syncDraftFromForm));
+    internalLinkAction.addEventListener('click', () => { void openInternalLinkDialog(); });
+    internalLinkClose.addEventListener('click', closeInternalLinkDialog);
+    internalLinkCancel.addEventListener('click', closeInternalLinkDialog);
+    internalLinkDialog.addEventListener('close', () => { internalLinkSession += 1; selectedLinkTarget = null; internalLinkInsert.disabled = true; contentField.focus(); });
+    internalLinkSearch.addEventListener('input', () => { window.clearTimeout(internalLinkSearchTimer); internalLinkSearchTimer = window.setTimeout(() => { void renderInternalLinkResults(); }, 200); });
+    internalLinkAnchor.addEventListener('input', () => { internalLinkAnchorError.hidden = true; });
+    internalLinkInsert.addEventListener('click', insertInternalLink);
     useAlphabet.addEventListener('click', () => { const value = document.querySelector<HTMLInputElement>('[data-draft-field="alphabet_key"]')!; const suggestion = document.querySelector<HTMLElement>('[data-alphabet-suggestion]')!.textContent?.replace('Suggested alphabet key: ', '') || ''; value.value = suggestion; syncDraftFromForm(); });
     draftAction.addEventListener('click', saveDraft);
     publishAction.addEventListener('click', publishDraft);
