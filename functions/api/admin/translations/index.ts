@@ -1,5 +1,5 @@
 import { isContentId, isSourceFingerprint } from '../../../../src/lib/content-schema/schema.mjs';
-import { beginLocaleEditWrite, createLocaleDraftWrite, discardLocaleDraftWrite, loadLocaleTranslationEditorState, publishLocaleDraftWrite, rebaseLocaleDraftWrite, updateLocaleDraftWrite } from '../../../_lib/admin-locale-draft-write.mjs';
+import { beginLocaleEditWrite, ControlledLocalizedValidationError, createLocaleDraftWrite, discardLocaleDraftWrite, loadLocaleTranslationEditorState, publishLocaleDraftWrite, rebaseLocaleDraftWrite, updateLocaleDraftWrite } from '../../../_lib/admin-locale-draft-write.mjs';
 import { createGitHubTransactionClient, getGitHubConfig, PostsConfigError, type GitHubPostsEnv } from '../../../_lib/github-posts.ts';
 import { resolveAdminWriteBranch } from '../../../_lib/admin-write-environment-guard.mjs';
 
@@ -63,6 +63,7 @@ function postInput(body: unknown) {
 
 function writeError(error: unknown) {
   const code = error && typeof error === 'object' ? (error as { code?: string }).code : undefined;
+  if (error instanceof ControlledLocalizedValidationError) return json({ ok: false, code, message: error.message }, 400);
   if (code === 'INVALID_ACTION') return json({ ok: false, code }, 400);
   if (code === 'CONTENT_NOT_FOUND') return json({ ok: false, code }, 404);
   if (['LOCALE_UNSUPPORTED', 'DRAFT_INVALID', 'NO_DRAFT', 'PUBLISH_INVALID', 'SLUG_INVALID', 'INVALID_REQUEST'].includes(code ?? '')) return json({ ok: false, code: code ?? 'INVALID_REQUEST' }, 400);

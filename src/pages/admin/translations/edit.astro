@@ -266,10 +266,10 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         : { action, content_id: loadedState.content_id, locale: loadedState.locale, expected_locale_blob_sha: localeBlobSha, payload };
       try {
         const response = await fetch('/api/admin/translations', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(body) });
-        const result: unknown = await response.json(); const code = result && typeof result === 'object' ? (result as { code?: unknown }).code : undefined;
+        const result: unknown = await response.json(); const code = result && typeof result === 'object' ? (result as { code?: unknown }).code : undefined; const message = result && typeof result === 'object' ? (result as { message?: unknown }).message : undefined;
         if (!response.ok || !result || typeof result !== 'object' || (result as { ok?: unknown }).ok !== true) {
           if (code === 'STALE_EDITOR') { const preserved = structuredClone(draftBuffer); await load(); draftBuffer = preserved; writeBufferToForm(preserved); writeBlocked = true; updateDirty(); }
-          writeError.textContent = safeWriteMessage(code); writeError.hidden = false; return;
+          writeError.textContent = typeof message === 'string' ? message : safeWriteMessage(code); writeError.hidden = false; return;
         }
         localeBlobSha = typeof (result as { locale_blob_sha?: unknown }).locale_blob_sha === 'string' ? (result as { locale_blob_sha: string }).locale_blob_sha : localeBlobSha;
         if (!await load()) { writeBlocked = true; writeError.textContent = 'Draft may have been saved. Reload to reconcile the latest server state before saving again.'; writeError.hidden = false; }
@@ -282,10 +282,10 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       const body = { action: 'publish', content_id: loadedState.content_id, locale: loadedState.locale, expected_locale_blob_sha: localeBlobSha };
       try {
         const response = await fetch('/api/admin/translations', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(body) });
-        const result: unknown = await response.json(); const code = result && typeof result === 'object' ? (result as { code?: unknown }).code : undefined;
+        const result: unknown = await response.json(); const code = result && typeof result === 'object' ? (result as { code?: unknown }).code : undefined; const message = result && typeof result === 'object' ? (result as { message?: unknown }).message : undefined;
         if (!response.ok || !result || typeof result !== 'object' || (result as { ok?: unknown }).ok !== true) {
           if (code === 'STALE_EDITOR') { await load(); writeBlocked = true; }
-          writeError.textContent = safeWriteMessage(code); writeError.hidden = false; return;
+          writeError.textContent = typeof message === 'string' ? message : safeWriteMessage(code); writeError.hidden = false; return;
         }
         if (!await load()) { writeBlocked = true; writeError.textContent = 'Publication may have completed. Reload to reconcile the latest server state before trying again.'; writeError.hidden = false; }
       } catch { writeError.textContent = 'Translation editing is temporarily unavailable.'; writeError.hidden = false; }

@@ -14,6 +14,8 @@ import { deriveTranslationState } from '../../src/lib/content-schema/state.mjs';
 import { classifyAlphabetKey } from '../../src/lib/content-schema/locale-alphabet.mjs';
 import { hyStorePaths } from '../../src/lib/content-write/project-hy-post.mjs';
 import { commitMultiFileTransaction, loadMultiFileSnapshot } from './github-multifile.mjs';
+import { localizedAuthoringContext } from './localized-reference-context.mjs';
+import { LocalizedContentValidationError, validateLocalizedBody } from '../../src/lib/localized-content-pipeline.mjs';
 
 export const DRAFT_CLAIMS_PATH = 'src/data/content/locale-draft-slug-claims.v1.json';
 export const PUBLISHED_RESERVATIONS_PATH = 'src/data/content/locale-slug-reservations.v1.json';
@@ -25,6 +27,7 @@ export class AdminLocaleDraftWriteError extends Error {
     this.code = code;
   }
 }
+export class ControlledLocalizedValidationError extends AdminLocaleDraftWriteError {}
 
 function fail(code, message, cause = undefined) { throw new AdminLocaleDraftWriteError(code, message, cause); }
 function assertLocale(locale) { if (locale !== 'ru' && locale !== 'en') fail('LOCALE_UNSUPPORTED', 'Locale writer supports only ru and en'); }
@@ -148,12 +151,25 @@ function assertFirstPublishReservationConsistency(loaded) {
       && entry.content_id === loaded.item.content_id && entry.slug !== loaded.localeDocument?.draft?.slug
  ))) fail('PUBLISH_INVALID', 'First publication cannot replace an active permanent slug reservation');
 }
+function validateLogicalBody(localeDocument, mode) {
+  const snapshot = mode === 'publish' ? localeDocument.published : localeDocument.draft;
+  try {
+    validateLocalizedBody({ content: snapshot.content, imageAlts: snapshot.image_alts, locale: localeDocument.locale, currentContentId: localeDocument.content_id, ...localizedAuthoringContext, mode });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (error instanceof LocalizedContentValidationError) {
+      throw new ControlledLocalizedValidationError(mode === 'publish' ? 'PUBLISH_INVALID' : 'DRAFT_INVALID', message, error);
+    }
+    fail(mode === 'publish' ? 'PUBLISH_INVALID' : 'DRAFT_INVALID', 'Localized content validation failed', error);
+  }
+}
 
 export async function createLocaleDraftWrite(client, { branch, contentId, locale, payload, expectedLocaleAbsent, expectedSourceRevision, expectedSourceFingerprint }) {
   const loaded = await loadLocaleDraftSnapshot(client, { branch, contentId, locale });
   assertAbsent(loaded, expectedLocaleAbsent);
   assertSource(loaded, expectedSourceRevision, expectedSourceFingerprint);
   const result = createLocaleDraft({ item: loaded.item, locale, payload: structuredClone(payload), draftClaims: loaded.draftClaims, publishedReservations: loaded.publishedReservations });
+  validateLogicalBody(result.localeDocument, 'draft');
   const claims = claimsChange(loaded, result.draftClaims);
   if (!claims) fail('INVALID_DRAFT_CLAIM_TRANSITION', 'First draft must create a draft claim');
   return { ...await transact(client, loaded, [localeChange(loaded, result.localeDocument, 'create'), claims], 'Admin: create locale draft', result.localeDocument), localeDocument: result.localeDocument };
@@ -163,6 +179,7 @@ export async function updateLocaleDraftWrite(client, { branch, contentId, locale
   const loaded = await loadLocaleDraftSnapshot(client, { branch, contentId, locale });
   assertExisting(loaded, expectedLocaleBlobSha);
   const result = updateLocaleDraft({ item: loaded.item, locale, localeDocument: loaded.localeDocument, payload: structuredClone(payload), draftClaims: loaded.draftClaims, publishedReservations: loaded.publishedReservations });
+  validateLogicalBody(result.localeDocument, 'draft');
   const claims = claimsChange(loaded, result.draftClaims);
   return { ...await transact(client, loaded, [localeChange(loaded, result.localeDocument), ...claims ? [claims] : []], 'Admin: update locale draft', result.localeDocument, expectedLocaleBlobSha), localeDocument: result.localeDocument };
 }
@@ -209,6 +226,7 @@ export async function publishLocaleDraftWrite(client, { branch, contentId, local
       publishedReservations: loaded.publishedReservations,
       publishedAt: new Date().toISOString().slice(0, 10),
     });
+    validateLogicalBody(result.localeDocument, 'publish');
     const claims = claimsChange(loaded, result.draftClaims);
     const reservations = reservationsChange(loaded, result.publishedReservations);
     return {

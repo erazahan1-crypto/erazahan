@@ -1,13 +1,15 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import { CONTENT_STORE_ROOT, listLocalizedDreamRouteEntries } from '../../lib/content-source/localized-dream-routes.mjs';
-import { scanContentStore } from '../../lib/content-source/multilingual-store.mjs';
+import { listLocalizedDreamRouteEntries } from '../../lib/content-source/localized-dream-routes.mjs';
+import { loadLocalizedRenderContext } from '../../lib/content-source/localized-render-context.mjs';
 import { buildPublishedSeoContext } from '../../lib/content-source/published-seo.mjs';
-import { renderPostContent } from '../../lib/render-post-content';
+import { renderLocalizedContent } from '../../lib/localized-content-pipeline.mjs';
 import LocalizedDreamBreadcrumb from '../../components/LocalizedDreamBreadcrumb.astro';
 
+const localizedRenderContext = loadLocalizedRenderContext();
+
 export function getStaticPaths() {
-  const repository = scanContentStore(CONTENT_STORE_ROOT);
+  const { repository } = loadLocalizedRenderContext();
   return listLocalizedDreamRouteEntries(repository, 'ru').map((route) => ({
     params: { slug: route.slug },
     props: { entry: route.entry, seo: buildPublishedSeoContext(repository, route.entry.content_id, 'ru') },
@@ -15,7 +17,7 @@ export function getStaticPaths() {
 }
 
 const { entry, seo } = Astro.props;
-const renderedContent = renderPostContent(entry.published.content);
+const renderedContent = renderLocalizedContent({ content: entry.published.content, imageAlts: entry.published.image_alts, locale: 'ru', currentContentId: entry.content_id, ...localizedRenderContext });
 ---
 
 <Layout title={entry.published.title} description={entry.published.description || undefined} type="article" locale={seo.locale} alternates={seo.alternates}>
