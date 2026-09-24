@@ -3,9 +3,10 @@ import "../styles/global.css";
 import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
 import QuickTools from "../components/QuickTools.astro";
-import { SITE, ALLOW_INDEXING } from "../lib/config";
+import { SITE } from "../lib/config";
 import { websiteSchema } from "../lib/seo";
 import { localeSeoMetadata } from '../lib/content-source/published-seo.mjs';
+import { isRuntimeLocaleIndexingAllowed } from '../lib/indexing-policy.mjs';
 
 interface Props {
   title?: string;
@@ -25,14 +26,16 @@ const {
   image,
   locale = 'hy',
   alternates: alternatesProp = [],
-  robots: requestedRobots = ALLOW_INDEXING ? null : 'noindex, nofollow',
+  robots: requestedRobots = null,
 } = Astro.props;
 
 const { html_lang, og_locale } = localeSeoMetadata(locale);
 const alternates = alternatesProp ?? [];
-// RU/EN remain deliberately non-indexable until a future multilingual release
-// changes this shared rendering-boundary policy.
-const effectiveRobots = locale === 'hy' ? requestedRobots : 'noindex, nofollow';
+// Locale policy is the upper safety boundary: page-level directives may make a
+// page stricter, but can never make a policy-blocked locale indexable.
+const effectiveRobots = isRuntimeLocaleIndexingAllowed(locale)
+  ? requestedRobots
+  : 'noindex, nofollow';
 
 const ogImage = image ? (image.startsWith("http") ? image : `${SITE}${image}`) : undefined;
 ---

@@ -5,6 +5,8 @@ import { serializeSitemapIndexXml } from '../../src/lib/content-source/sitemap-i
 
 const origin = 'https://erazahan.info';
 const children = ['/sitemap-hy.xml', '/sitemap-ru.xml', '/sitemap-en.xml'];
+const localizedIndexingReleased = process.env.PUBLIC_ALLOW_INDEXING === 'true'
+  && process.env.PUBLIC_ALLOW_LOCALIZED_INDEXING === 'true';
 const urls = (xml) => [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
 const urlCount = (xml) => [...xml.matchAll(/<url>/g)].length;
 function assertExactUrlSet(legacyUrls, hyUrls) {
@@ -32,7 +34,7 @@ assert.equal(index.includes('<urlset'), false);
 assert.equal(index.includes('/erazahan-'), false);
 assert.equal(serializeSitemapIndexXml(children, origin), serializeSitemapIndexXml(children, origin));
 assert.equal(serializeSitemapIndexXml(['/a&b.xml'], origin).includes('/a&amp;b.xml'), true);
-assert.equal(urlCount(hy), 5920); assert.equal(urlCount(ru), 0); assert.equal(urlCount(en), 0);
+assert.equal(urlCount(hy), 5920); assert.equal(urlCount(ru), 0); assert.equal(urlCount(en), localizedIndexingReleased ? 1 : 0);
 const hyPaths = urls(hy).map((url) => decodeURI(new URL(url).pathname));
 assert.equal(legacyUrls.length, 5920); assert.equal(hyPaths.length, 5920);
 assertExactUrlSet(legacyUrls, hyPaths);

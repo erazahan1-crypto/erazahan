@@ -4,6 +4,8 @@ import { localeNavigation, localeSearch } from '../../src/lib/public-locale.mjs'
 import { loadPublishedLocaleAvailability } from '../../src/lib/content-source/published-locale-availability.mjs';
 
 const read = (file) => readFileSync(file, 'utf8');
+const localizedIndexingReleased = process.env.PUBLIC_ALLOW_INDEXING === 'true'
+  && process.env.PUBLIC_ALLOW_LOCALIZED_INDEXING === 'true';
 const layout = read('src/layouts/Layout.astro');
 const header = read('src/components/Header.astro');
 const footer = read('src/components/Footer.astro');
@@ -15,16 +17,17 @@ assert.match(layout, /<Header locale=\{locale\} \/>/);
 assert.match(layout, /<Footer locale=\{locale\} \/>/);
 assert.match(layout, /locale === 'hy' \? <QuickTools locale=\{locale\} \/> : null/);
 assert.match(layout, /locale === 'hy' \? <script type="application\/ld\+json" set:html=\{JSON\.stringify\(websiteSchema\(\)\)\} \/> : null/);
-assert.match(layout, /robots: requestedRobots = ALLOW_INDEXING \? null : 'noindex, nofollow'/);
-assert.match(layout, /const effectiveRobots = locale === 'hy' \? requestedRobots : 'noindex, nofollow';/);
+assert.match(layout, /import \{ isRuntimeLocaleIndexingAllowed \} from '..\/lib\/indexing-policy\.mjs';/);
+assert.match(layout, /robots: requestedRobots = null/);
+assert.match(layout, /const effectiveRobots = isRuntimeLocaleIndexingAllowed\(locale\)/);
 assert.match(layout, /<meta name="robots" content=\{effectiveRobots\} \/>/);
 assert.match(header, /localeNavigation\(locale\)/);
 assert.match(header, /localeSearch\(locale\)/);
 assert.match(footer, /localeNavigation\(locale\)/);
 assert.match(ru, /LocaleHomePage locale=\{locale\}/);
 assert.match(en, /LocaleHomePage locale=\{locale\}/);
-assert.match(ru, /robots="noindex, nofollow"/);
-assert.match(en, /robots="noindex, nofollow"/);
+assert.doesNotMatch(ru, /robots=/);
+assert.doesNotMatch(en, /robots=/);
 assert.match(home, /data-locale-home=\{locale\}/);
 assert.match(home, /action=\{searchHref\}/);
 assert.match(home, /copy\.empty\.unavailable/);
@@ -69,7 +72,11 @@ for (const page of generated) {
   assert.match(html, new RegExp(`<title>${page.title}</title>`));
   assert.match(html, new RegExp(`<meta name="description" content="${page.description}">`));
   assert.match(html, new RegExp(`<link rel="canonical" href="https://erazahan\\.info${page.root}">`));
-  assert.match(html, new RegExp(`<meta name="robots" content="noindex, nofollow">`));
+  if (localizedIndexingReleased) {
+    assert.doesNotMatch(html, /<meta name="robots" content=/, `${page.locale} home is not centrally blocked after localized release`);
+  } else {
+    assert.match(html, /<meta name="robots" content="noindex, nofollow">/);
+  }
   assert.match(html, new RegExp(`<meta property="og:locale" content="${page.ogLocale}">`));
   assert.ok(html.includes(`href="${page.root}"`), `${page.locale} generated home links to its locale root`);
   assert.ok(html.includes(`action="${page.search}"`), `${page.locale} generated home search targets its locale search route`);
@@ -93,5 +100,13 @@ const ruHome = read('dist/ru/index.html');
 assert.ok(ruHome.includes('\u041d\u0430 \u044d\u0442\u043e\u043c \u044f\u0437\u044b\u043a\u0435 \u043f\u043e\u043a\u0430 \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u043e.'), 'RU home and footer retain their zero-content state');
 
 const enDream = read('dist/en/tar-musical-instrument-dream-meaning/index.html');
-assert.match(enDream, /<meta name="robots" content="noindex, nofollow">/);
+if (localizedIndexingReleased) {
+  assert.doesNotMatch(enDream, /<meta name="robots" content=/, 'published EN dream is not centrally blocked after localized release');
+} else {
+  assert.match(enDream, /<meta name="robots" content="noindex, nofollow">/);
+}
+
+for (const file of ['dist/en/search/index.html', 'dist/ru/search/index.html']) {
+  assert.match(read(file), /<meta name="robots" content="noindex, nofollow">/, `${file} retains its page-level noindex directive`);
+}
 console.log('LOCALIZED SITE SHELL PASS');

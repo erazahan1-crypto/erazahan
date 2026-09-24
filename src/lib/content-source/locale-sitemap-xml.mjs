@@ -1,4 +1,5 @@
 import { listPublishedDreamSitemapEntries, escapeSitemapXmlText } from './published-sitemaps.mjs';
+import { isLocaleIndexingAllowed, runtimeIndexingConfig } from '../indexing-policy.mjs';
 
 function assertOrigin(origin) {
   if (typeof origin !== 'string' || !/^https:\/\/[^/]+$/u.test(origin)) {
@@ -38,10 +39,14 @@ export function serializeSitemapXml(entries, origin) {
 export function listLocaleSitemapEntries(repository, locale, {
   hyNonDreamEntries = [],
   hyDreamLastmodByPath = new Map(),
+  indexingConfig = runtimeIndexingConfig,
 } = {}) {
-  const dreams = listPublishedDreamSitemapEntries(repository, locale).map((entry) => ({
+  // The shared policy gates index eligibility only. Publication and public-path
+  // ownership remain in the published-content projection below.
+  const includeDreams = isLocaleIndexingAllowed(locale, indexingConfig);
+  const dreams = (includeDreams ? listPublishedDreamSitemapEntries(repository, locale) : []).map((entry) => ({
     path: entry.path,
     lastmod: locale === 'hy' ? hyDreamLastmodByPath.get(entry.path) : undefined,
   }));
-  return Object.freeze(locale === 'hy' ? [...hyNonDreamEntries, ...dreams] : dreams);
+  return Object.freeze(locale === 'hy' && includeDreams ? [...hyNonDreamEntries, ...dreams] : dreams);
 }

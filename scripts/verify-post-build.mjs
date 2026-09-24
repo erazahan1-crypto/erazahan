@@ -3,8 +3,13 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { scanContentStore } from '../src/lib/content-source/multilingual-store.mjs';
 import { listPublishedDreamSitemapEntries } from '../src/lib/content-source/published-sitemaps.mjs';
+import { isLocaleIndexingAllowed } from '../src/lib/indexing-policy.mjs';
 
 const ORIGIN = 'https://erazahan.info';
+const indexingConfig = {
+  PUBLIC_ALLOW_INDEXING: process.env.PUBLIC_ALLOW_INDEXING,
+  PUBLIC_ALLOW_LOCALIZED_INDEXING: process.env.PUBLIC_ALLOW_LOCALIZED_INDEXING,
+};
 const SITEMAP_INDEX_OPEN = '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
 const URLSET_OPEN = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
 
@@ -103,7 +108,7 @@ assert.ok([...hySitemapUrls, ...ruSitemapUrls, ...enSitemapUrls]
 
 const repository = scanContentStore('src/data/content/dreams');
 for (const [locale, urls] of [['ru', ruSitemapUrls], ['en', enSitemapUrls]]) {
-  const expected = listPublishedDreamSitemapEntries(repository, locale)
+  const expected = (isLocaleIndexingAllowed(locale, indexingConfig) ? listPublishedDreamSitemapEntries(repository, locale) : [])
     .map((entry) => `${ORIGIN}${entry.path}`);
   assertExactDreamCoverage(urls, expected, locale.toUpperCase());
 }
