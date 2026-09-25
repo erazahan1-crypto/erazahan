@@ -12,7 +12,7 @@ function loadContentIdBySourceUrl(registryFile) {
   if (!Array.isArray(registry.entries)) throw new TypeError('HY dream SEO: content-id registry entries are missing');
   const ids = new Map();
   for (const entry of registry.entries) {
-    const sourceUrl = entry?.legacy?.original_source_url;
+    const sourceUrl = entry?.legacy?.original_source_url ?? entry?.native?.source_url;
     if (typeof entry?.content_id !== 'string' || typeof sourceUrl !== 'string' || ids.has(sourceUrl)) {
       throw new TypeError('HY dream SEO: content-id registry is invalid');
     }

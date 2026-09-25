@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { sourceFingerprintV1 } from '../../src/lib/content-schema/fingerprint.mjs';
 import { loadHyDreamSeoBySlug } from '../../src/lib/content-source/hy-dream-seo.mjs';
+import { scanContentStore } from '../../src/lib/content-source/multilingual-store.mjs';
+import { listPublishedLocaleEntries } from '../../src/lib/content-source/published-content.mjs';
 
 const A = 'efa61838-86c8-56b8-815c-0a38b0a83242';
 const roots = [];
@@ -87,7 +89,22 @@ try {
     const realPosts = JSON.parse(readFileSync('src/data/posts.json', 'utf8'));
     const real = loadHyDreamSeoBySlug(realPosts);
     assert.equal(real.size, 5800);
-    assert.equal([...real.values()].every((context) => context.locale === 'hy' && context.alternates.length === 0), true);
+    const registry = JSON.parse(readFileSync('src/data/migrations/content-id-registry.v1.json', 'utf8'));
+    const contentIdBySourceUrl = new Map(registry.entries.map((entry) => [entry.legacy.original_source_url, entry.content_id]));
+    const repository = scanContentStore('src/data/content/dreams');
+    const publishedPaths = new Map(['ru', 'en'].map((locale) => [locale, new Map(
+      listPublishedLocaleEntries(repository, locale).map((entry) => [entry.content_id, entry.path]),
+    )]));
+    for (const post of realPosts) {
+      const contentId = contentIdBySourceUrl.get(post.sourceUrl);
+      assert.ok(contentId, `missing canonical identity for ${post.sourceUrl}`);
+      const expected = ['hy', 'ru', 'en'].flatMap((locale) => locale === 'hy'
+        ? [{ locale, path: `/${post.slug}/` }]
+        : (publishedPaths.get(locale).get(contentId) ? [{ locale, path: publishedPaths.get(locale).get(contentId) }] : []));
+      const actual = real.get(post.slug);
+      assert.ok(actual, `missing HY SEO context for ${post.slug}`);
+      assert.deepEqual(actual.alternates, expected.length > 1 ? expected : []);
+    }
   }
   console.log('HY MULTILINGUAL SEO INTEGRATION PASS');
 } finally {

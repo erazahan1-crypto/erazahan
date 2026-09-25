@@ -10,6 +10,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
   <form data-form class="mt-7 grid gap-5 rounded-2xl border border-white/10 bg-white/[0.035] p-5" novalidate>
     <label class="grid gap-1.5"><span class="text-sm font-semibold text-slate-200">Title</span><input name="title" required maxlength="200" class="min-h-11 rounded-xl border border-white/10 bg-night-950 px-3 text-white" /></label>
     <label class="grid gap-1.5"><span class="text-sm font-semibold text-slate-200">Slug</span><input name="slug" required maxlength="160" class="min-h-11 rounded-xl border border-white/10 bg-night-950 px-3 text-white" /></label>
+    <label class="grid gap-1.5"><span class="text-sm font-semibold text-slate-200">SEO / Meta description</span><textarea name="description" maxlength="2000" rows="3" class="rounded-xl border border-white/10 bg-night-950 px-3 py-2 text-white"></textarea></label>
     <div class="grid gap-5 sm:grid-cols-2"><label class="grid gap-1.5"><span class="text-sm font-semibold text-slate-200">Publication date</span><input name="date" type="date" required class="min-h-11 rounded-xl border border-white/10 bg-night-950 px-3 text-white" /></label><label class="grid gap-1.5"><span class="text-sm font-semibold text-slate-200">Alphabet key</span><input name="letter" maxlength="8" class="min-h-11 rounded-xl border border-white/10 bg-night-950 px-3 text-white" /></label></div>
     <label class="grid gap-1.5"><span class="text-sm font-semibold text-slate-200">Categories (comma-separated)</span><input name="categories" required class="min-h-11 rounded-xl border border-white/10 bg-night-950 px-3 text-white" /></label>
     <label class="grid gap-1.5"><span class="text-sm font-semibold text-slate-200">Content</span><textarea name="content" required rows="16" class="rounded-xl border border-white/10 bg-night-950 px-3 py-2 text-white"></textarea></label>
@@ -26,7 +27,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       if (!categories.length) { status.textContent = 'At least one category is required.'; return; }
       submit.disabled = true; status.textContent = 'Creating and publishing…';
       try {
-        const response = await fetch('/api/admin/posts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ post: { title: data.get('title'), slug: data.get('slug'), date: data.get('date'), letter: data.get('letter'), categories, content: data.get('content') } }) });
+        const response = await fetch('/api/admin/posts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ post: { title: data.get('title'), slug: data.get('slug'), description: data.get('description'), date: data.get('date'), letter: data.get('letter'), categories, content: data.get('content') } }) });
         const result = await response.json() as { ok?: boolean; id?: string; error?: string };
         if (!response.ok || !result.ok || !result.id) throw new Error(result.error || 'Could not create the article.');
         location.assign(`/admin/posts/edit/?id=${encodeURIComponent(result.id)}`);

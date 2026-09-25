@@ -11,6 +11,7 @@ export interface EditablePost {
   letter: string | null;
   categories: string[];
   content: string;
+  description?: string | null;
   sourceUrl: string;
 }
 
@@ -182,7 +183,8 @@ export function validateEditablePost(value: unknown): EditablePost {
     throw new PostsValidationError('Категории должны быть непустым списком строк.');
   }
   const letter = input.letter === null || input.letter === '' ? null : requiredString(input.letter, 'Буква', 8);
-  return { title, slug, date, letter, categories: input.categories.map((item) => (item as string).trim()), content, sourceUrl };
+  const description = input.description === undefined || input.description === '' ? null : requiredString(input.description, 'SEO description', 2_000);
+  return { title, slug, date, letter, categories: input.categories.map((item) => (item as string).trim()), content, sourceUrl, description };
 }
 
 function requiredString(value: unknown, label: string, max: number): string {

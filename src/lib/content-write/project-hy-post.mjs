@@ -140,8 +140,8 @@ export function projectNativeHyPostCreate({ contentId, postIndex, editedPost, so
   const published = {
     slug: edit.slug,
     title: edit.title,
-    description: null,
     content: edit.content,
+    description: edit.description ?? null,
     image_alts: {},
     tags: [...edit.categories],
     alphabet_key: edit.letter,
@@ -168,13 +168,15 @@ export function projectNativeHyPostCreate({ contentId, postIndex, editedPost, so
   } catch (error) {
     fail('INVALID_PROJECTED_STORE', error instanceof Error ? error.message : String(error));
   }
-  return {
+  const fields = {
     post,
     registryEntry: { content_id: contentId, native: { post_index: postIndex, source_url: sourceUrl, slug: edit.slug, created_at: createdAt } },
     item,
     hy,
     serialized: { item: canonicalJson(item), hy: canonicalJson(hy) },
   };
+  if (Object.hasOwn(editedPost, 'description')) fields.description = editedPost.description ?? null;
+  return fields;
 }
 
 export function validateHyRegistryEntries(entries) {
@@ -262,6 +264,7 @@ export function projectExistingHyPostUpdate(input) {
     alphabet_key: edit.letter,
     tags: [...edit.categories],
     content: edit.content,
+    description: edit.description ?? currentPublished.description,
   };
   const publishedPayloadChanged = !canonicalJsonEqual(
     publishedPayloadWithoutVersion(currentPublished),
