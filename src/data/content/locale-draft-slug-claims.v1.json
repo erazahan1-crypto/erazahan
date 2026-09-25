@@ -1,4 +1,10 @@
 {
-  "claims": [],
+  "claims": [
+    {
+      "content_id": "90552df9-ab04-59ce-abe1-27fdd76461b6",
+      "locale": "ru",
+      "slug": "утка-значение-сна"
+    }
+  ],
   "version": 1
 }
