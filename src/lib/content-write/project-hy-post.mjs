@@ -86,16 +86,20 @@ export function resolveExistingHyIdentity({
   const edit = editableFields(editedPost);
   if (!Array.isArray(registryEntries)) fail('INVALID_REGISTRY', 'registryEntries must be an array');
 
-  const matches = registryEntries.filter((entry) => entry?.legacy?.original_array_index === postIndex);
+  const matches = registryEntries.filter((entry) => entry?.legacy?.original_array_index === postIndex || entry?.native?.post_index === postIndex);
   if (matches.length === 0) fail('REGISTRY_IDENTITY_MISSING', `registry entry is missing for post index ${postIndex}`);
   if (matches.length !== 1) fail('REGISTRY_IDENTITY_AMBIGUOUS', `registry identity is ambiguous for post index ${postIndex}`);
   const registryEntry = matches[0];
 
-  if (currentPost.sourceUrl !== registryEntry.legacy.original_source_url) {
+  const immutableSourceUrl = registryEntry.legacy?.original_source_url ?? registryEntry.native?.source_url;
+  if (currentPost.sourceUrl !== immutableSourceUrl) {
     fail('CURRENT_SOURCE_URL_MISMATCH', 'current post sourceUrl differs from immutable registry provenance');
   }
   if (edit.sourceUrl !== currentPost.sourceUrl) {
     fail('SOURCE_URL_IMMUTABLE', 'sourceUrl is immutable for an existing HY dictionary post');
+  }
+  if (registryEntry.native && edit.slug !== registryEntry.native.slug) {
+    fail('SLUG_IMMUTABLE', 'slug is immutable for a native HY dictionary post');
   }
 
   const paths = hyStorePaths(registryEntry.content_id);
@@ -124,6 +128,81 @@ export function resolveExistingHyIdentity({
     paths,
     edit,
   };
+}
+
+export function projectNativeHyPostCreate({ contentId, postIndex, editedPost, sourceUrl, createdAt }) {
+  if (!isContentId(contentId) || contentId[14] !== '7') fail('INVALID_CONTENT_ID', 'native content_id must be a UUIDv7');
+  if (!Number.isInteger(postIndex) || postIndex < 0) fail('INVALID_POST_INDEX', 'postIndex must be a non-negative integer');
+  const edit = editableFields({ ...editedPost, sourceUrl });
+  if (edit.sourceUrl !== sourceUrl) fail('SOURCE_URL_IMMUTABLE', 'native sourceUrl must be derived server-side');
+  if (typeof createdAt !== 'string' || !Number.isFinite(Date.parse(createdAt))) fail('INVALID_CREATED_AT', 'native created_at is invalid');
+
+  const published = {
+    slug: edit.slug,
+    title: edit.title,
+    description: null,
+    content: edit.content,
+    image_alts: {},
+    tags: [...edit.categories],
+    alphabet_key: edit.letter,
+    based_on_source_revision: null,
+    based_on_source_fingerprint: null,
+    version: 1,
+    published_at: edit.date,
+  };
+  const item = {
+    schema_version: 1,
+    content_id: contentId,
+    type: 'dream_dictionary',
+    source_locale: 'hy',
+    source_revision: 1,
+    source_fingerprint: sourceFingerprintV1(published),
+    fingerprint_spec_version: 1,
+  };
+  const hy = { schema_version: 1, content_id: contentId, locale: 'hy', draft: null, published };
+  const post = { ...edit, comments: [] };
+  try {
+    validateContentItem(item);
+    validateLocaleDocument(hy);
+    validateItemLocaleRelation(item, hy);
+  } catch (error) {
+    fail('INVALID_PROJECTED_STORE', error instanceof Error ? error.message : String(error));
+  }
+  return {
+    post,
+    registryEntry: { content_id: contentId, native: { post_index: postIndex, source_url: sourceUrl, slug: edit.slug, created_at: createdAt } },
+    item,
+    hy,
+    serialized: { item: canonicalJson(item), hy: canonicalJson(hy) },
+  };
+}
+
+export function validateHyRegistryEntries(entries) {
+  if (!Array.isArray(entries)) fail('INVALID_REGISTRY', 'registryEntries must be an array');
+  const contentIds = new Set();
+  const postIndexes = new Set();
+  for (const entry of entries) {
+    requireObject(entry, 'INVALID_REGISTRY', 'registry entry');
+    if (!isContentId(entry.content_id)) fail('INVALID_REGISTRY', 'registry content_id is invalid');
+    const hasLegacy = entry.legacy !== undefined;
+    const hasNative = entry.native !== undefined;
+    if (hasLegacy === hasNative) fail('INVALID_REGISTRY_VARIANT', 'registry entry must contain exactly one identity variant');
+    const identity = hasLegacy ? entry.legacy : entry.native;
+    requireObject(identity, 'INVALID_REGISTRY', 'registry identity');
+    const postIndex = hasLegacy ? identity.original_array_index : identity.post_index;
+    if (!Number.isInteger(postIndex) || postIndex < 0) fail('INVALID_REGISTRY', 'registry post index is invalid');
+    if (hasLegacy) {
+      for (const key of ['original_hy_slug', 'original_source_url']) requireNonEmptyString(identity[key], 'INVALID_REGISTRY', `registry legacy.${key}`);
+    } else {
+      for (const key of ['source_url', 'slug', 'created_at']) requireNonEmptyString(identity[key], 'INVALID_REGISTRY', `registry native.${key}`);
+      try { new URL(identity.source_url); } catch { fail('INVALID_REGISTRY', 'registry native.source_url is invalid'); }
+      if (!Number.isFinite(Date.parse(identity.created_at))) fail('INVALID_REGISTRY', 'registry native.created_at is invalid');
+    }
+    if (contentIds.has(entry.content_id) || postIndexes.has(postIndex)) fail('INVALID_REGISTRY', 'registry content_id or post index is duplicated');
+    contentIds.add(entry.content_id);
+    postIndexes.add(postIndex);
+  }
+  return entries;
 }
 
 function assertCurrentProjection(currentPost, currentItem, currentHy) {

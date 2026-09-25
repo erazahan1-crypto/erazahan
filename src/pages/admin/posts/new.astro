@@ -1,0 +1,36 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="Новая HY статья">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div><p class="text-sm font-medium text-violet-300">HY контент</p><h1 class="mt-1 font-display text-3xl font-bold text-white">Новая статья сонника</h1><p class="mt-2 text-sm text-slate-400">Форма локальна, пока вы явно не создадите и не опубликуете статью.</p></div>
+    <a href="/admin/posts/" class="inline-flex min-h-11 items-center rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/5">К статьям</a>
+  </div>
+  <form data-form class="mt-7 grid gap-5 rounded-2xl border border-white/10 bg-white/[0.035] p-5" novalidate>
+    <label class="grid gap-1.5"><span class="text-sm font-semibold text-slate-200">Title</span><input name="title" required maxlength="200" class="min-h-11 rounded-xl border border-white/10 bg-night-950 px-3 text-white" /></label>
+    <label class="grid gap-1.5"><span class="text-sm font-semibold text-slate-200">Slug</span><input name="slug" required maxlength="160" class="min-h-11 rounded-xl border border-white/10 bg-night-950 px-3 text-white" /></label>
+    <div class="grid gap-5 sm:grid-cols-2"><label class="grid gap-1.5"><span class="text-sm font-semibold text-slate-200">Publication date</span><input name="date" type="date" required class="min-h-11 rounded-xl border border-white/10 bg-night-950 px-3 text-white" /></label><label class="grid gap-1.5"><span class="text-sm font-semibold text-slate-200">Alphabet key</span><input name="letter" maxlength="8" class="min-h-11 rounded-xl border border-white/10 bg-night-950 px-3 text-white" /></label></div>
+    <label class="grid gap-1.5"><span class="text-sm font-semibold text-slate-200">Categories (comma-separated)</span><input name="categories" required class="min-h-11 rounded-xl border border-white/10 bg-night-950 px-3 text-white" /></label>
+    <label class="grid gap-1.5"><span class="text-sm font-semibold text-slate-200">Content</span><textarea name="content" required rows="16" class="rounded-xl border border-white/10 bg-night-950 px-3 py-2 text-white"></textarea></label>
+    <p data-status class="text-sm text-slate-400" role="status">Изображения можно добавить в обычном редакторе после создания.</p>
+    <div class="flex flex-wrap gap-3"><button data-submit type="submit" class="min-h-11 rounded-xl bg-violet-600 px-5 text-sm font-semibold text-white hover:bg-violet-500">Создать и опубликовать</button><a href="/admin/posts/" class="inline-flex min-h-11 items-center rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200">Отмена</a></div>
+  </form>
+  <script>
+    const form = document.querySelector<HTMLFormElement>('[data-form]')!;
+    const status = document.querySelector<HTMLElement>('[data-status]')!;
+    const submit = document.querySelector<HTMLButtonElement>('[data-submit]')!;
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault(); if (!form.reportValidity()) return;
+      const data = new FormData(form); const categories = String(data.get('categories') || '').split(',').map((value) => value.trim()).filter(Boolean);
+      if (!categories.length) { status.textContent = 'At least one category is required.'; return; }
+      submit.disabled = true; status.textContent = 'Creating and publishing…';
+      try {
+        const response = await fetch('/api/admin/posts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ post: { title: data.get('title'), slug: data.get('slug'), date: data.get('date'), letter: data.get('letter'), categories, content: data.get('content') } }) });
+        const result = await response.json() as { ok?: boolean; id?: string; error?: string };
+        if (!response.ok || !result.ok || !result.id) throw new Error(result.error || 'Could not create the article.');
+        location.assign(`/admin/posts/edit/?id=${encodeURIComponent(result.id)}`);
+      } catch (error) { status.className = 'text-sm text-rose-300'; status.textContent = error instanceof Error ? error.message : 'Could not create the article.'; submit.disabled = false; }
+    });
+  </script>
+</AdminLayout>

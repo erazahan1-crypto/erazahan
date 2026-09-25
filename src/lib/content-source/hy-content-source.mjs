@@ -5,6 +5,7 @@ import {
   validateItemLocaleRelation,
   validateLocaleDocument,
 } from '../content-schema/schema.mjs';
+import { validateHyRegistryEntries } from '../content-write/project-hy-post.mjs';
 
 export const HY_CONTENT_SOURCE_ENV = 'ERAZAHAN_HY_CONTENT_SOURCE';
 export const DEFAULT_HY_CONTENT_SOURCE = 'legacy';
@@ -44,16 +45,25 @@ export function loadLegacyHyPosts() {
 export function loadNewHyPosts() {
   const legacyPosts = loadLegacyHyPosts();
   const registry = readJson(REGISTRY_FILE);
-  invariant(Array.isArray(registry.entries), 'registry entries must be an array');
-
-  const legacyBySourceUrl = new Map(legacyPosts.map((post) => [post.sourceUrl, post]));
-  invariant(legacyBySourceUrl.size === legacyPosts.length, 'legacy sourceUrl values must be unique');
+  try {
+    validateHyRegistryEntries(registry.entries);
+  } catch (error) {
+    throw new Error(`HY content source: ${error instanceof Error ? error.message : String(error)}`);
+  }
 
   return registry.entries.map((entry, index) => {
-    invariant(entry.legacy?.original_array_index === index, `registry entry ${index} is out of order`);
-    const legacyPost = legacyBySourceUrl.get(entry.legacy?.original_source_url);
-    invariant(legacyPost, `legacy comments compatibility record is missing for registry entry ${index}`);
-    invariant(legacyPost.slug === entry.legacy.original_hy_slug, `legacy slug mismatch for registry entry ${index}`);
+    const postIndex = entry.legacy?.original_array_index ?? entry.native?.post_index;
+    invariant(Number.isInteger(postIndex) && postIndex >= 0, `registry entry ${index} has no post identity`);
+    const legacyPost = legacyPosts[postIndex];
+    invariant(legacyPost, `posts.json record is missing for registry entry ${index}`);
+    if (entry.legacy) {
+      invariant(entry.legacy.original_array_index === postIndex, `registry entry ${index} is out of order`);
+      invariant(legacyPost.sourceUrl === entry.legacy.original_source_url, `legacy source URL mismatch for registry entry ${index}`);
+      invariant(legacyPost.slug === entry.legacy.original_hy_slug, `legacy slug mismatch for registry entry ${index}`);
+    } else {
+      invariant(entry.native?.source_url === legacyPost.sourceUrl, `native source URL mismatch for registry entry ${index}`);
+      invariant(entry.native?.slug === legacyPost.slug, `native slug mismatch for registry entry ${index}`);
+    }
 
     const base = path.join(STORE_ROOT, entry.content_id.slice(0, 2), entry.content_id);
     const item = readJson(path.join(base, 'item.json'));
@@ -72,7 +82,7 @@ export function loadNewHyPosts() {
       categories: published.tags,
       content: published.content,
       // Historical provenance comes from the immutable content_id registry.
-      sourceUrl: entry.legacy.original_source_url,
+      sourceUrl: entry.legacy?.original_source_url ?? entry.native.source_url,
       // Comments remain owned by posts.json until the admin/data migration.
       comments: legacyPost.comments,
     };

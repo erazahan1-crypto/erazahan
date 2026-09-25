@@ -52,7 +52,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
     const snapshot = await loadAtomicHyWriteSnapshot((paths) => loadMultiFileSnapshot(config, paths));
     const post = snapshot.posts[id];
     if (!post) return json({ ok: false, error: 'Статья не найдена.' }, 404);
-    const matches = snapshot.registryEntries.filter((entry) => entry?.legacy?.original_array_index === id);
+    const matches = snapshot.registryEntries.filter((entry) => entry?.legacy?.original_array_index === id || entry?.native?.post_index === id);
     if (matches.length !== 1 || !isContentId(matches[0]?.content_id)) {
       throw new PostsConfigError('Translation identity is unavailable for this article.');
     }
@@ -104,6 +104,10 @@ export async function onRequestPut(context: Context): Promise<Response> {
       throw new PostsConflictError('Позиция статьи изменилась. Перезагрузите страницу.');
     }
     if (writeMode === 'atomic') assertAtomicSourceUrl(current, edited);
+    const nativeIdentity = atomicSnapshot?.registryEntries.find((entry) => entry?.native?.post_index === id)?.native;
+    if (nativeIdentity && edited.slug !== nativeIdentity.slug) {
+      throw new PostsValidationError('Slug is immutable for a native HY dictionary post.');
+    }
     const normalizedSlug = edited.slug.normalize('NFKC').toLocaleLowerCase('hy-AM');
     const duplicate = snapshot.posts.some((post, index) => index !== id
       && typeof post.slug === 'string'
