@@ -103,7 +103,6 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
           <div data-category-picker hidden class="mt-3 rounded-xl border border-white/10 bg-night-950 p-3">
             <input data-category-search type="search" autocomplete="off" placeholder="Найти категорию" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-900 px-3 text-sm text-white outline-none focus:border-violet-400" />
             <div data-category-results class="mt-2 max-h-52 overflow-y-auto"></div>
-            <button data-category-create hidden type="button" class="mt-2 min-h-11 w-full rounded-xl border border-violet-400/40 bg-violet-500/10 px-3 text-left text-sm font-semibold text-violet-200"></button>
           </div>
         </section>
         <label class="block">
@@ -242,7 +241,6 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     const categoryPicker = document.querySelector<HTMLElement>('[data-category-picker]')!;
     const categorySearch = document.querySelector<HTMLInputElement>('[data-category-search]')!;
     const categoryResults = document.querySelector<HTMLElement>('[data-category-results]')!;
-    const categoryCreate = document.querySelector<HTMLButtonElement>('[data-category-create]')!;
     const selectedCategoriesElement = document.querySelector<HTMLElement>('[data-selected-categories]')!;
     const contentChecks = document.querySelector<HTMLElement>('[data-content-checks]')!;
     let originalSlug = '';
@@ -738,12 +736,9 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       const seen = new Set<string>();
       const result: string[] = [];
       for (const item of values) {
-        if (typeof item !== 'string') continue;
-        const category = item.trim().replace(/\s+/g, ' ');
-        const key = normalizedCategoryKey(category);
-        if (!category || seen.has(key)) continue;
-        seen.add(key);
-        result.push(category);
+        if (typeof item !== 'string' || !item.trim() || seen.has(item)) continue;
+        seen.add(item);
+        result.push(item);
       }
       return result;
     }
@@ -765,7 +760,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         remove.setAttribute('aria-label', `Удалить категорию ${category}`);
         remove.textContent = '×';
         remove.addEventListener('click', () => {
-          selectedCategories = selectedCategories.filter((value) => normalizedCategoryKey(value) !== normalizedCategoryKey(category));
+          selectedCategories = selectedCategories.filter((value) => value !== category);
           renderSelectedCategories();
           renderCategoryChoices();
         });
@@ -817,11 +812,6 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         button.addEventListener('click', () => addCategory(option.name));
         return button;
       }));
-      const proposed = categorySearch.value.trim().replace(/\s+/g, ' ');
-      const known = categoryOptions.some((option) => normalizedCategoryKey(option.name) === normalizedCategoryKey(proposed));
-      const alreadySelected = selectedKeys.has(normalizedCategoryKey(proposed));
-      categoryCreate.hidden = !proposed || known || alreadySelected;
-      categoryCreate.textContent = proposed ? `Создать новую категорию «${proposed}»` : '';
     }
 
     function addCategory(category: string) {
@@ -961,7 +951,6 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     });
     document.querySelector<HTMLButtonElement>('[data-category-add]')!.addEventListener('click', openCategoryPicker);
     categorySearch.addEventListener('input', renderCategoryChoices);
-    categoryCreate.addEventListener('click', () => addCategory(categorySearch.value));
     slug.addEventListener('input', updateSlugState);
     content.addEventListener('input', syncFromMarkdown);
     contentSource.addEventListener('input', syncFromSource);
