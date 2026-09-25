@@ -202,7 +202,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     }
     interface LoadResult { ok: boolean; post?: PostData; version?: string; writable?: boolean; content_id?: string; error?: string }
     interface LinkPost { id: string; title: string; slug: string; categories: string[]; text: string }
-    interface CategoryOption { name: string; count: number }
+    interface CategoryOption { name: string; count: number; alphabet_key: string | null }
     interface PendingImage extends OptimizedImage { token: string; objectUrl: string }
     interface SaveResult extends LoadResult {
       blobSha?: string; url?: string; uploadedKeys?: string[]; deletedKeys?: string[]; warnings?: string[];
@@ -778,7 +778,6 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     async function openCategoryPicker() {
       categoryPicker.hidden = !categoryPicker.hidden;
       if (categoryPicker.hidden) return;
-      categorySearch.value = '';
       categorySearch.focus();
       try {
         if (!categoryRequest) {
@@ -809,16 +808,18 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         button.type = 'button';
         button.className = 'block min-h-11 w-full rounded-lg px-2 py-2 text-left text-sm text-slate-200 hover:bg-white/5';
         button.textContent = `${option.name} (${option.count})`;
-        button.addEventListener('click', () => addCategory(option.name));
+        button.addEventListener('click', () => addCategory(option));
         return button;
       }));
     }
 
-    function addCategory(category: string) {
-      selectedCategories = normalizeCategories([...selectedCategories, category]);
+    function addCategory(option: CategoryOption) {
+      selectedCategories = normalizeCategories([...selectedCategories, option.name]);
+      const letter = field('letter');
+      if (!letter.value.trim() && option.alphabet_key) letter.value = option.alphabet_key;
       renderSelectedCategories();
-      categorySearch.value = '';
       renderCategoryChoices();
+      categoryPicker.hidden = true;
     }
 
     function updateContentChecks() {
