@@ -44,12 +44,12 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     </section>
 
     <section class="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-      <div class="flex flex-wrap items-center justify-between gap-3"><h2 class="font-display text-xl font-bold text-white">HY source</h2><span class="text-xs text-slate-400">Read only</span></div>
+      <div class="flex flex-wrap items-center justify-between gap-3"><h2 class="font-display text-xl font-bold text-white">HY source</h2><div class="flex items-center gap-3"><span class="text-xs text-slate-400">Read only</span><button data-source-toggle type="button" aria-expanded="false" aria-controls="hy-source-fields" class="min-h-11 rounded-xl border border-white/10 px-3 text-sm font-semibold text-slate-200 hover:bg-white/5">Show HY source</button></div></div>
       <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
         <div><dt class="text-slate-400">Revision</dt><dd data-source-revision class="mt-1 text-slate-200"></dd></div>
         <div><dt class="text-slate-400">Fingerprint</dt><dd data-source-fingerprint class="mt-1 break-all font-mono text-xs text-slate-300"></dd></div>
       </dl>
-      <div data-source-fields class="mt-5"></div>
+      <div id="hy-source-fields" data-source-fields hidden class="mt-5" aria-label="Read-only HY source"></div>
     </section>
 
     <section class="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
@@ -67,7 +67,15 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
           <textarea data-draft-field="content" rows="12" class="w-full rounded-xl border border-white/10 bg-night-950 p-3 font-mono text-white"></textarea>
         </div>
         <details class="rounded-xl border border-white/10 bg-night-950/40 p-3"><summary class="cursor-pointer text-sm font-semibold text-slate-200">Advanced: Image alts JSON</summary><label class="mt-3 block"><span class="mb-1 block text-sm font-semibold text-white">Image alts (JSON object)</span><textarea data-draft-field="image_alts" rows="4" class="w-full rounded-xl border border-white/10 bg-night-950 p-3 font-mono text-white"></textarea></label></details>
-        <label class="block"><span class="mb-1 block text-sm font-semibold text-white">Tags (JSON string array)</span><textarea data-draft-field="tags" rows="3" class="w-full rounded-xl border border-white/10 bg-night-950 p-3 font-mono text-white"></textarea></label>
+        <fieldset class="min-w-0">
+          <legend class="mb-2 text-sm font-semibold text-white">Tags</legend>
+          <ul data-tag-chips aria-label="Localized tags" class="mb-2 flex flex-wrap gap-2"></ul>
+          <label for="translation-tag" class="mb-1 block text-sm text-slate-300">Add a localized tag</label>
+          <div class="flex gap-2"><input id="translation-tag" data-tag-input type="text" autocomplete="off" aria-describedby="tag-help tag-message" class="min-h-11 min-w-0 flex-1 rounded-xl border border-white/10 bg-night-950 px-3 text-white" /><button data-tag-add type="button" class="min-h-11 rounded-xl border border-white/10 px-3 text-sm font-semibold text-slate-200 hover:bg-white/5">Add tag</button></div>
+          <p id="tag-help" class="mt-2 text-xs text-slate-400">Press Enter or Add tag to add it before saving. Tags are optional.</p>
+          <p id="tag-message" data-tag-message class="mt-2 text-sm text-slate-300" role="status"></p>
+          <input data-draft-field="tags" type="hidden" value="[]" />
+        </fieldset>
         <label class="block"><span class="mb-1 block text-sm font-semibold text-white">Alphabet key</span><input data-draft-field="alphabet_key" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-white" /></label>
         <button data-use-alphabet type="button" hidden class="min-h-11 rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/5">Use suggestion</button>
         <p data-form-error hidden class="rounded-xl border border-rose-400/30 bg-rose-500/10 p-3 text-sm text-rose-200"></p>
@@ -168,6 +176,10 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     const managedImageError = document.querySelector<HTMLElement>('[data-managed-image-error]')!;
     const managedImageInsert = document.querySelector<HTMLButtonElement>('[data-managed-image-insert]')!;
     const writeError = document.querySelector<HTMLElement>('[data-write-error]')!;
+    const sourceToggle = document.querySelector<HTMLButtonElement>('[data-source-toggle]')!;
+    const tagInput = document.querySelector<HTMLInputElement>('[data-tag-input]')!;
+    const tagChips = document.querySelector<HTMLElement>('[data-tag-chips]')!;
+    const tagMessage = document.querySelector<HTMLElement>('[data-tag-message]')!;
     type EditablePayload = Omit<Payload, 'version' | 'published_at'>;
     let draftBuffer: EditablePayload | null = null;
     let draftBaseline = '';
@@ -241,7 +253,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     function emptyDraft(): EditablePayload { return { slug: '', title: '', description: null, content: '', image_alts: {}, tags: [], alphabet_key: null }; }
     function copyDraft(payload: Payload): EditablePayload { return { slug: payload.slug, title: payload.title, description: payload.description, content: payload.content, image_alts: structuredClone(payload.image_alts), tags: [...payload.tags], alphabet_key: payload.alphabet_key }; }
     function serializeDraft(value: EditablePayload) { return JSON.stringify(value); }
-    function isDirty() { return draftBuffer !== null && serializeDraft(draftBuffer) !== draftBaseline; }
+    function isDirty() { return draftBuffer !== null && (serializeDraft(draftBuffer) !== draftBaseline || !formError.hidden); }
     function updateDirty() { const dirty = isDirty(); dirtyIndicator.hidden = !dirty; window.onbeforeunload = dirty ? (event) => { event.preventDefault(); event.returnValue = ''; } : null; updateDraftAction(); }
     function updateDraftAction() {
       draftAction.disabled = saving || writeBlocked || !isDirty() || formError.hidden === false;
@@ -290,9 +302,41 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       if (!draftBuffer) return;
       const get = (name: string) => document.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-draft-field="${name}"]`)!.value;
       const imageAlts = parseJsonField(get('image_alts'), {}); const tags = parseJsonField(get('tags'), []);
-      if (!imageAlts || typeof imageAlts !== 'object' || Array.isArray(imageAlts) || !Object.values(imageAlts).every((value) => typeof value === 'string') || !Array.isArray(tags) || !tags.every((value) => typeof value === 'string')) { formError.textContent = 'Image alts must be a JSON object of strings and tags a JSON string array.'; formError.hidden = false; return; }
-      if (!locallyValidSlug(get('slug')) || !locallyValidAlphabet(get('alphabet_key'))) { formError.textContent = 'Slug or alphabet key has an invalid shape for this locale.'; formError.hidden = false; return; }
+      if (!imageAlts || typeof imageAlts !== 'object' || Array.isArray(imageAlts) || !Object.values(imageAlts).every((value) => typeof value === 'string') || !Array.isArray(tags) || !tags.every((value) => typeof value === 'string')) { formError.textContent = 'Image alts must be a JSON object of strings and tags a JSON string array.'; formError.hidden = false; updateDirty(); return; }
+      if (!locallyValidSlug(get('slug')) || !locallyValidAlphabet(get('alphabet_key'))) { formError.textContent = 'Slug or alphabet key has an invalid shape for this locale.'; formError.hidden = false; updateDirty(); return; }
+      if (tagInput.value.length) { formError.textContent = 'Add or clear the pending tag before saving.'; formError.hidden = false; updateDirty(); return; }
       formError.hidden = true; draftBuffer = { slug: get('slug'), title: get('title'), description: get('description') || null, content: get('content'), image_alts: imageAlts as Record<string, string>, tags, alphabet_key: get('alphabet_key') || null }; updateDirty();
+    }
+    function renderTags() {
+      tagChips.replaceChildren();
+      for (const [index, tag] of (draftBuffer?.tags ?? []).entries()) {
+        const chip = document.createElement('li'); chip.className = 'flex max-w-full items-center gap-2 rounded-xl border border-white/10 bg-night-950 pl-3';
+        const label = document.createElement('span'); label.className = 'min-w-0 break-words text-sm text-white'; label.textContent = tag;
+        const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'min-h-11 min-w-11 rounded-xl text-slate-300 hover:bg-white/5'; remove.textContent = '×'; remove.setAttribute('aria-label', `Remove tag: ${tag}`); remove.disabled = saving;
+        remove.addEventListener('click', () => {
+          if (!draftBuffer || saving) return;
+          draftBuffer.tags.splice(index, 1); commitTags();
+          const remaining = tagChips.querySelectorAll<HTMLButtonElement>('button');
+          (remaining[Math.min(index, remaining.length - 1)] ?? tagInput).focus();
+          tagMessage.textContent = `Removed tag: ${tag}`;
+        });
+        chip.append(label, remove); tagChips.append(chip);
+      }
+    }
+    function commitTags() {
+      if (!draftBuffer) return;
+      document.querySelector<HTMLInputElement>('[data-draft-field="tags"]')!.value = JSON.stringify(draftBuffer.tags);
+      renderTags(); syncDraftFromForm();
+    }
+    function addTag() {
+      if (!draftBuffer || saving) return;
+      const tag = tagInput.value.trim();
+      if (!tag || draftBuffer.tags.includes(tag)) {
+        tagMessage.textContent = tag ? 'This tag is already present.' : 'Enter a non-empty tag.';
+        tagInput.focus(); return;
+      }
+      draftBuffer.tags.push(tag); tagInput.value = ''; commitTags();
+      tagMessage.textContent = `Added tag: ${tag}`; tagInput.focus();
     }
     function validLinkIndex(value: unknown): value is TranslationLinkRecord[] {
       return Array.isArray(value) && value.every((row) => !!row && typeof row === 'object' && CONTENT_ID_RE.test((row as TranslationLinkRecord).content_id)
@@ -432,7 +476,8 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     }
     function writeBufferToForm(buffer: EditablePayload) {
       for (const name of ['slug', 'title', 'description', 'content', 'alphabet_key']) document.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-draft-field="${name}"]`)!.value = String(buffer[name as keyof EditablePayload] ?? '');
-      document.querySelector<HTMLTextAreaElement>('[data-draft-field="image_alts"]')!.value = JSON.stringify(buffer.image_alts, null, 2); document.querySelector<HTMLTextAreaElement>('[data-draft-field="tags"]')!.value = JSON.stringify(buffer.tags, null, 2);
+      document.querySelector<HTMLTextAreaElement>('[data-draft-field="image_alts"]')!.value = JSON.stringify(buffer.image_alts, null, 2); document.querySelector<HTMLInputElement>('[data-draft-field="tags"]')!.value = JSON.stringify(buffer.tags);
+      tagInput.value = ''; tagMessage.textContent = ''; renderTags();
     }
     function safeWriteMessage(code: unknown) {
       if (code === 'STALE_EDITOR') return 'This translation changed elsewhere. Reload and compare your local text before saving again.';
@@ -575,6 +620,15 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       editor.hidden = false; status.hidden = true;
     }
     document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('[data-draft-field]').forEach((field) => field.addEventListener('input', syncDraftFromForm));
+    sourceToggle.addEventListener('click', () => {
+      const source = document.querySelector<HTMLElement>('[data-source-fields]')!;
+      source.hidden = !source.hidden; sourceToggle.setAttribute('aria-expanded', String(!source.hidden));
+      sourceToggle.textContent = source.hidden ? 'Show HY source' : 'Hide HY source';
+    });
+    document.querySelector<HTMLButtonElement>('[data-tag-add]')!.addEventListener('click', addTag);
+    tagInput.addEventListener('input', () => { tagMessage.textContent = ''; syncDraftFromForm(); });
+    tagInput.addEventListener('keydown', (event) => { if (event.key === 'Enter' && !event.isComposing) { event.preventDefault(); addTag(); } });
+    draftForm.addEventListener('submit', (event) => event.preventDefault());
     internalLinkAction.addEventListener('click', () => { void openInternalLinkDialog(); });
     internalLinkClose.addEventListener('click', closeInternalLinkDialog);
     internalLinkCancel.addEventListener('click', closeInternalLinkDialog);

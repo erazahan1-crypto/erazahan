@@ -71,13 +71,18 @@ const claims = readRegistry(CLAIMS_PATH, validateLocaleDraftSlugClaims, 'claims'
 const repository = scanContentStore(STORE_PATH);
 const real = auditRegistryState(repository, reservations, claims);
 
-assert.equal(repository.counts.hy_documents, 5800);
-assert.equal(repository.counts.ru_documents, 0);
-assert.equal(repository.counts.en_documents, 0);
-assert.equal(real.documents.filter(({ document }) => document.published).length, 0);
-assert.equal(real.documents.filter(({ document }) => document.draft).length, 0);
-assert.equal(reservations.reservations.length, 0);
-assert.equal(claims.claims.length, 0);
+assert.ok(repository.records.length > 0, 'canonical store is not empty');
+assert.equal(repository.counts.hy_documents, repository.records.length, 'every canonical record has HY coverage');
+for (const locale of ['ru', 'en']) {
+  assert.equal(repository.counts[`${locale}_documents`], real.documents.filter((entry) => entry.locale === locale).length);
+}
+// The audit above verifies both directions of ownership, including orphan/stale
+// entries. Published locales require active reservations; only draft-only locales
+// require claims. PUBLISHED_WITH_DRAFT continues to use its permanent reservation.
+const published = real.documents.filter(({ document }) => document.published);
+const draftOnly = real.documents.filter(({ document }) => !document.published && document.draft);
+assert.equal(real.active.size, published.length, 'one active reservation per published locale');
+assert.equal(real.claimBySlug.size, draftOnly.length, 'one claim per draft-only locale');
 
 const publishedRu = { locale: 'ru', content_id: A, document: { published: { slug: 'ворона' }, draft: null } };
 const draftOnlyRu = { locale: 'ru', content_id: A, document: { published: null, draft: { slug: 'ворона' } } };
