@@ -3,7 +3,10 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { sourceFingerprintV1 } from '../../src/lib/content-schema/fingerprint.mjs';
+import { publicPathFor } from '../../src/lib/content-schema/multilingual-contract.mjs';
+import { isRuntimeLocaleIndexingAllowed } from '../../src/lib/indexing-policy.mjs';
 import { scanContentStore } from '../../src/lib/content-source/multilingual-store.mjs';
+import { listPublishedLocaleEntries } from '../../src/lib/content-source/published-content.mjs';
 import { escapeSitemapXmlText, listPublishedDreamSitemapEntries } from '../../src/lib/content-source/published-sitemaps.mjs';
 
 const A = 'efa61838-86c8-56b8-815c-0a38b0a83242';
@@ -54,8 +57,18 @@ try {
   assert.throws(() => listPublishedDreamSitemapEntries(scanContentStore(fixture()), 'de'));
   assert.equal(escapeSitemapXmlText(`a&<b>"'`), 'a&amp;&lt;b&gt;&quot;&apos;');
   const real = scanContentStore('src/data/content/dreams'); const realHy = listPublishedDreamSitemapEntries(real, 'hy');
-  assert.equal(realHy.length, 5800); assert.equal(listPublishedDreamSitemapEntries(real, 'ru').length, 0); assert.deepEqual(listPublishedDreamSitemapEntries(real, 'en').map((entry) => entry.path), ['/en/tar-musical-instrument-dream-meaning/']);
-  const sitemapUrls = new Set([...readFileSync('dist/sitemap-hy.xml', 'utf8').matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => decodeURI(new URL(match[1]).pathname)));
-  assert.equal(realHy.every(({ path: publicPath }) => sitemapUrls.has(publicPath)), true);
+  assert.equal(realHy.length, 5800);
+  for (const locale of ['ru', 'en']) {
+    const expected = listPublishedLocaleEntries(real, locale);
+    const entries = listPublishedDreamSitemapEntries(real, locale);
+    assert.equal(entries.length, expected.length, `${locale} has exactly one sitemap entry per published locale document`);
+    assert.equal(new Set(entries.map((entry) => entry.path)).size, entries.length, `${locale} sitemap paths are unique`);
+    assert.deepEqual(entries.map((entry) => ({ content_id: entry.content_id, locale: entry.locale, path: entry.path })), expected.map((entry) => ({ content_id: entry.content_id, locale, path: entry.path })).sort((left, right) => left.path.localeCompare(right.path, 'en')), `${locale} sitemap projection uses published locale ownership and canonical paths`);
+    for (const entry of entries) assert.equal(entry.path, publicPathFor(locale, entry.path.split('/').filter(Boolean).at(-1)), `${locale} sitemap path stays locale-scoped`);
+  }
+  const sitemapPaths = [...readFileSync('dist/sitemap-hy.xml', 'utf8').matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => decodeURI(new URL(match[1]).pathname));
+  const expectedSitemapPaths = isRuntimeLocaleIndexingAllowed('hy') ? realHy.map((entry) => entry.path) : [];
+  assert.equal(new Set(sitemapPaths).size, sitemapPaths.length, 'serialized HY sitemap paths are unique');
+  assert.deepEqual([...new Set(sitemapPaths)].sort(), [...expectedSitemapPaths].sort(), 'serialized HY sitemap matches current indexing eligibility and canonical published paths');
   console.log('MULTILINGUAL SITEMAP PROJECTION PASS');
 } finally { for (const root of roots) rmSync(root, { recursive: true, force: true }); }

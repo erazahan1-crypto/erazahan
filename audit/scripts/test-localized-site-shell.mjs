@@ -1,11 +1,21 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { localeNavigation, localeSearch } from '../../src/lib/public-locale.mjs';
+import { localeNavigation, localeSearch, localeUiCopy } from '../../src/lib/public-locale.mjs';
+import { isRuntimeLocaleIndexingAllowed } from '../../src/lib/indexing-policy.mjs';
+import { scanContentStore } from '../../src/lib/content-source/multilingual-store.mjs';
+import { listPublishedLocaleEntries } from '../../src/lib/content-source/published-content.mjs';
 import { loadPublishedLocaleAvailability } from '../../src/lib/content-source/published-locale-availability.mjs';
 
 const read = (file) => readFileSync(file, 'utf8');
-const localizedIndexingReleased = process.env.PUBLIC_ALLOW_INDEXING === 'true'
-  && process.env.PUBLIC_ALLOW_LOCALIZED_INDEXING === 'true';
+const origin = 'https://erazahan.info';
+function assertCanonicalPath(html, expectedPath, label) {
+  const match = html.match(/<link rel="canonical" href="([^"]+)">/);
+  assert.ok(match, `${label} has a canonical URL`);
+  const canonical = new URL(match[1]);
+  assert.equal(canonical.origin, origin, `${label} canonical URL uses the public origin`);
+  assert.equal(decodeURIComponent(canonical.pathname), expectedPath, `${label} canonical URL uses the canonical public path`);
+}
+const localizedIndexingReleased = isRuntimeLocaleIndexingAllowed('en');
 const layout = read('src/layouts/Layout.astro');
 const header = read('src/components/Header.astro');
 const footer = read('src/components/Footer.astro');
@@ -36,11 +46,14 @@ for (const forbidden of ['scanContentStore', 'listPublishedLocaleEntries', 'drea
 
 const enAvailability = loadPublishedLocaleAvailability('en');
 const ruAvailability = loadPublishedLocaleAvailability('ru');
-assert.equal(enAvailability.available, true);
-assert.deepEqual(enAvailability.entries.map((entry) => ({ title: entry.published.title, path: entry.path })), [
-  { title: 'Tar Musical Instrument Dream Meaning', path: '/en/tar-musical-instrument-dream-meaning/' },
-]);
-assert.equal(ruAvailability.available, false);
+const canonicalRepository = scanContentStore('src/data/content/dreams');
+for (const [locale, availability] of [['ru', ruAvailability], ['en', enAvailability]]) {
+  const expected = listPublishedLocaleEntries(canonicalRepository, locale);
+  assert.equal(availability.available, expected.length > 0, `${locale} availability follows published locale documents`);
+  assert.deepEqual(availability.entries.map((entry) => ({ content_id: entry.content_id, title: entry.published.title, path: entry.path })), expected.map((entry) => ({ content_id: entry.content_id, title: entry.published.title, path: entry.path })), `${locale} availability uses current published locale snapshots`);
+  assert.equal(new Set(availability.entries.map((entry) => entry.path)).size, availability.entries.length, `${locale} availability paths are unique`);
+  assert.equal(availability.entries.every((entry) => entry.locale === locale && entry.path.startsWith(`/${locale}/`)), true, `${locale} availability has no wrong-locale entries`);
+}
 
 assert.deepEqual(localeNavigation('ru'), [
   { id: 'home', label: 'Главная', href: '/ru/' },
@@ -84,26 +97,37 @@ for (const page of generated) {
   for (const forbidden of ['href="/"', 'action="/search"', '/erazahan-online/', '/api/published-dreams', 'data-featured-dreams-mount', 'application/ld+json', 'https://erazahan.info/search?q=']) {
     assert.equal(html.includes(forbidden), false, `${page.locale} generated home excludes HY-only ${forbidden}`);
   }
+  const availability = page.locale === 'ru' ? ruAvailability : enAvailability;
+  if (availability.available) {
+    assert.equal(html.includes(localeUiCopy(page.locale).empty.unavailable), false, `${page.locale} home does not show an unavailable message when published pages exist`);
+    for (const entry of availability.entries) {
+      assert.ok(html.includes(`href="${entry.path}"`), `${page.locale} home links to each published locale page`);
+      assert.ok(html.includes(entry.published.title), `${page.locale} home uses each published locale title`);
+    }
+  } else assert.ok(html.includes(localeUiCopy(page.locale).empty.unavailable), `${page.locale} home shows the localized unavailable message without published pages`);
 }
 
 const hy = read('dist/index.html');
 assert.match(hy, /<script type="application\/ld\+json">/);
 assert.match(hy, /https:\/\/erazahan\.info\/search\?q=\{search_term_string\}/);
-assert.equal(hy.includes('<meta name="robots" content="noindex, nofollow">'), false, 'production HY output remains indexable when PUBLIC_ALLOW_INDEXING=true');
-
-const enHome = read('dist/en/index.html');
-assert.equal(enHome.includes('Not available in this language yet.'), false, 'EN home and footer do not claim published content is unavailable');
-assert.match(enHome, /href="\/en\/tar-musical-instrument-dream-meaning\/"[^>]*>Tar Musical Instrument Dream Meaning<\/a>/);
-assert.match(enHome, /Published dream meanings are available in English\./);
-
-const ruHome = read('dist/ru/index.html');
-assert.ok(ruHome.includes('\u041d\u0430 \u044d\u0442\u043e\u043c \u044f\u0437\u044b\u043a\u0435 \u043f\u043e\u043a\u0430 \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u043e.'), 'RU home and footer retain their zero-content state');
-
-const enDream = read('dist/en/tar-musical-instrument-dream-meaning/index.html');
-if (localizedIndexingReleased) {
-  assert.doesNotMatch(enDream, /<meta name="robots" content=/, 'published EN dream is not centrally blocked after localized release');
+assertCanonicalPath(hy, '/', 'HY home');
+if (isRuntimeLocaleIndexingAllowed('hy')) {
+  assert.equal(hy.includes('<meta name="robots" content="noindex, nofollow">'), false, 'HY output is indexable when runtime HY indexing is enabled');
 } else {
-  assert.match(enDream, /<meta name="robots" content="noindex, nofollow">/);
+  assert.equal(hy.includes('<meta name="robots" content="noindex, nofollow">'), true, 'HY output is fail-closed when runtime HY indexing is disabled');
+}
+
+for (const [locale, availability] of [['ru', ruAvailability], ['en', enAvailability]]) {
+  for (const entry of availability.entries) {
+    const dream = read(`dist${entry.path}index.html`);
+    if (localizedIndexingReleased) {
+      assert.doesNotMatch(dream, /<meta name="robots" content=/, `${locale} published dream is not centrally blocked after localized release`);
+    } else {
+      assert.match(dream, /<meta name="robots" content="noindex, nofollow">/);
+    }
+    assertCanonicalPath(dream, entry.path, `${locale} published dream`);
+    assert.ok(dream.includes(entry.published.title), `${locale} public page uses its published title`);
+  }
 }
 
 for (const file of ['dist/en/search/index.html', 'dist/ru/search/index.html']) {

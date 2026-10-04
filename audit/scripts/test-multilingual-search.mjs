@@ -4,7 +4,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { sourceFingerprintV1 } from '../../src/lib/content-schema/fingerprint.mjs';
 import { publicPathFor } from '../../src/lib/content-schema/multilingual-contract.mjs';
-import { listPublishedSearchEntries } from '../../src/lib/content-source/published-search.mjs';
+import { listPublishedLocaleEntries } from '../../src/lib/content-source/published-content.mjs';
+import { listPublishedSearchEntries, projectPublishedSearchEntry } from '../../src/lib/content-source/published-search.mjs';
 import { scanContentStore } from '../../src/lib/content-source/multilingual-store.mjs';
 import { plainTextFromPostContent } from '../../src/lib/render-post-content.ts';
 
@@ -164,12 +165,28 @@ try {
   }
   {
     const repository = scanContentStore('src/data/content/dreams');
-    const actual = JSON.parse(readFileSync('dist/search-index.json', 'utf8'));
-    const hy = listPublishedSearchEntries(repository, 'hy');
-    assert.equal(hy.length, 5800);
-    assert.equal(listPublishedSearchEntries(repository, 'ru').length, 0);
-    assert.equal(listPublishedSearchEntries(repository, 'en').length, 0);
-    assert.deepEqual(hy, actual, 'HY logical search projection exactly matches the current public index');
+    for (const locale of ['hy', 'ru', 'en']) {
+      const published = listPublishedLocaleEntries(repository, locale);
+      const expected = listPublishedSearchEntries(repository, locale);
+      const indexFile = locale === 'hy' ? 'dist/search-index.json' : `dist/${locale}/search-index.json`;
+      const actual = JSON.parse(readFileSync(indexFile, 'utf8'));
+
+      assert.deepEqual(actual, expected, `${locale} logical search projection exactly matches the current public index`);
+      assert.equal(actual.length, published.length, `${locale} search has one entry per published locale document`);
+      assert.equal(new Set(published.map((entry) => entry.content_id)).size, published.length, `${locale} published search ownership has no duplicate content IDs`);
+      assert.equal(new Set(published.map((entry) => entry.slug)).size, published.length, `${locale} published locale records have no duplicate slugs`);
+      assert.equal(new Set(actual.map((entry) => entry.slug)).size, actual.length, `${locale} search index has no duplicate slugs`);
+      const actualBySlug = new Map(actual.map((entry) => [entry.slug, entry]));
+      for (const source of published) {
+        const entry = actualBySlug.get(source.slug);
+        assert.ok(entry, `${locale}/${source.content_id} published record is present in the search index`);
+        assert.equal(source.locale, locale, `${locale}/${source.content_id} published record retains its locale`);
+        assert.equal(entry.slug, source.slug, `${locale}/${source.content_id} search uses the published slug`);
+        assert.equal(entry.title, source.published.title, `${locale}/${source.content_id} search uses the published title`);
+        assert.equal(entry.letter, source.published.alphabet_key, `${locale}/${source.content_id} search uses the published alphabet key`);
+        assert.deepEqual(entry, projectPublishedSearchEntry(source), `${locale}/${source.content_id} search entry belongs to the canonical published record`);
+      }
+    }
   }
   console.log('MULTILINGUAL SEARCH FOUNDATION PASS');
 } finally {

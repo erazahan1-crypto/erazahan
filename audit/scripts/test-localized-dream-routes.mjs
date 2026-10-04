@@ -59,16 +59,23 @@ try {
   { const fixture = root(); add(fixture, A, { ru: published('ru', 'safe') }); const target = `${A.slice(0, 2)}/${A}/ru.json`; const doc = JSON.parse(readFileSync(path.join(fixture, target), 'utf8')); doc.content_id = B; write(fixture, target, doc); assert.throws(() => listLocalizedDreamRouteEntries(scanContentStore(fixture), 'ru'), MultilingualStoreValidationError); }
   {
     const real = scanContentStore('src/data/content/dreams');
-    assert.equal(listLocalizedDreamRouteEntries(real, 'ru').length, 0);
-    const enRoutes = listLocalizedDreamRouteEntries(real, 'en');
-    assert.deepEqual(enRoutes.map((route) => ({ path: route.path, title: route.entry.published.title })), [
-      { path: '/en/tar-musical-instrument-dream-meaning/', title: 'Tar Musical Instrument Dream Meaning' },
-    ]);
+    const routesByLocale = new Map(['ru', 'en'].map((locale) => [locale, listLocalizedDreamRouteEntries(real, locale)]));
+    for (const locale of ['ru', 'en']) {
+      const expected = listPublishedLocaleEntries(real, locale);
+      const routes = routesByLocale.get(locale);
+      assert.equal(routes.length, expected.length, `${locale} has exactly one route for each published locale document`);
+      assert.equal(new Set(routes.map((route) => route.path)).size, routes.length, `${locale} routes are unique`);
+      assert.deepEqual(routes.map((route) => ({ content_id: route.entry.content_id, slug: route.slug, path: route.path, title: route.entry.published.title })), expected.map((entry) => ({ content_id: entry.content_id, slug: entry.slug, path: publicPathFor(locale, entry.slug), title: entry.published.title })), `${locale} routes use the published locale snapshot and canonical public path`);
+      for (const route of routes) {
+        assert.equal(route.entry.locale, locale, `${locale} route does not leak another locale`);
+        assert.equal(route.path, publicPathFor(locale, route.slug), `${locale} route uses its published slug`);
+      }
+    }
     const hy = listPublishedLocaleEntries(real, 'hy');
     assert.equal(hy.length, 5800);
     assert.equal(hy.filter((entry) => entry.path !== publicPathFor('hy', entry.slug)).length, 0);
-    assertLocaleLetterOutput(path.resolve('dist'), 'ru', listPublishedAlphabetGroups(real, 'ru'), ['o-proekte']);
-    assertLocaleLetterOutput(path.resolve('dist'), 'en', listPublishedAlphabetGroups(real, 'en'), ['about'], enRoutes.map((route) => route.slug));
+    assertLocaleLetterOutput(path.resolve('dist'), 'ru', listPublishedAlphabetGroups(real, 'ru'), ['o-proekte'], routesByLocale.get('ru').map((route) => route.slug));
+    assertLocaleLetterOutput(path.resolve('dist'), 'en', listPublishedAlphabetGroups(real, 'en'), ['about'], routesByLocale.get('en').map((route) => route.slug));
   }
   {
     const output = root();

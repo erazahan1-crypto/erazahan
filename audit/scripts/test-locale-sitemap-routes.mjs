@@ -3,7 +3,9 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { sourceFingerprintV1 } from '../../src/lib/content-schema/fingerprint.mjs';
+import { isRuntimeLocaleIndexingAllowed } from '../../src/lib/indexing-policy.mjs';
 import { scanContentStore } from '../../src/lib/content-source/multilingual-store.mjs';
+import { listPublishedLocaleEntries } from '../../src/lib/content-source/published-content.mjs';
 import { listPublishedDreamSitemapEntries } from '../../src/lib/content-source/published-sitemaps.mjs';
 import { listLocaleSitemapEntries, serializeSitemapXml } from '../../src/lib/content-source/locale-sitemap-xml.mjs';
 
@@ -12,8 +14,6 @@ const roots = [];
 const origin = 'https://erazahan.info';
 const preReleaseIndexing = { PUBLIC_ALLOW_INDEXING: 'true', PUBLIC_ALLOW_LOCALIZED_INDEXING: 'false' };
 const releasedIndexing = { PUBLIC_ALLOW_INDEXING: 'true', PUBLIC_ALLOW_LOCALIZED_INDEXING: 'true' };
-const localizedIndexingReleased = process.env.PUBLIC_ALLOW_INDEXING === 'true'
-  && process.env.PUBLIC_ALLOW_LOCALIZED_INDEXING === 'true';
 const payload = (locale, slug, fingerprint, extra = {}) => ({ slug, title: `${locale} title`, description: null, content: `<p>${locale}</p>`, image_alts: {}, tags: [], alphabet_key: null, based_on_source_revision: locale === 'hy' ? null : 1, based_on_source_fingerprint: locale === 'hy' ? null : fingerprint, ...extra });
 const published = (locale, slug, extra = {}) => (fingerprint) => ({ draft: null, published: { ...payload(locale, slug, fingerprint, extra), version: 1, published_at: '2026-09-14' } });
 const draft = (locale, slug) => (fingerprint) => ({ draft: payload(locale, slug, fingerprint), published: null });
@@ -61,14 +61,26 @@ try {
   const ru = readFileSync('dist/sitemap-ru.xml', 'utf8');
   const en = readFileSync('dist/sitemap-en.xml', 'utf8');
   const real = scanContentStore('src/data/content/dreams');
-  assert.deepEqual(listPublishedDreamSitemapEntries(real, 'en').map((entry) => entry.path), ['/en/tar-musical-instrument-dream-meaning/']);
+  const publishedPaths = (locale) => listPublishedLocaleEntries(real, locale).map((entry) => entry.path).sort();
+  for (const locale of ['ru', 'en']) {
+    const paths = publishedPaths(locale); const entries = listPublishedDreamSitemapEntries(real, locale);
+    assert.equal(new Set(paths).size, paths.length, `${locale} published paths are unique`);
+    assert.deepEqual(entries.map((entry) => entry.path), paths, `${locale} sitemap projection matches canonical published locale paths`);
+    assert.equal(entries.every((entry) => entry.locale === locale && entry.path.startsWith(`/${locale}/`)), true, `${locale} projection has no wrong-locale paths`);
+  }
   assert.deepEqual(listLocaleSitemapEntries(real, 'en', { indexingConfig: preReleaseIndexing }), []);
-  const dreamPaths = new Set(listPublishedDreamSitemapEntries(real, 'hy').map((entry) => entry.path));
-  assert.equal(xmlUrls(hy).length, 5920); assert.equal(xmlUrls(ru).length, 0);
-  assert.equal(xmlUrls(en).length, localizedIndexingReleased ? 1 : 0);
-  assert.equal(en.includes('https://erazahan.info/en/tar-musical-instrument-dream-meaning/'), localizedIndexingReleased);
-  assert.equal(publicPaths(hy).filter((publicPath) => dreamPaths.has(publicPath)).length, 5800);
-  assert.equal(publicPaths(hy).filter((publicPath) => !dreamPaths.has(publicPath)).length, 120);
+  const canonicalHyDreamPaths = listPublishedDreamSitemapEntries(real, 'hy').map((entry) => entry.path);
+  const canonicalHyDreamSet = new Set(canonicalHyDreamPaths);
+  const artifactPaths = { hy: publicPaths(hy), ru: publicPaths(ru), en: publicPaths(en) };
+  for (const locale of ['hy', 'ru', 'en']) assert.equal(new Set(artifactPaths[locale]).size, artifactPaths[locale].length, `${locale} serialized sitemap has no duplicate paths`);
+  const expectedHyDreamPaths = isRuntimeLocaleIndexingAllowed('hy') ? canonicalHyDreamPaths : [];
+  assert.deepEqual(artifactPaths.hy.filter((publicPath) => canonicalHyDreamSet.has(publicPath)).sort(), expectedHyDreamPaths, 'HY artifact includes canonical dream paths only when indexing is allowed');
+  if (!isRuntimeLocaleIndexingAllowed('hy')) assert.deepEqual(artifactPaths.hy, [], 'non-indexable local build emits no HY sitemap paths');
+  for (const locale of ['ru', 'en']) {
+    const expected = isRuntimeLocaleIndexingAllowed(locale) ? publishedPaths(locale) : [];
+    assert.deepEqual(artifactPaths[locale].sort(), expected, `${locale} artifact matches indexing eligibility and published paths`);
+    assert.equal(artifactPaths[locale].every((publicPath) => publicPath.startsWith(`/${locale}/`)), true, `${locale} artifact has no wrong-locale paths`);
+  }
   assert.equal(/<sitemapindex\b/u.test(hy + ru + en), false);
   console.log('LOCALE SITEMAP ROUTES PASS');
 } finally { for (const root of roots) rmSync(root, { recursive: true, force: true }); }

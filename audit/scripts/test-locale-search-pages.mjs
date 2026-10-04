@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { scanContentStore } from '../../src/lib/content-source/multilingual-store.mjs';
+import { listPublishedLocaleEntries } from '../../src/lib/content-source/published-content.mjs';
+import { listPublishedSearchEntries } from '../../src/lib/content-source/published-search.mjs';
 import { resultHref, renderSearchResult } from '../../src/lib/search/search-result-renderer.mjs';
 
 const origin = 'https://erazahan.info';
@@ -27,8 +30,22 @@ for (const file of ['dist/sitemap.xml', 'dist/sitemap-hy.xml', 'dist/sitemap-ru.
   const xml = readFileSync(file, 'utf8');
   for (const route of ['/search/', '/ru/search/', '/en/search/']) assert.equal(xml.includes(route), false, `${file} excludes ${route}`);
 }
-assert.deepEqual(JSON.parse(readFileSync('dist/ru/search-index.json', 'utf8')), []);
-assert.deepEqual(JSON.parse(readFileSync('dist/en/search-index.json', 'utf8')), []);
+const canonicalRepository = scanContentStore('src/data/content/dreams');
+for (const locale of ['ru', 'en']) {
+  const published = listPublishedLocaleEntries(canonicalRepository, locale);
+  const expected = listPublishedSearchEntries(canonicalRepository, locale);
+  const serialized = JSON.parse(readFileSync(`dist/${locale}/search-index.json`, 'utf8'));
+  assert.deepEqual(serialized, expected, `${locale} generated search index matches canonical published search projection`);
+  assert.equal(serialized.length, published.length, `${locale} search has one entry per published locale document`);
+  assert.equal(new Set(published.map((entry) => entry.content_id)).size, published.length, `${locale} published search ownership has no duplicate content IDs`);
+  assert.equal(new Set(serialized.map((entry) => entry.slug)).size, serialized.length, `${locale} search index has no duplicate slugs`);
+  for (const [index, entry] of serialized.entries()) {
+    const source = published[index];
+    assert.equal(entry.slug, source.slug, `${locale} search uses the published slug`);
+    assert.equal(entry.title, source.published.title, `${locale} search uses the published title`);
+    assert.equal(entry.letter, source.published.alphabet_key, `${locale} search uses the published alphabet key`);
+  }
+}
 
 const fixture = (slug, title = slug) => ({ slug, title });
 for (const [prefix, valid, invalid, expected] of [

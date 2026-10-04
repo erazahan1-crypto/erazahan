@@ -3,6 +3,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { sourceFingerprintV1 } from '../../src/lib/content-schema/fingerprint.mjs';
+import { listPublishedLocaleEntries } from '../../src/lib/content-source/published-content.mjs';
 import { listPublishedSearchEntries } from '../../src/lib/content-source/published-search.mjs';
 import { scanContentStore } from '../../src/lib/content-source/multilingual-store.mjs';
 import { GET as ruGet, prerender as ruPrerender, serializeSearchIndex as serializeRu } from '../../src/pages/ru/search-index.json.ts';
@@ -59,13 +60,25 @@ function add(rootPath, id, { ru = null, en = null } = {}) {
 
 try {
   assert.equal(ruPrerender, true); assert.equal(enPrerender, true);
-  for (const get of [ruGet, enGet]) {
+  const canonicalRepository = scanContentStore('src/data/content/dreams');
+  for (const [locale, get] of [['ru', ruGet], ['en', enGet]]) {
+    const published = listPublishedLocaleEntries(canonicalRepository, locale);
+    const expected = listPublishedSearchEntries(canonicalRepository, locale);
     const response = get();
     assert.equal(response.headers.get('content-type'), 'application/json');
     const first = await response.text();
-    assert.deepEqual(JSON.parse(first), []);
-    assert.equal(first, '[]');
+    assert.deepEqual(JSON.parse(first), expected, `${locale} route serializes canonical published search entries`);
+    assert.equal(first, JSON.stringify(expected), `${locale} route uses deterministic projection serialization`);
     assert.equal(await get().text(), first);
+    assert.equal(expected.length, published.length, `${locale} projection has one entry per published locale document`);
+    assert.equal(new Set(published.map((entry) => entry.content_id)).size, published.length, `${locale} published entries have unique content IDs`);
+    assert.equal(new Set(expected.map((entry) => entry.slug)).size, expected.length, `${locale} search entries have unique slugs`);
+    for (const [index, entry] of expected.entries()) {
+      const source = published[index];
+      assert.equal(entry.slug, source.slug, `${locale} route uses published slug`);
+      assert.equal(entry.title, source.published.title, `${locale} route uses published title`);
+      assert.equal(entry.letter, source.published.alphabet_key, `${locale} route uses published alphabet key`);
+    }
   }
   {
     const fixture = root(); add(fixture, A, { ru: published('ru', 'публичная-ворона', { title: 'RU TITLE', alphabet_key: 'В', content: '<p>RU CONTENT</p>' }) });
