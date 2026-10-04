@@ -31,12 +31,15 @@ const dashboardData = JSON.stringify(rows).replace(/</g, '\\u003c').replace(/>/g
     <div class="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 px-4 py-3"><p data-count class="text-sm text-slate-400"></p><div class="flex gap-2"><button data-prev type="button" class="min-h-11 rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 disabled:cursor-not-allowed disabled:opacity-40">Назад</button><button data-next type="button" class="min-h-11 rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 disabled:cursor-not-allowed disabled:opacity-40">Далее</button></div></div>
   </section>
 
-  <script define:vars={{ dashboardData }}>
+  <script id="translation-dashboard-data" type="application/json" set:html={dashboardData}></script>
+
+  <script>
     import { translationDashboardSearchText } from '../../../lib/content-source/translation-dashboard.mjs';
     type PublicationState = 'NOT_CREATED' | 'DRAFT' | 'PUBLISHED' | 'PUBLISHED_WITH_DRAFT';
     type LocaleRow = { publication_state: PublicationState; outdated: boolean; draft: { title: string; slug: string } | null; published: { title: string; slug: string; path: string } | null };
     type DashboardRow = { content_id: string; hy: { title: string; slug: string }; ru: LocaleRow; en: LocaleRow };
-    const rows = JSON.parse(dashboardData) as DashboardRow[];
+    const serializedRows = document.querySelector<HTMLScriptElement>('#translation-dashboard-data')!.textContent!;
+    const rows = JSON.parse(serializedRows) as DashboardRow[];
     const PAGE_SIZE = 50;
     const search = document.querySelector<HTMLInputElement>('[data-search]')!;
     const localeFilter = document.querySelector<HTMLSelectElement>('[data-locale]')!;

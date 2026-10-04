@@ -16,9 +16,21 @@ assert.match(dashboard, /'NOT_CREATED' \? 'Создать перевод' : 'Р�
 assert.match(dashboard, /if \(data\.published\).*'Открыть'/s);
 assert.match(dashboard, /new URLSearchParams\(\{ content_id: contentId, locale \}\)/);
 assert.match(dashboard, /translationDashboardSearchText\(row\)/);
+assert.match(dashboard, /<script id="translation-dashboard-data" type="application\/json" set:html=\{dashboardData\}><\/script>/);
+assert.match(dashboard, /<script>\s+import \{ translationDashboardSearchText \}/);
+assert.doesNotMatch(dashboard, /<script define:vars=[\s\S]*?\bimport\s/s, 'a define:vars script cannot contain a raw ES import');
 assert.equal(/fetch\(/.test(dashboard), false, 'dashboard needs no runtime API');
 assert.equal(/method:\s*['"]POST/.test(dashboard), false, 'dashboard cannot write');
 assert.match(layout, /href="\/admin\/translations\/"[^>]*>Переводы/);
+
+const dashboardHtml = readFileSync('dist/admin/translations/index.html', 'utf8');
+assert.match(dashboardHtml, /<script id="translation-dashboard-data" type="application\/json">/, 'dashboard data is serialized separately from executable JavaScript');
+assert.match(dashboardHtml, /<script type="module" src="\/_astro\/[^\"]+\.js"><\/script>/, 'dashboard executable JavaScript is emitted as an Astro module asset');
+for (const script of dashboardHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
+  const [, attributes, content] = script;
+  if (/type="application\/json"/i.test(attributes)) continue;
+  if (/\bimport\s/.test(content)) assert.match(attributes, /type="module"/i, 'raw ES imports are permitted only in module scripts');
+}
 
 const repository = scanContentStore('src/data/content/dreams');
 const rows = projectTranslationDashboard(repository);
