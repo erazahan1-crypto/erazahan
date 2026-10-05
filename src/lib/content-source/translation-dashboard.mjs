@@ -31,6 +31,21 @@ export function projectTranslationDashboard(repository) {
   })));
 }
 
+// Compact companion to the existing HY admin index: IDs follow its unchanged
+// numeric edit identity, and only created translations carry locale metadata.
+// Reuse exactly the dashboard's canonical lifecycle/freshness/URL projection.
+export function projectPostTranslations(repository, posts) {
+  const idsBySlug = new Map(repository.records.map((record) => [record.locales.hy.published.slug, record.content_id]));
+  const content_ids = posts.map((post) => idsBySlug.get(post.slug));
+  if (content_ids.some((id) => !id) || new Set(content_ids).size !== repository.records.length || content_ids.length !== repository.records.length) {
+    throw new Error('Admin posts must match every canonical HY item exactly once');
+  }
+  const locales = Object.fromEntries(LOCALES.map((locale) => [locale, repository.records
+    .filter((record) => record.locales[locale]?.draft || record.locales[locale]?.published)
+    .map((record) => ({ content_id: record.content_id, ...projectLocale(record, locale) }))]));
+  return { content_ids, ...locales };
+}
+
 export function translationDashboardSearchText(row) {
   return [
     row.content_id,

@@ -1,5 +1,11 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
+import posts from '../../../data/posts.json';
+import { scanContentStore } from '../../../lib/content-source/multilingual-store.mjs';
+import { projectPostTranslations } from '../../../lib/content-source/translation-dashboard.mjs';
+
+const translations = projectPostTranslations(scanContentStore('src/data/content/dreams'), posts);
+const translationData = JSON.stringify(translations).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
 ---
 
 <AdminLayout title="Статьи сонника — Админка">
@@ -7,17 +13,20 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     <div>
       <p class="text-sm font-medium text-violet-300">Основной контент</p>
       <h1 class="mt-1 font-display text-3xl font-bold text-white">Статьи сонника</h1>
-      <p class="mt-2 text-sm text-slate-400"><span data-total>5 800</span> существующих статей. Создание и удаление отключены.</p>
+      <p class="mt-2 text-sm text-slate-400"><span data-total>{posts.length.toLocaleString('ru-RU')}</span> статей в выбранном языке. RU / EN показывают только созданные переводы.</p>
     </div>
     <a href="/" class="inline-flex min-h-11 items-center rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-semibold text-slate-200 transition hover:bg-white/10">Открыть сайт</a>
   </div>
 
   <section class="mt-7 grid gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,18rem)_11rem]" aria-label="Поиск и сортировка">
+    <div role="group" aria-label="Язык статей" class="flex gap-2 sm:col-span-3">
+      {(['hy', 'ru', 'en'] as const).map((locale) => <button data-language={locale} type="button" aria-pressed={locale === 'hy' ? 'true' : 'false'} aria-controls="posts-list" class="min-h-11 rounded-xl border border-white/10 px-3 text-sm font-semibold text-slate-300 aria-pressed:border-violet-400 aria-pressed:bg-violet-600 aria-pressed:text-white">{locale.toUpperCase()} <span>{locale === 'hy' ? posts.length : translations[locale].length}</span></button>)}
+    </div>
     <label class="block">
       <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400">Поиск</span>
       <input data-search type="search" autocomplete="off" placeholder="Заголовок или slug" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-white outline-none transition placeholder:text-slate-500 focus:border-violet-400" />
     </label>
-    <label class="block">
+    <label data-category-control class="block">
       <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400">Категория</span>
       <select data-category class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-white outline-none focus:border-violet-400">
         <option value="">Все категории</option>
@@ -39,9 +48,9 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       <div class="hidden grid-cols-[minmax(0,2fr)_minmax(12rem,1fr)_14rem] gap-4 border-b border-white/10 bg-white/5 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400 md:grid">
         <span>Заголовок</span><span>Slug</span><span>Действия</span>
       </div>
-      <div data-list class="divide-y divide-white/10"></div>
+      <div id="posts-list" data-list class="divide-y divide-white/10" lang="hy"></div>
       <div class="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 px-4 py-3">
-        <p data-count class="text-sm text-slate-400"></p>
+        <p data-count class="text-sm text-slate-400" role="status"></p>
         <div class="flex gap-2">
           <button data-prev type="button" class="min-h-11 rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 disabled:cursor-not-allowed disabled:opacity-40">Назад</button>
           <button data-next type="button" class="min-h-11 rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 disabled:cursor-not-allowed disabled:opacity-40">Далее</button>
@@ -50,11 +59,20 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     </div>
   </div>
 
+  <script id="post-translations-data" type="application/json" set:html={translationData}></script>
   <script>
     // @ts-ignore JavaScript search module is shared with the public search page.
     import { rankSearch } from '../../../lib/public-search.mjs';
 
     interface PostRow { id: string; title: string; slug: string; categories: string[] | string | null }
+    type Language = 'hy' | 'ru' | 'en';
+    type PublicationState = 'NOT_CREATED' | 'DRAFT' | 'PUBLISHED' | 'PUBLISHED_WITH_DRAFT';
+    type LocaleRow = { content_id: string; publication_state: PublicationState; outdated: boolean; draft: { title: string; slug: string } | null; published: { title: string; slug: string; path: string } | null };
+    type LocalizedPostRow = PostRow & { translation: LocaleRow };
+    const translations = JSON.parse(document.querySelector<HTMLScriptElement>('#post-translations-data')!.textContent!) as { content_ids: string[]; ru: LocaleRow[]; en: LocaleRow[] };
+    const localizedRows = Object.fromEntries((['ru', 'en'] as const).map((locale) => [locale, translations[locale].map((translation) => ({ id: translation.content_id, ... (translation.draft ?? translation.published)!, categories: null, translation }))])) as Record<'ru' | 'en', LocalizedPostRow[]>;
+    const localeById = { ru: new Map(translations.ru.map((row) => [row.content_id, row])), en: new Map(translations.en.map((row) => [row.content_id, row])) };
+    const stateLabel: Record<PublicationState, string> = { NOT_CREATED: 'Нет', DRAFT: 'Черновик', PUBLISHED: 'Опубликован', PUBLISHED_WITH_DRAFT: 'Опубликован + черновик' };
     const PAGE_SIZE = 50;
     const search = document.querySelector<HTMLInputElement>('[data-search]')!;
     const category = document.querySelector<HTMLSelectElement>('[data-category]')!;
@@ -66,13 +84,27 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     const total = document.querySelector<HTMLElement>('[data-total]')!;
     const prev = document.querySelector<HTMLButtonElement>('[data-prev]')!;
     const next = document.querySelector<HTMLButtonElement>('[data-next]')!;
+    const languageButtons = document.querySelectorAll<HTMLButtonElement>('[data-language]');
+    const categoryControl = document.querySelector<HTMLElement>('[data-category-control]')!;
     let rows: PostRow[] = [];
     let page = 0;
+    let language: Language = 'hy';
+    const filters = { hy: { search: '', category: '', sort: 'source' }, ru: { search: '', category: '', sort: 'source' }, en: { search: '', category: '', sort: 'source' } };
 
     const collator = new Intl.Collator('hy-AM', { sensitivity: 'base', numeric: true });
 
     function filteredRows() {
       const query = search.value.trim();
+      if (language !== 'hy') {
+        const needle = query.toLocaleLowerCase(language);
+        const result = localizedRows[language].filter((row) => !needle || [row.title, row.slug].some((value) => value.toLocaleLowerCase(language).includes(needle)));
+        if (sort.value !== 'source') {
+          const key = sort.value as 'title' | 'slug';
+          const localeCollator = new Intl.Collator(language, { sensitivity: 'base', numeric: true });
+          result.sort((a, b) => localeCollator.compare(a[key], b[key]) || a.id.localeCompare(b.id));
+        }
+        return result;
+      }
       let result = query ? rankSearch(query, rows, rows.length) as PostRow[] : [...rows];
       if (category.value) result = result.filter((row) => normalizeCategories(row.categories).includes(category.value));
       if (sort.value !== 'source') {
@@ -83,6 +115,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     }
 
     function render() {
+      total.textContent = (language === 'hy' ? rows.length : localizedRows[language].length).toLocaleString('ru-RU');
       const result = filteredRows();
       const pages = Math.max(1, Math.ceil(result.length / PAGE_SIZE));
       page = Math.min(page, pages - 1);
@@ -96,6 +129,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     }
 
     function renderRow(row: PostRow) {
+      const translation = language === 'hy' ? null : (row as LocalizedPostRow).translation;
       const article = document.createElement('article');
       article.className = 'grid gap-3 px-4 py-4 md:grid-cols-[minmax(0,2fr)_minmax(12rem,1fr)_14rem] md:items-center md:gap-4 md:px-5';
       const title = document.createElement('strong');
@@ -107,18 +141,53 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       const actions = document.createElement('div');
       actions.className = 'flex flex-wrap gap-2';
       const edit = document.createElement('a');
-      edit.href = `/admin/posts/edit/?id=${encodeURIComponent(row.id)}`;
+      edit.href = translation ? editorUrl(translation.content_id, language as 'ru' | 'en') : `/admin/posts/edit/?id=${encodeURIComponent(row.id)}`;
       edit.className = 'inline-flex min-h-11 items-center rounded-xl bg-violet-600 px-3 text-sm font-semibold text-white hover:bg-violet-500';
       edit.textContent = 'Редактировать';
       const open = document.createElement('a');
-      open.href = `/${encodeURIComponent(row.slug)}/`;
+      open.href = translation ? translation.published?.path ?? '' : `/${encodeURIComponent(row.slug)}/`;
       open.target = '_blank';
       open.rel = 'noopener';
       open.className = 'inline-flex min-h-11 items-center rounded-xl border border-white/10 px-3 text-sm font-semibold text-slate-200 hover:bg-white/5';
       open.textContent = 'Открыть';
-      actions.append(edit, open);
+      actions.append(edit);
+      if (!translation || translation.published) actions.append(open);
+      if (translation) {
+        const state = document.createElement('span');
+        state.className = 'block mt-2 text-xs font-normal text-slate-300';
+        state.lang = 'ru';
+        state.textContent = stateLabel[translation.publication_state];
+        title.append(state);
+        if (translation.outdated) appendFreshness(title);
+      } else {
+        const contentId = translations.content_ids[Number(row.id)];
+        for (const locale of ['ru', 'en'] as const) {
+          const data = localeById[locale].get(contentId);
+          const indicator = document.createElement('a');
+          indicator.href = editorUrl(contentId, locale);
+          indicator.className = 'inline-flex min-h-9 items-center rounded-lg border border-white/10 px-2 text-xs text-slate-300 hover:bg-white/5';
+          indicator.textContent = `${locale.toUpperCase()}: ${stateLabel[data?.publication_state ?? 'NOT_CREATED']}`;
+          indicator.title = `${indicator.textContent} — открыть редактор перевода`;
+          if (data?.outdated) appendFreshness(indicator);
+          actions.append(indicator);
+        }
+      }
+      title.lang = language;
+      actions.lang = 'ru';
       article.append(title, slug, actions);
       return article;
+    }
+
+    function editorUrl(contentId: string, locale: 'ru' | 'en') {
+      return `/admin/translations/edit/?${new URLSearchParams({ content_id: contentId, locale })}`;
+    }
+
+    function appendFreshness(parent: HTMLElement) {
+      const freshness = document.createElement('span');
+      freshness.className = 'ml-1 text-xs font-normal text-amber-200';
+      freshness.lang = 'ru';
+      freshness.textContent = ' · Устарел';
+      parent.append(freshness);
     }
 
     async function load() {
@@ -148,6 +217,20 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     }
 
     let searchTimer = 0;
+    languageButtons.forEach((button) => button.addEventListener('click', () => {
+      clearTimeout(searchTimer);
+      filters[language] = { search: search.value, category: category.value, sort: sort.value };
+      language = button.dataset.language as Language;
+      search.value = filters[language].search;
+      category.value = filters[language].category;
+      sort.value = filters[language].sort;
+      categoryControl.hidden = language !== 'hy';
+      category.disabled = language !== 'hy';
+      list.lang = language;
+      languageButtons.forEach((tab) => tab.setAttribute('aria-pressed', String(tab.dataset.language === language)));
+      page = 0;
+      render();
+    }));
     search.addEventListener('input', () => {
       clearTimeout(searchTimer);
       searchTimer = window.setTimeout(() => { page = 0; render(); }, 120);
