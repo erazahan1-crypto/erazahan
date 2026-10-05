@@ -9,6 +9,7 @@ import {
   hyStorePaths,
   projectExistingHyPostUpdate,
   resolveExistingHyIdentity,
+  validateHyRegistryEntries,
 } from '../../src/lib/content-write/project-hy-post.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -295,6 +296,23 @@ assert.equal(deriveTranslationState(translationAtCurrent, project({ letter: 'Ա'
 
 const posts = JSON.parse(readFileSync(POSTS_PATH, 'utf8'));
 const registry = JSON.parse(readFileSync(REGISTRY_PATH, 'utf8'));
+validateHyRegistryEntries(registry.entries);
+
+// The registry supports both ownership forms: a legacy entry owns its record
+// via `legacy.original_array_index`, while a native entry owns its record via
+// `native.post_index`. Resolve a post-index -> entry map up front and prove
+// ownership is total and unambiguous before auditing the corpus.
+const expectedCount = posts.length;
+assert.ok(expectedCount > 0, 'canonical HY corpus is non-empty');
+const ownersByPostIndex = new Map();
+for (const entry of registry.entries) {
+  const postIndex = entry.legacy?.original_array_index ?? entry.native?.post_index;
+  assert.ok(Number.isInteger(postIndex) && postIndex >= 0, 'registry entry has a valid post index');
+  ownersByPostIndex.set(postIndex, entry);
+}
+assert.equal(ownersByPostIndex.size, registry.entries.length, 'every registry entry owns a distinct post index');
+assert.equal(registry.entries.length, expectedCount, 'registry has exactly one entry per canonical HY post');
+
 const corpus = {
   identity: 0,
   schema: 0,
@@ -309,7 +327,7 @@ const unexpected = [];
 
 for (let postIndex = 0; postIndex < posts.length; postIndex += 1) {
   const currentPost = posts[postIndex];
-  const registryEntry = registry.entries.find((entry) => entry.legacy.original_array_index === postIndex);
+  const registryEntry = ownersByPostIndex.get(postIndex);
   try {
     assert.ok(registryEntry, 'registry entry exists');
     const paths = hyStorePaths(registryEntry.content_id);
@@ -342,11 +360,10 @@ for (let postIndex = 0; postIndex < posts.length; postIndex += 1) {
   }
 }
 
-assert.equal(posts.length, 5800);
-assert.equal(registry.entries.length, 5800);
+assert.equal(ownersByPostIndex.size, expectedCount, 'every canonical HY post index has exactly one registry owner');
 for (const [label, value] of Object.entries(corpus)) {
   if (label === 'drift') assert.equal(value, 0, `${label}: ${JSON.stringify(unexpected.slice(0, 3))}`);
-  else assert.equal(value, 5800, `${label}: ${JSON.stringify(unexpected.slice(0, 3))}`);
+  else assert.equal(value, expectedCount, `${label}: ${JSON.stringify(unexpected.slice(0, 3))}`);
 }
 assert.deepEqual(unexpected, []);
 
@@ -355,12 +372,13 @@ assert.ok(storeFiles.length > 0, 'permanent store exists');
 
 console.log('HY WRITE PROJECTION PASS');
 console.log(JSON.stringify({
-  identity: `${corpus.identity}/5800`,
-  schema: `${corpus.schema}/5800`,
-  fingerprint: `${corpus.fingerprint}/5800`,
-  item_logical: `${corpus.itemLogical}/5800`,
-  hy_logical: `${corpus.hyLogical}/5800`,
-  item_byte_parity: `${corpus.itemBytes}/5800`,
-  hy_byte_parity: `${corpus.hyBytes}/5800`,
+  corpus_size: expectedCount,
+  identity: `${corpus.identity}/${expectedCount}`,
+  schema: `${corpus.schema}/${expectedCount}`,
+  fingerprint: `${corpus.fingerprint}/${expectedCount}`,
+  item_logical: `${corpus.itemLogical}/${expectedCount}`,
+  hy_logical: `${corpus.hyLogical}/${expectedCount}`,
+  item_byte_parity: `${corpus.itemBytes}/${expectedCount}`,
+  hy_byte_parity: `${corpus.hyBytes}/${expectedCount}`,
   unexpected_drift: corpus.drift,
 }, null, 2));

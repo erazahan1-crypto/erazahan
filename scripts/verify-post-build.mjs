@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { scanContentStore } from '../src/lib/content-source/multilingual-store.mjs';
@@ -38,18 +39,36 @@ function assertUrlset(xml, locale) {
   return sitemapUrls(xml);
 }
 
-function assertExactDreamCoverage(actualUrls, expectedUrls, locale) {
+function loadHyNonDreamSitemapUrls() {
+  // The HY sitemap's non-dream URLs are legacy static pages owned by
+  // src/lib/sitemap-entries.ts. Derive them from that production source of
+  // truth (through Vite's SSR loader, as the sitemap-index audit does) instead
+  // of hardcoding their count, so native HY growth cannot invalidate the check.
+  const script = [
+    "import { createServer } from 'vite';",
+    "const server = await createServer({ server: { middlewareMode: true }, appType: 'custom' });",
+    "const entries = await server.ssrLoadModule('/src/lib/sitemap-entries.ts');",
+    "console.log(JSON.stringify(entries.listHyNonDreamSitemapEntries().map((entry) => entry.path)));",
+    "await server.close()",
+  ].join(' ');
+  const derivation = spawnSync(process.execPath, ['--input-type=module', '-e', script], { encoding: 'utf8' });
+  assert.equal(derivation.status, 0, derivation.stderr);
+  const paths = JSON.parse(derivation.stdout.trim().split(/\r?\n/u).at(-1));
+  return paths.map((entryPath) => `${ORIGIN}${entryPath}`);
+}
+
+function assertExactUrlCoverage(actualUrls, expectedUrls, label) {
   const actual = new Set(actualUrls);
   const expected = new Set(expectedUrls);
-  assert.equal(expected.size, expectedUrls.length, `${locale} expected dream URLs must be unique`);
-  assert.equal(actual.size, actualUrls.length, `${locale} sitemap must not contain duplicate URLs`);
-  assert.deepEqual([...expected].filter((url) => !actual.has(url)), [], `${locale} sitemap is missing a published dream URL`);
-  assert.deepEqual([...actual].filter((url) => !expected.has(url)), [], `${locale} sitemap contains an unexpected URL`);
+  assert.equal(expected.size, expectedUrls.length, `${label} expected URLs must be unique`);
+  assert.equal(actual.size, actualUrls.length, `${label} sitemap must not contain duplicate URLs`);
+  assert.deepEqual([...expected].filter((url) => !actual.has(url)), [], `${label} sitemap is missing an expected URL`);
+  assert.deepEqual([...actual].filter((url) => !expected.has(url)), [], `${label} sitemap contains an unexpected URL`);
 }
 
 const posts = JSON.parse(readFileSync('src/data/posts.json', 'utf8'));
-assert.equal(posts.length, 5800);
-assert.equal(new Set(posts.map((post) => post.slug)).size, 5800);
+assert.ok(posts.length > 0, 'canonical HY post corpus is non-empty');
+assert.equal(new Set(posts.map((post) => post.slug)).size, posts.length, 'every canonical HY post has a unique slug');
 
 for (const post of posts) {
   const outputPath = join('dist', post.slug, 'index.html');
@@ -98,11 +117,16 @@ const ruSitemapUrls = assertUrlset(readFileSync('dist/sitemap-ru.xml', 'utf8'), 
 const enSitemapUrls = assertUrlset(readFileSync('dist/sitemap-en.xml', 'utf8'), 'EN');
 const sitemapChildren = assertSitemapIndex(sitemapIndex);
 const hyDreamUrls = posts.map((post) => `${ORIGIN}/${post.slug}/`);
-assert.equal(hyDreamUrls.length, 5800, 'expected HY dream count must remain 5800');
-assert.equal(hySitemapUrls.length, 5920, 'HY sitemap total URL count must remain 5920');
-const hyDreamSet = new Set(hyDreamUrls);
+assert.equal(hyDreamUrls.length, posts.length, 'expected HY dream count must equal the canonical post count');
+const expectedHyDreamUrls = isLocaleIndexingAllowed('hy', indexingConfig) ? hyDreamUrls : [];
+const hyDreamSet = new Set(expectedHyDreamUrls);
 const hyActualDreamUrls = hySitemapUrls.filter((url) => hyDreamSet.has(url));
-assertExactDreamCoverage(hyActualDreamUrls, hyDreamUrls, 'HY dream');
+assertExactUrlCoverage(hyActualDreamUrls, expectedHyDreamUrls, 'HY dream');
+
+const expectedHyNonDreamUrls = isLocaleIndexingAllowed('hy', indexingConfig) ? loadHyNonDreamSitemapUrls() : [];
+const hyNonDreamSet = new Set(expectedHyNonDreamUrls);
+const hyActualNonDreamUrls = hySitemapUrls.filter((url) => hyNonDreamSet.has(url));
+assertExactUrlCoverage(hyActualNonDreamUrls, expectedHyNonDreamUrls, 'HY non-dream');
 assert.ok([...hySitemapUrls, ...ruSitemapUrls, ...enSitemapUrls]
   .every((url) => !/\/(?:admin|api)(?:\/|$)/.test(new URL(url).pathname)), 'locale sitemaps must exclude admin and API URLs');
 
@@ -110,7 +134,7 @@ const repository = scanContentStore('src/data/content/dreams');
 for (const [locale, urls] of [['ru', ruSitemapUrls], ['en', enSitemapUrls]]) {
   const expected = (isLocaleIndexingAllowed(locale, indexingConfig) ? listPublishedDreamSitemapEntries(repository, locale) : [])
     .map((entry) => `${ORIGIN}${entry.path}`);
-  assertExactDreamCoverage(urls, expected, locale.toUpperCase());
+  assertExactUrlCoverage(urls, expected, locale.toUpperCase());
 }
 
 // These pure negative checks freeze the sitemap-index safety boundaries without
@@ -120,7 +144,7 @@ assert.throws(() => assertSitemapIndex(sitemapIndex.replace(`${ORIGIN}/sitemap-e
 assert.throws(() => assertSitemapIndex(sitemapIndex.replace(SITEMAP_INDEX_OPEN, URLSET_OPEN)));
 assert.throws(() => assertUrlset(sitemapIndex, 'HY'));
 assert.throws(() => assertUrlset(URLSET_OPEN, 'HY'));
-assert.throws(() => assertExactDreamCoverage(hyDreamUrls.slice(1), hyDreamUrls, 'HY dream'));
+assert.throws(() => assertExactUrlCoverage(hyDreamUrls.slice(1), hyDreamUrls, 'HY dream'));
 
 const assetFiles = readdirSync('dist/_astro').map((name) => join('dist/_astro', name));
 assert.ok(assetFiles.every((file) => !statSync(file).isFile() || statSync(file).size < 7_000_000));
@@ -131,6 +155,7 @@ console.log({
   sitemapIndexChildren: sitemapChildren.length,
   hySitemapUrls: hySitemapUrls.length,
   hyDreamUrls: hyDreamUrls.length,
+  hyNonDreamUrls: expectedHyNonDreamUrls.length,
   ruSitemapUrls: ruSitemapUrls.length,
   enSitemapUrls: enSitemapUrls.length,
   regressionSamples: {
