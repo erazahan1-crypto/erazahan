@@ -46,7 +46,7 @@ function editableFields(editedPost) {
     || editedPost.categories.some((category) => typeof category !== 'string' || !category.trim())) {
     fail('INVALID_EDIT', 'editedPost.categories must contain non-empty strings');
   }
-  return {
+  const fields = {
     slug: editedPost.slug,
     title: editedPost.title,
     date: editedPost.date,
@@ -55,6 +55,8 @@ function editableFields(editedPost) {
     content: editedPost.content,
     sourceUrl: editedPost.sourceUrl,
   };
+  if (Object.hasOwn(editedPost, 'description')) fields.description = editedPost.description ?? null;
+  return fields;
 }
 
 export function hyStorePaths(contentId) {

@@ -3,7 +3,7 @@ import {
   generateUuidV7,
   prepareAtomicHyCreate,
 } from '../../functions/_lib/admin-atomic-hy-write.mjs';
-import { projectExistingHyPostUpdate, validateHyRegistryEntries } from '../../src/lib/content-write/project-hy-post.mjs';
+import { projectExistingHyPostUpdate, projectNativeHyPostCreate, validateHyRegistryEntries } from '../../src/lib/content-write/project-hy-post.mjs';
 
 const contentId = generateUuidV7(1_700_000_000_000, (bytes) => bytes.fill(1));
 assert.match(contentId, /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
@@ -15,9 +15,10 @@ const files = new Map([
 ]);
 const snapshot = { branch: 'main', refSha: 'ref', commitSha: 'commit', treeSha: 'tree', files };
 let reads = 0;
+const description = 'Երազում դելֆին տեսնելը նշանակում է, որ դուք կարող եք հայտնվել նոր իշխանության կամ կառավարման ենթակայության տակ։ Միլլերի մեկնաբանությամբ՝ սա այնքան էլ բարենպաստ երազ չէ։';
 const prepared = await prepareAtomicHyCreate({
   snapshot,
-  editedPost: { slug: 'new-hy', title: 'New', date: '2026-02-03', letter: 'Ն', categories: ['test'], content: 'native content', sourceUrl: 'ignored' },
+  editedPost: { slug: 'new-hy', title: 'New', description, date: '2026-02-03', letter: 'Ն', categories: ['test'], content: 'native content', sourceUrl: 'ignored' },
   contentId,
   createdAt: '2026-02-03T04:05:06.000Z',
   loadSnapshotFiles: async (base, paths) => { reads += 1; return { ...base, files: new Map([...base.files, ...paths.map((path) => [path, null])]) }; },
@@ -28,7 +29,21 @@ assert.equal(prepared.updatedPosts.length, 2);
 assert.deepEqual(prepared.projection.registryEntry.native, { post_index: 1, source_url: 'https://erazahan.info/new-hy/', slug: 'new-hy', created_at: '2026-02-03T04:05:06.000Z' });
 assert.equal(prepared.projection.item.source_revision, 1);
 assert.equal(prepared.projection.hy.published.version, 1);
+assert.equal(prepared.projection.post.description, description, 'legacy/public post retains submitted description');
+assert.equal(prepared.updatedPosts[1].description, description, 'created posts.json entry retains submitted description');
+assert.equal(prepared.projection.hy.published.description, description, 'HY locale document retains submitted description');
+const serializedHy = JSON.parse(prepared.projection.serialized.hy);
+assert.equal(serializedHy.published.description, description, 'serialized HY locale document retains submitted description');
 assert.equal(prepared.changes.filter((change) => change.operation === 'create').length, 2);
+const omittedDescription = projectNativeHyPostCreate({
+  contentId: generateUuidV7(1_700_000_000_001, (bytes) => bytes.fill(2)),
+  postIndex: 1,
+  editedPost: { slug: 'without-description', title: 'No description', date: '2026-02-03', letter: null, categories: ['test'], content: 'native content', sourceUrl: 'ignored' },
+  sourceUrl: 'https://erazahan.info/without-description/',
+  createdAt: '2026-02-03T04:05:06.000Z',
+});
+assert.equal(Object.hasOwn(omittedDescription.post, 'description'), false, 'omitted description remains absent from legacy/public post');
+assert.equal(omittedDescription.hy.published.description, null, 'omitted description remains null in HY locale document');
 const nativeUpdate = projectExistingHyPostUpdate({
   postIndex: prepared.postIndex,
   currentPost: prepared.projection.post,
