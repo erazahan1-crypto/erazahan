@@ -97,6 +97,18 @@ export function loadNewHyPosts() {
   });
 }
 
+export function loadNativeHyPostSlugs() {
+  const registry = readJson(REGISTRY_FILE);
+  try {
+    validateHyRegistryEntries(registry.entries);
+  } catch (error) {
+    throw new Error(`HY content source: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  return new Set(registry.entries
+    .filter((entry) => entry.native)
+    .map((entry) => entry.native.slug));
+}
+
 export function loadSelectedHyPosts(source = resolveHyContentSource()) {
   if (source === 'legacy') return loadLegacyHyPosts();
   if (source === 'new') return loadNewHyPosts();
@@ -105,3 +117,4 @@ export function loadSelectedHyPosts(source = resolveHyContentSource()) {
 
 export const HY_CONTENT_SOURCE = resolveHyContentSource();
 export const selectedHyPosts = loadSelectedHyPosts(HY_CONTENT_SOURCE);
+export const nativeHyPostSlugs = loadNativeHyPostSlugs();

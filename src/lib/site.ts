@@ -1,5 +1,7 @@
-import { selectedHyPosts } from './content-source/hy-content-source.mjs';
+import { selectedHyPosts, nativeHyPostSlugs } from './content-source/hy-content-source.mjs';
 import { LEGACY_HY_PATH_ALIASES } from './content-schema/hy-public-route-reservations.mjs';
+import { HY_DREAM_DISPLAY_ALPHABET, normalizeHyDreamAlphabetKey } from './content-schema/hy-alphabet.mjs';
+import { projectHyAlphabetWordList } from './content-source/hy-alphabet-projection.mjs';
 import pagesJson from '../data/pages.json';
 import menuJson from '../data/menu.json';
 import imagesJson from '../data/images.json';
@@ -57,14 +59,10 @@ export const pages = pagesJson as Page[];
 export const menu = menuJson as { label: string; href: string; parent: string; order: number }[];
 
 // Армянский алфавит в порядке, как на erazahan.info (38 знаков, включая Ու)
-export const ALPHABET = [
-  'Ա', 'Բ', 'Գ', 'Դ', 'Ե', 'Զ', 'Է', 'Ը', 'Թ', 'Ժ', 'Ի', 'Լ', 'Խ', 'Ծ', 'Կ',
-  'Հ', 'Ձ', 'Ղ', 'Ճ', 'Մ', 'Յ', 'Ն', 'Շ', 'Ո', 'Չ', 'Պ', 'Ջ', 'Ռ', 'Ս', 'Վ',
-  'Տ', 'Ր', 'Ց', 'Ու', 'Փ', 'Ք', 'Օ', 'Ֆ',
-];
+export const ALPHABET = HY_DREAM_DISPLAY_ALPHABET;
 
 // нормализуем «ՈՒ» (U+0552) → «Ու» (U+0582)
-export const normLetter = (l: string) => l.replace(/\u0552/g, '\u0582').trim();
+export const normLetter = normalizeHyDreamAlphabetKey;
 
 export const postBySlug = new Map(posts.map((p) => [p.slug, p]));
 export const pageByPath = new Map(pages.map((p) => [p.path, p]));
@@ -117,6 +115,14 @@ const resolvePostSlug = (segment: string): string | null => {
 };
 
 export const resolveWordSlug = (slug: string): string | null => resolvePostSlug(slug);
+
+export const hyAlphabetWordList = (page: Page): WordCard[] => projectHyAlphabetWordList({
+  letter: page.letter,
+  legacyWordList: page.wordList ?? [],
+  posts,
+  nativeSlugs: nativeHyPostSlugs,
+  resolveLegacySlug: resolveWordSlug,
+});
 
 // Словарь «слово → пост» из списков слов буквенных страниц (wordList).
 // Битые слаги (постов не существует) пропускаем, чтобы не создавать ссылки на 404.

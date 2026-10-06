@@ -27,7 +27,7 @@ const POSTS_SHA = 'a'.repeat(40);
 function fixture({ drift = false, content = '<p>Example content</p>' } = {}) {
   const published = {
     slug: 'example-dream', title: 'Example dream', description: 'Preserved description', content,
-    image_alts: { 'asset:one': 'Preserved alt' }, tags: ['One', 'Two'], alphabet_key: 'A',
+    image_alts: { 'asset:one': 'Preserved alt' }, tags: ['One', 'Two'], alphabet_key: 'Դ',
     based_on_source_revision: null, based_on_source_fingerprint: null, updated_at: '2026-09-12T20:00:00Z',
     generation: { kind: 'human', generated_at: '2026-09-12T20:00:00Z' }, version: 3, published_at: '2026-09-12',
   };
@@ -209,6 +209,12 @@ assert.equal(Object.hasOwn(validateEditablePost(editableBase), 'description'), f
 assert.equal(validateEditablePost({ ...editableBase, description: '' }).description, null, 'blank description explicitly clears');
 assert.equal(validateEditablePost({ ...editableBase, description: null }).description, null, 'null description explicitly clears');
 assert.equal(validateEditablePost({ ...editableBase, description: 'Exact description' }).description, 'Exact description', 'non-empty description is preserved');
+assert.equal(validateEditablePost({ ...editableBase, letter: 'Դ' }).letter, 'Դ', 'supported HY alphabet key is accepted');
+assert.equal(validateEditablePost({ ...editableBase, letter: 'ՈՒ' }).letter, 'Ու', 'legacy YIWN spelling is normalized to the canonical key');
+for (const letter of ['ZZZ', 'A', 'ԱԲ', 'Ր']) {
+  assert.throws(() => validateEditablePost({ ...editableBase, letter }), /HY alphabet key/, `unsupported HY key ${letter} is rejected`);
+}
+assert.equal(validateEditablePost({ ...editableBase, letter: null }).letter, null, 'historical null HY key remains editable');
 
 const getPosts = [
   { slug: 'first', title: 'First', date: '2026-09-01', letter: null, categories: [], content: '', sourceUrl: 'https://erazahan.info/first/' },

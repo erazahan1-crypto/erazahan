@@ -1,3 +1,8 @@
+import {
+  normalizeHyDreamAlphabetKey,
+  validateHyDreamAlphabetKey,
+} from '../../src/lib/content-schema/hy-alphabet.mjs';
+
 export interface GitHubPostsEnv {
   GITHUB_TOKEN?: string;
   ADMIN_GITHUB_REPO?: string;
@@ -203,7 +208,13 @@ export function validateEditablePost(value: unknown): EditablePost {
   if (!Array.isArray(input.categories) || input.categories.some((item) => typeof item !== 'string' || !item.trim() || item.length > 200) || input.categories.length > 50) {
     throw new PostsValidationError('Категории должны быть непустым списком строк.');
   }
-  const letter = input.letter === null || input.letter === '' ? null : requiredString(input.letter, 'Буква', 8);
+  const suppliedLetter = input.letter === null || input.letter === '' ? null : requiredString(input.letter, 'Буква', 8);
+  const letter = suppliedLetter === null ? null : normalizeHyDreamAlphabetKey(suppliedLetter);
+  try {
+    validateHyDreamAlphabetKey(letter);
+  } catch (error) {
+    throw new PostsValidationError(error instanceof Error ? error.message : 'Unsupported HY alphabet key.');
+  }
   const post: EditablePost = { title, slug, date, letter, categories: input.categories.map((item) => (item as string).trim()), content, sourceUrl };
   if (Object.hasOwn(input, 'description')) {
     post.description = input.description === null || input.description === '' ? null : requiredString(input.description, 'SEO description', 2_000);

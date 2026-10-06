@@ -6,6 +6,10 @@ import {
   validateLocaleDocument,
 } from '../content-schema/schema.mjs';
 import { deriveNextSourceStateOnPublish } from '../content-schema/state.mjs';
+import {
+  normalizeHyDreamAlphabetKey,
+  validateHyDreamAlphabetKey,
+} from '../content-schema/hy-alphabet.mjs';
 import { canonicalJson, canonicalJsonEqual } from './canonical-json.mjs';
 
 const STORE_PREFIX = 'src/data/content/dreams';
@@ -42,6 +46,12 @@ function editableFields(editedPost) {
   if (editedPost.letter !== null && (typeof editedPost.letter !== 'string' || !editedPost.letter.trim())) {
     fail('INVALID_EDIT', 'editedPost.letter must be a non-empty string or null');
   }
+  const letter = editedPost.letter === null ? null : normalizeHyDreamAlphabetKey(editedPost.letter);
+  try {
+    validateHyDreamAlphabetKey(letter);
+  } catch (error) {
+    fail('INVALID_EDIT', error instanceof Error ? error.message : String(error));
+  }
   if (!Array.isArray(editedPost.categories)
     || editedPost.categories.some((category) => typeof category !== 'string' || !category.trim())) {
     fail('INVALID_EDIT', 'editedPost.categories must contain non-empty strings');
@@ -50,7 +60,7 @@ function editableFields(editedPost) {
     slug: editedPost.slug,
     title: editedPost.title,
     date: editedPost.date,
-    letter: editedPost.letter,
+    letter,
     categories: [...editedPost.categories],
     content: editedPost.content,
     sourceUrl: editedPost.sourceUrl,
@@ -140,6 +150,11 @@ export function projectNativeHyPostCreate({ contentId, postIndex, editedPost, so
   if (!isContentId(contentId) || contentId[14] !== '7') fail('INVALID_CONTENT_ID', 'native content_id must be a UUIDv7');
   if (!Number.isInteger(postIndex) || postIndex < 0) fail('INVALID_POST_INDEX', 'postIndex must be a non-negative integer');
   const edit = editableFields({ ...editedPost, sourceUrl });
+  try {
+    validateHyDreamAlphabetKey(edit.letter, { required: true });
+  } catch (error) {
+    fail('INVALID_EDIT', error instanceof Error ? error.message : String(error));
+  }
   if (edit.sourceUrl !== sourceUrl) fail('SOURCE_URL_IMMUTABLE', 'native sourceUrl must be derived server-side');
   if (typeof createdAt !== 'string' || !Number.isFinite(Date.parse(createdAt))) fail('INVALID_CREATED_AT', 'native created_at is invalid');
 

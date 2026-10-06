@@ -5,7 +5,7 @@ import { listOccupiedNativeHySlugs } from '../../src/lib/content-schema/hy-publi
 
 const contentId = generateUuidV7(1_700_000_000_000, (bytes) => bytes.fill(1));
 assert.match(contentId, /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
-const posts = [{ slug: 'old', title: 'Old', date: '2026-01-01', letter: 'A', categories: ['old'], content: 'old', sourceUrl: 'https://erazahan.info/old/', comments: [] }];
+const posts = [{ slug: 'old', title: 'Old', date: '2026-01-01', letter: 'Դ', categories: ['old'], content: 'old', sourceUrl: 'https://erazahan.info/old/', comments: [] }];
 const publicPages = [{ path: 'chgtnvac-erazner' }, { path: 'baxtagushakutyun' }];
 const registry = { entries: [{ content_id: 'efa61838-86c8-56b8-815c-0a38b0a83242', legacy: { original_array_index: 0, original_hy_slug: 'old', original_source_url: posts[0].sourceUrl } }] };
 const files = new Map([
@@ -18,7 +18,7 @@ const description = 'Native description';
 let reads = 0;
 const prepared = await prepareAtomicHyCreate({
   snapshot,
-  editedPost: { slug: 'erazahan-fixture', title: 'New', description, date: '2026-02-03', letter: 'N', categories: ['test'], content: 'native content', sourceUrl: 'ignored' },
+  editedPost: { slug: 'erazahan-fixture', title: 'New', description, date: '2026-02-03', letter: 'Ն', categories: ['test'], content: 'native content', sourceUrl: 'ignored' },
   contentId,
   createdAt: '2026-02-03T04:05:06.000Z',
   loadSnapshotFiles: async (base, paths) => { reads += 1; return { ...base, files: new Map([...base.files, ...paths.map((path) => [path, null])]) }; },
@@ -35,10 +35,26 @@ assert.equal(prepared.projection.hy.published.description, description);
 assert.equal(JSON.parse(prepared.projection.serialized.hy).published.description, description);
 assert.equal(prepared.changes.filter((change) => change.operation === 'create').length, 2);
 
+for (const letter of ['ZZZ', 'A', 'ԴԴ', 'Ր', null]) {
+  let invalidReads = 0;
+  const postsBefore = files.get('src/data/posts.json').content;
+  const registryBefore = files.get('src/data/migrations/content-id-registry.v1.json').content;
+  await assert.rejects(() => prepareAtomicHyCreate({
+    snapshot,
+    editedPost: { slug: `invalid-${String(letter)}`, title: 'Invalid', date: '2026-02-03', letter, categories: ['test'], content: 'native content' },
+    contentId: generateUuidV7(1_700_000_000_010 + invalidReads, (bytes) => bytes.fill(3)),
+    createdAt: '2026-02-03T04:05:06.000Z',
+    loadSnapshotFiles: async () => { invalidReads += 1; return snapshot; },
+  }), { code: 'INVALID_EDIT' });
+  assert.equal(invalidReads, 0, `${String(letter)} is rejected before content-store reads`);
+  assert.equal(files.get('src/data/posts.json').content, postsBefore, `${String(letter)} leaves posts unchanged`);
+  assert.equal(files.get('src/data/migrations/content-id-registry.v1.json').content, registryBefore, `${String(letter)} leaves registry unchanged`);
+}
+
 const omittedDescription = projectNativeHyPostCreate({
   contentId: generateUuidV7(1_700_000_000_001, (bytes) => bytes.fill(2)),
   postIndex: 1,
-  editedPost: { slug: 'without-description', title: 'No description', date: '2026-02-03', letter: null, categories: ['test'], content: 'native content', sourceUrl: 'ignored' },
+  editedPost: { slug: 'without-description', title: 'No description', date: '2026-02-03', letter: 'Դ', categories: ['test'], content: 'native content', sourceUrl: 'ignored' },
   sourceUrl: 'https://erazahan.info/without-description/',
   createdAt: '2026-02-03T04:05:06.000Z',
 });
@@ -75,7 +91,7 @@ async function expectRouteCollision(slug, expectedCode = 'PUBLIC_ROUTE_COLLISION
   const filesBefore = targetSnapshot.files.size;
   await assert.rejects(() => prepareAtomicHyCreate({
     snapshot: targetSnapshot,
-    editedPost: { slug, title: 'New', date: '2026-02-03', letter: null, categories: ['test'], content: 'native content' },
+    editedPost: { slug, title: 'New', date: '2026-02-03', letter: 'Դ', categories: ['test'], content: 'native content' },
     contentId: generateUuidV7(1_700_000_000_100 + slug.length, (bytes) => bytes.fill(slug.length)),
     createdAt: '2026-02-03T04:05:06.000Z',
     loadSnapshotFiles: async () => { collisionReads += 1; return targetSnapshot; },
@@ -96,7 +112,7 @@ for (const slug of ['ru-example', 'en-example', 'search-example']) {
   let allowedReads = 0;
   const allowed = await prepareAtomicHyCreate({
     snapshot,
-    editedPost: { slug, title: 'Allowed', date: '2026-02-03', letter: null, categories: ['test'], content: 'native content' },
+    editedPost: { slug, title: 'Allowed', date: '2026-02-03', letter: 'Դ', categories: ['test'], content: 'native content' },
     contentId: generateUuidV7(1_700_000_000_200 + slug.length, (bytes) => bytes.fill(slug.length + 1)),
     createdAt: '2026-02-03T04:05:06.000Z',
     loadSnapshotFiles: async (base, paths) => { allowedReads += 1; return { ...base, files: new Map([...base.files, ...paths.map((path) => [path, null])]) }; },
@@ -105,7 +121,7 @@ for (const slug of ['ru-example', 'en-example', 'search-example']) {
   assert.equal(allowedReads, 1, `${slug}: normal transaction preparation remains available`);
 }
 
-await assert.rejects(() => prepareAtomicHyCreate({ snapshot, editedPost: { slug: 'old', title: 'New', date: '2026-02-03', letter: null, categories: ['test'], content: 'native content' }, contentId: registry.entries[0].content_id, createdAt: '2026-02-03T04:05:06.000Z', loadSnapshotFiles: async () => snapshot }), { code: 'CONTENT_ID_COLLISION' });
+await assert.rejects(() => prepareAtomicHyCreate({ snapshot, editedPost: { slug: 'old', title: 'New', date: '2026-02-03', letter: 'Դ', categories: ['test'], content: 'native content' }, contentId: registry.entries[0].content_id, createdAt: '2026-02-03T04:05:06.000Z', loadSnapshotFiles: async () => snapshot }), { code: 'CONTENT_ID_COLLISION' });
 for (const [invalidEntry, code] of [
   [{ content_id: contentId }, 'INVALID_REGISTRY_VARIANT'],
   [{ content_id: contentId, legacy: registry.entries[0].legacy, native: prepared.projection.registryEntry.native }, 'INVALID_REGISTRY_VARIANT'],

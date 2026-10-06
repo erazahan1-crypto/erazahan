@@ -9,6 +9,10 @@ import {
   listOccupiedNativeHySlugs,
   normalizeUnprefixedPublicPath,
 } from '../../src/lib/content-schema/hy-public-route-reservations.mjs';
+import {
+  normalizeHyDreamAlphabetKey,
+  validateHyDreamAlphabetKey,
+} from '../../src/lib/content-schema/hy-alphabet.mjs';
 import { resolveAdminWriteBranch } from './admin-write-environment-guard.mjs';
 
 export const HY_ADMIN_WRITE_MODE_ENV = 'ERAZAHAN_HY_ADMIN_WRITE_MODE';
@@ -173,6 +177,11 @@ export async function prepareAtomicHyCreate({ snapshot, editedPost, contentId, c
   const pages = publicPagesFromSnapshot(snapshot);
   const entries = registryEntries(snapshot);
   assertPostIndexRegistryConsistency(posts, entries);
+  try {
+    validateHyDreamAlphabetKey(normalizeHyDreamAlphabetKey(editedPost?.letter), { required: true });
+  } catch (error) {
+    fail('INVALID_EDIT', error instanceof Error ? error.message : String(error));
+  }
   if (entries.some((entry) => entry?.content_id === contentId)) fail('CONTENT_ID_COLLISION', 'generated content_id already exists');
   const postIndex = posts.length;
   if (entries.some((entry) => entry?.native?.post_index === postIndex || entry?.legacy?.original_array_index === postIndex)) {
