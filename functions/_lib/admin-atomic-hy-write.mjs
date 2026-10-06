@@ -15,6 +15,7 @@ export const HY_ADMIN_WRITE_MODE_ENV = 'ERAZAHAN_HY_ADMIN_WRITE_MODE';
 export const HY_ADMIN_ATOMIC_BRANCH_ENV = 'ERAZAHAN_HY_ADMIN_ATOMIC_BRANCH';
 export const POSTS_PATH = 'src/data/posts.json';
 export const REGISTRY_PATH = 'src/data/migrations/content-id-registry.v1.json';
+export const PUBLIC_PAGES_PATH = 'src/data/pages.json';
 
 export class AdminAtomicHyWriteError extends Error {
   constructor(code, message, cause = undefined) {
@@ -69,6 +70,12 @@ function postsFromSnapshot(snapshot) {
   return posts;
 }
 
+function publicPagesFromSnapshot(snapshot) {
+  const pages = parseSnapshotJson(snapshot, PUBLIC_PAGES_PATH, 'pages.json');
+  if (!Array.isArray(pages)) fail('INVALID_PUBLIC_PAGES', 'pages.json must contain an array');
+  return pages;
+}
+
 function assertPostIndexRegistryConsistency(posts, entries) {
   if (posts.some((post) => !post || typeof post !== 'object')) fail('INVALID_POSTS', 'posts.json must be a dense post array');
   if (entries.length !== posts.length) fail('REGISTRY_POST_COUNT_MISMATCH', 'registry and posts.json must have matching record counts');
@@ -78,8 +85,11 @@ function assertPostIndexRegistryConsistency(posts, entries) {
   }
 }
 
-export async function loadAtomicHyWriteSnapshot(loadInitialSnapshot) {
-  const snapshot = await loadInitialSnapshot([POSTS_PATH, REGISTRY_PATH]);
+export async function loadAtomicHyWriteSnapshot(loadInitialSnapshot, additionalPaths = []) {
+  if (!Array.isArray(additionalPaths) || additionalPaths.some((path) => typeof path !== 'string' || !path)) {
+    fail('INVALID_SNAPSHOT_PATHS', 'additional snapshot paths are invalid');
+  }
+  const snapshot = await loadInitialSnapshot([...new Set([POSTS_PATH, REGISTRY_PATH, ...additionalPaths])]);
   const posts = postsFromSnapshot(snapshot);
   const entries = registryEntries(snapshot);
   assertPostIndexRegistryConsistency(posts, entries);
@@ -160,6 +170,7 @@ export function generateUuidV7(now = Date.now(), random = crypto.getRandomValues
 
 export async function prepareAtomicHyCreate({ snapshot, editedPost, contentId, createdAt, loadSnapshotFiles }) {
   const posts = postsFromSnapshot(snapshot);
+  const pages = publicPagesFromSnapshot(snapshot);
   const entries = registryEntries(snapshot);
   assertPostIndexRegistryConsistency(posts, entries);
   if (entries.some((entry) => entry?.content_id === contentId)) fail('CONTENT_ID_COLLISION', 'generated content_id already exists');
@@ -173,7 +184,7 @@ export async function prepareAtomicHyCreate({ snapshot, editedPost, contentId, c
   if (posts.some((post) => typeof post?.slug === 'string' && post.slug.normalize('NFKC').toLocaleLowerCase('hy-AM') === normalizedExistingSlug)) {
     fail('SLUG_COLLISION', 'slug is already used by another HY dictionary post');
   }
-  if (listOccupiedNativeHySlugs(posts).includes(normalizedSlug)) {
+  if (listOccupiedNativeHySlugs(posts, pages).includes(normalizedSlug)) {
     fail('PUBLIC_ROUTE_COLLISION', 'slug is reserved by an existing public route');
   }
   const sourceUrl = `https://erazahan.info/${encodeURIComponent(editedPost.slug)}/`;

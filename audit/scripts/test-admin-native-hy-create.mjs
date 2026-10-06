@@ -6,10 +6,12 @@ import { listOccupiedNativeHySlugs } from '../../src/lib/content-schema/hy-publi
 const contentId = generateUuidV7(1_700_000_000_000, (bytes) => bytes.fill(1));
 assert.match(contentId, /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
 const posts = [{ slug: 'old', title: 'Old', date: '2026-01-01', letter: 'A', categories: ['old'], content: 'old', sourceUrl: 'https://erazahan.info/old/', comments: [] }];
+const publicPages = [{ path: 'chgtnvac-erazner' }, { path: 'baxtagushakutyun' }];
 const registry = { entries: [{ content_id: 'efa61838-86c8-56b8-815c-0a38b0a83242', legacy: { original_array_index: 0, original_hy_slug: 'old', original_source_url: posts[0].sourceUrl } }] };
 const files = new Map([
   ['src/data/posts.json', { sha: 'posts-sha', content: JSON.stringify(posts) }],
   ['src/data/migrations/content-id-registry.v1.json', { sha: 'registry-sha', content: JSON.stringify(registry) }],
+  ['src/data/pages.json', { sha: 'pages-sha', content: JSON.stringify(publicPages) }],
 ]);
 const snapshot = { branch: 'main', refSha: 'ref', commitSha: 'commit', treeSha: 'tree', files };
 const description = 'Native description';
@@ -66,7 +68,7 @@ assert.throws(() => projectExistingHyPostUpdate({
   hyPath: `src/data/content/dreams/${contentId.slice(0, 2)}/${contentId}/hy.json`,
 }), { code: 'SLUG_IMMUTABLE' });
 
-const occupied = listOccupiedNativeHySlugs(posts);
+const occupied = listOccupiedNativeHySlugs(posts, publicPages);
 for (const slug of ['search', 'ru', 'en', 'chgtnvac-erazner', 'baxtagushakutyun']) assert.ok(occupied.includes(slug), `${slug} is an occupied public path`);
 async function expectRouteCollision(slug, expectedCode = 'PUBLIC_ROUTE_COLLISION', targetSnapshot = snapshot) {
   let collisionReads = 0;
@@ -87,7 +89,7 @@ const namedSnapshot = { ...snapshot, files: new Map([...snapshot.files, [
   'src/data/posts.json', { sha: 'named-posts-sha', content: JSON.stringify(namedPosts) },
 ]]) };
 const dynamicNamePath = 'արական-անուններ-սկսվող-ա-տառով';
-assert.ok(listOccupiedNativeHySlugs(namedPosts).includes(dynamicNamePath), 'generated name route is reserved');
+assert.ok(listOccupiedNativeHySlugs(namedPosts, publicPages).includes(dynamicNamePath), 'generated name route is reserved');
 await expectRouteCollision(dynamicNamePath, 'PUBLIC_ROUTE_COLLISION', namedSnapshot);
 await expectRouteCollision('old', 'SLUG_COLLISION');
 for (const slug of ['ru-example', 'en-example', 'search-example']) {

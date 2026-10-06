@@ -1,4 +1,3 @@
-import pagesJson from '../../data/pages.json' with { type: 'json' };
 import { CONTENT_LOCALES, SOURCE_LOCALE } from './schema.mjs';
 import { localeSearchUi } from '../search/locale-search-ui.mjs';
 
@@ -84,12 +83,13 @@ function addPublicPath(paths, value) {
 
 // This is the route-ownership projection for a native HY slug, whose public
 // output is always exactly `/<slug>/`.
-export function listOccupiedNativeHySlugs(posts) {
+export function listOccupiedNativeHySlugs(posts, pages) {
   if (!Array.isArray(posts)) throw new TypeError('Native HY route reservation requires a post array');
+  if (!Array.isArray(pages)) throw new TypeError('Native HY route reservation requires a page array');
   const paths = new Set();
   for (const post of posts) addPublicPath(paths, post?.slug);
   for (const path of listGeneratedNamePagePaths(posts)) paths.add(path);
-  for (const page of pagesJson) addPublicPath(paths, page?.path);
+  for (const page of pages) addPublicPath(paths, page?.path);
   for (const alias of Object.keys(LEGACY_HY_PATH_ALIASES)) addPublicPath(paths, alias);
   for (const path of SYSTEM_PUBLIC_ROOT_PATHS) addPublicPath(paths, path);
   for (const locale of CONTENT_LOCALES) {

@@ -13,6 +13,7 @@ import {
   AdminAtomicHyWriteError,
   generateUuidV7,
   loadAtomicHyWriteSnapshot,
+  PUBLIC_PAGES_PATH,
   prepareAtomicHyCreate,
   resolveAtomicGitHubBranch,
   resolveHyAdminWriteMode,
@@ -37,7 +38,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
     const branch = resolveAtomicGitHubBranch(context.env);
     const config = getGitHubConfig(context.env);
     if (config.branch !== branch) throw new PostsConfigError('Admin GitHub branch does not match the approved atomic branch.');
-    const initial = await loadAtomicHyWriteSnapshot((paths) => loadMultiFileSnapshot(config, paths));
+    const initial = await loadAtomicHyWriteSnapshot((paths) => loadMultiFileSnapshot(config, paths), [PUBLIC_PAGES_PATH]);
     const createdAt = new Date().toISOString();
     const contentId = generateUuidV7(Date.now());
     const prepared = await prepareAtomicHyCreate({
@@ -51,6 +52,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
       expectedFileShas: {
         'src/data/posts.json': initial.blobSha,
         'src/data/migrations/content-id-registry.v1.json': initial.snapshot.files.get('src/data/migrations/content-id-registry.v1.json')!.sha,
+        [PUBLIC_PAGES_PATH]: initial.snapshot.files.get(PUBLIC_PAGES_PATH)!.sha,
       },
       changes: prepared.changes,
       message: 'Admin: create dream dictionary article',
