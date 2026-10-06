@@ -26,7 +26,7 @@ const en = read('src/pages/en/index.astro');
 assert.match(layout, /<Header locale=\{locale\} \/>/);
 assert.match(layout, /<Footer locale=\{locale\} \/>/);
 assert.match(layout, /locale === 'hy' \? <QuickTools locale=\{locale\} \/> : null/);
-assert.match(layout, /locale === 'hy' \? <script type="application\/ld\+json" set:html=\{JSON\.stringify\(websiteSchema\(\)\)\} \/> : null/);
+assert.match(layout, /locale === 'hy' \? <script type="application\/ld\+json" set:html=\{serializeJsonForHtmlScript\(websiteSchema\(\)\)\} \/> : null/);
 assert.match(layout, /import \{ isRuntimeLocaleIndexingAllowed \} from '..\/lib\/indexing-policy\.mjs';/);
 assert.match(layout, /robots: requestedRobots = null/);
 assert.match(layout, /const effectiveRobots = isRuntimeLocaleIndexingAllowed\(locale\)/);

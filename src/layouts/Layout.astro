@@ -5,6 +5,7 @@ import Footer from "../components/Footer.astro";
 import QuickTools from "../components/QuickTools.astro";
 import { SITE } from "../lib/config";
 import { websiteSchema } from "../lib/seo";
+import { serializeJsonForHtmlScript } from '../lib/json-for-html-script.mjs';
 import { localeSeoMetadata } from '../lib/content-source/published-seo.mjs';
 import { isRuntimeLocaleIndexingAllowed } from '../lib/indexing-policy.mjs';
 
@@ -71,7 +72,7 @@ const ogImage = image ? (image.startsWith("http") ? image : `${SITE}${image}`) :
     {ogImage ? <meta name="twitter:image" content={ogImage} /> : null}
 
     <!-- Structured data -->
-    {locale === 'hy' ? <script type="application/ld+json" set:html={JSON.stringify(websiteSchema())} /> : null}
+    {locale === 'hy' ? <script type="application/ld+json" set:html={serializeJsonForHtmlScript(websiteSchema())} /> : null}
 
     <link
       rel="icon"
