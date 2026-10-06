@@ -100,8 +100,12 @@ export function resolveExistingHyIdentity({
   if (edit.sourceUrl !== currentPost.sourceUrl) {
     fail('SOURCE_URL_IMMUTABLE', 'sourceUrl is immutable for an existing HY dictionary post');
   }
-  if (registryEntry.native && edit.slug !== registryEntry.native.slug) {
-    fail('SLUG_IMMUTABLE', 'slug is immutable for a native HY dictionary post');
+  const immutableSlug = registryEntry.legacy?.original_hy_slug ?? registryEntry.native?.slug;
+  if (currentPost.slug !== immutableSlug) {
+    fail('CURRENT_SLUG_MISMATCH', 'current post slug differs from immutable registry identity');
+  }
+  if (edit.slug !== currentPost.slug) {
+    fail('SLUG_IMMUTABLE', 'slug is immutable for an existing HY dictionary post');
   }
 
   const paths = hyStorePaths(registryEntry.content_id);
@@ -211,12 +215,14 @@ export function validateHyRegistryEntries(entries) {
 
 function assertCurrentProjection(currentPost, currentItem, currentHy) {
   const published = currentHy.published;
+  const postDescription = Object.hasOwn(currentPost, 'description') ? currentPost.description ?? null : null;
   const sharedFieldsMatch = currentPost.slug === published.slug
     && currentPost.title === published.title
     && currentPost.date === published.published_at
     && currentPost.letter === published.alphabet_key
     && canonicalJsonEqual(currentPost.categories, published.tags)
-    && currentPost.content === published.content;
+    && currentPost.content === published.content
+    && postDescription === published.description;
   if (!sharedFieldsMatch) {
     fail('CURRENT_PROJECTION_DRIFT', 'current posts.json fields differ from the current HY store projection');
   }
@@ -266,7 +272,7 @@ export function projectExistingHyPostUpdate(input) {
     alphabet_key: edit.letter,
     tags: [...edit.categories],
     content: edit.content,
-    description: edit.description ?? currentPublished.description,
+    description: Object.hasOwn(edit, 'description') ? edit.description : currentPublished.description,
   };
   const publishedPayloadChanged = !canonicalJsonEqual(
     publishedPayloadWithoutVersion(currentPublished),

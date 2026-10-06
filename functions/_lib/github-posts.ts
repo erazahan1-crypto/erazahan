@@ -183,8 +183,11 @@ export function validateEditablePost(value: unknown): EditablePost {
     throw new PostsValidationError('Категории должны быть непустым списком строк.');
   }
   const letter = input.letter === null || input.letter === '' ? null : requiredString(input.letter, 'Буква', 8);
-  const description = input.description === undefined || input.description === '' ? null : requiredString(input.description, 'SEO description', 2_000);
-  return { title, slug, date, letter, categories: input.categories.map((item) => (item as string).trim()), content, sourceUrl, description };
+  const post: EditablePost = { title, slug, date, letter, categories: input.categories.map((item) => (item as string).trim()), content, sourceUrl };
+  if (Object.hasOwn(input, 'description')) {
+    post.description = input.description === null || input.description === '' ? null : requiredString(input.description, 'SEO description', 2_000);
+  }
+  return post;
 }
 
 function requiredString(value: unknown, label: string, max: number): string {

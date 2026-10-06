@@ -56,6 +56,16 @@ const nativeUpdate = projectExistingHyPostUpdate({
 });
 assert.equal(nativeUpdate.updatedHy.published.title, 'New title');
 assert.equal(nativeUpdate.updatedHy.published.version, 2);
+assert.throws(() => projectExistingHyPostUpdate({
+  postIndex: prepared.postIndex,
+  currentPost: prepared.projection.post,
+  editedPost: { ...prepared.projection.post, slug: 'renamed-hy' },
+  registryEntries: [...registry.entries, prepared.projection.registryEntry],
+  currentItem: prepared.projection.item,
+  currentHy: prepared.projection.hy,
+  itemPath: `src/data/content/dreams/${contentId.slice(0, 2)}/${contentId}/item.json`,
+  hyPath: `src/data/content/dreams/${contentId.slice(0, 2)}/${contentId}/hy.json`,
+}), { code: 'SLUG_IMMUTABLE' });
 await assert.rejects(() => prepareAtomicHyCreate({ ...{ snapshot, editedPost: { slug: 'old', title: 'New', date: '2026-02-03', letter: null, categories: ['test'], content: 'native content' }, contentId, createdAt: '2026-02-03T04:05:06.000Z', loadSnapshotFiles: async () => snapshot } }), { code: 'SLUG_COLLISION' });
 await assert.rejects(() => prepareAtomicHyCreate({ ...{ snapshot, editedPost: { slug: 'admin', title: 'New', date: '2026-02-03', letter: null, categories: ['test'], content: 'native content' }, contentId, createdAt: '2026-02-03T04:05:06.000Z', loadSnapshotFiles: async () => snapshot } }), { code: 'SLUG_RESERVED' });
 await assert.rejects(() => prepareAtomicHyCreate({ ...{ snapshot, editedPost: { slug: 'new-hy', title: 'New', date: '2026-02-03', letter: null, categories: ['test'], content: 'native content' }, contentId: registry.entries[0].content_id, createdAt: '2026-02-03T04:05:06.000Z', loadSnapshotFiles: async () => snapshot } }), { code: 'CONTENT_ID_COLLISION' });

@@ -33,7 +33,7 @@ function fixture({ drift = false, content = '<p>Example content</p>' } = {}) {
   };
   const post = {
     slug: published.slug, title: published.title, date: published.published_at, letter: published.alphabet_key,
-    categories: [...published.tags], content: published.content, sourceUrl: 'https://erazahan.info/example-dream/',
+    categories: [...published.tags], content: published.content, description: published.description, sourceUrl: 'https://erazahan.info/example-dream/',
     comments: [{ id: 'comment-1', content: 'Preserved comment' }],
   };
   const item = {
@@ -150,7 +150,9 @@ async function getAdminPostEndpoint() {
     adminPostEndpointPromise = (async () => {
       const server = await createServer({ server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' });
       try {
-        return await server.ssrLoadModule('/functions/api/admin/posts/[id].ts');
+        const endpoint = await server.ssrLoadModule('/functions/api/admin/posts/[id].ts');
+        const githubPosts = await server.ssrLoadModule('/functions/_lib/github-posts.ts');
+        return { ...endpoint, validateEditablePost: githubPosts.validateEditablePost };
       } finally {
         await server.close();
       }
@@ -201,6 +203,12 @@ assert.ok(
   endpointSource.lastIndexOf('resolveAtomicGitHubBranch(context.env)') < endpointSource.lastIndexOf('getGitHubConfig(context.env)'),
   'atomic branch confirmation precedes GitHub configuration and repository access',
 );
+const { validateEditablePost } = await getAdminPostEndpoint();
+const editableBase = { slug: 'description-test', title: 'Description test', date: '2026-09-12', letter: null, categories: ['Test'], content: 'Content', sourceUrl: 'https://erazahan.info/description-test/' };
+assert.equal(Object.hasOwn(validateEditablePost(editableBase), 'description'), false, 'omitted description remains omitted');
+assert.equal(validateEditablePost({ ...editableBase, description: '' }).description, null, 'blank description explicitly clears');
+assert.equal(validateEditablePost({ ...editableBase, description: null }).description, null, 'null description explicitly clears');
+assert.equal(validateEditablePost({ ...editableBase, description: 'Exact description' }).description, 'Exact description', 'non-empty description is preserved');
 
 const getPosts = [
   { slug: 'first', title: 'First', date: '2026-09-01', letter: null, categories: [], content: '', sourceUrl: 'https://erazahan.info/first/' },
@@ -222,6 +230,10 @@ const getSecond = await getAdminPost('1', { posts: getPosts, registry: getRegist
 assert.equal(getSecond.response.status, 200);
 assert.equal(getSecond.body.content_id, getRegistry.entries[1].content_id);
 assert.notEqual(getSecond.body.content_id, getFirst.body.content_id);
+const getWithDescription = await getAdminPost('0', { posts: [{ ...getPosts[0], description: 'Exact description' }, getPosts[1]], registry: getRegistry });
+assert.equal(getWithDescription.body.post.description, 'Exact description', 'GET preserves a non-empty description exactly');
+const getWithClearedDescription = await getAdminPost('0', { posts: [{ ...getPosts[0], description: null }, getPosts[1]], registry: getRegistry });
+assert.equal(getWithClearedDescription.body.post.description, null, 'GET reloads an explicit cleared description as blank');
 async function assertRealPutFailsClosed(env, label) {
   const mock = installAdminPostGetFetch({ posts: getPosts, registry: getRegistry }); let r2Mutations = 0; try {
   const endpoint = await getAdminPostEndpoint();
@@ -296,8 +308,11 @@ assert.equal(atomic.calls.reads.every((call) => call.treeSha === 'tree-sha'), tr
 assert.equal(atomic.calls.commits.length, 1);
 assert.deepEqual(atomic.calls.updates, [{ branch: 'migration/hy-atomic-drill', sha: 'new-commit', force: false }]);
 
-const slugOnly = fakeTransport();
-assert.deepEqual((await mockedEndpoint({ transport: slugOnly, env: atomicEnv(), changes: { slug: 'changed-slug' } })).changedPaths, [POSTS_PATH, PATHS.hy]);
+const legacySlugChanged = fakeTransport();
+const legacySlugChangedResult = await mockedEndpoint({ transport: legacySlugChanged, env: atomicEnv(), changes: { slug: 'changed-slug' } });
+assert.equal(legacySlugChangedResult.status, 400, 'legacy slug change is rejected');
+assert.equal(legacySlugChangedResult.error?.code, 'SLUG_IMMUTABLE');
+assert.equal(legacySlugChanged.calls.blobs.length + legacySlugChanged.calls.trees.length + legacySlugChanged.calls.commits.length + legacySlugChanged.calls.updates.length, 0, 'rejected legacy slug change has no GitHub write');
 const noOp = fakeTransport();
 const noOpResult = await mockedEndpoint({ transport: noOp, env: atomicEnv() });
 assert.equal(noOpResult.status, 200);
@@ -364,7 +379,7 @@ assert.deepEqual(r2Failure.calls.r2Deletes, []);
 console.log('ADMIN ATOMIC HY WRITE PASS');
 console.log(JSON.stringify({
   atomic_mode_only: true, missing_unknown_and_legacy_fail_closed: true, explicit_atomic_branch_confirmation: true, invalid_fails_closed: true,
-  semantic_posts_item_hy: true, slug_posts_hy_only: true, no_op_without_commit: true,
+  semantic_posts_item_hy: true, existing_slug_immutable: true, description_contract: true, no_op_without_commit: true,
   source_url_immutable: true, stale_client_conflict: true, store_drift_rejected: true,
   branch_conflict: true, git_failures_no_fallback: true, same_snapshot_tree: true,
   exactly_one_non_force_ref_update: true, r2_cleanup_only_after_success: true, real_endpoint_rejections: true,

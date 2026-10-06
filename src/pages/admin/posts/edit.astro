@@ -85,7 +85,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         </section>
         <label class="block">
           <span class="mb-1.5 block text-sm font-semibold text-white">Slug <span class="text-rose-300">*</span></span>
-          <input name="slug" required maxlength="160" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 font-mono text-sm text-white outline-none focus:border-violet-400" />
+          <input name="slug" required readonly maxlength="160" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 font-mono text-sm text-white outline-none focus:border-violet-400" />
           <span data-slug-warning hidden class="mt-2 block rounded-lg border border-amber-400/30 bg-amber-400/10 p-2 text-xs leading-5 text-amber-200">Изменение slug изменит URL страницы и может потребовать redirect.</span>
         </label>
         <label class="block">

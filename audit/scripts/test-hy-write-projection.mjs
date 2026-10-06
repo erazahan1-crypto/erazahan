@@ -57,6 +57,7 @@ function fixture() {
     letter: published.alphabet_key,
     categories: [...published.tags],
     content: published.content,
+    description: published.description,
     sourceUrl: 'https://erazahan.info/example-dream/',
     comments: [{ id: 'comment-1', content: 'Preserved comment' }],
     cover: '/uploads/example.webp',
@@ -122,6 +123,14 @@ expectCode('SOURCE_URL_IMMUTABLE', () => {
   const input = fixture();
   resolveExistingHyIdentity({ ...input, editedPost: editFrom(input.currentPost, { sourceUrl: 'https://erazahan.info/changed/' }) });
 });
+expectCode('SLUG_IMMUTABLE', () => {
+  const input = fixture();
+  resolveExistingHyIdentity({ ...input, editedPost: editFrom(input.currentPost, { slug: 'changed-slug' }) });
+});
+expectCode('CURRENT_SLUG_MISMATCH', () => {
+  const input = fixture();
+  resolveExistingHyIdentity({ ...input, currentPost: { ...input.currentPost, slug: 'wrong-slug' } });
+});
 expectCode('CONTENT_ID_MISMATCH', () => {
   const input = fixture();
   const wrongId = 'cadd4552-097e-5845-b59e-223c36c82488';
@@ -139,7 +148,6 @@ const cases = [
   ['content', { content: '<p>Changed content</p>' }, true, true],
   ['category membership', { categories: ['One', 'Two', 'Three'] }, true, true],
   ['category order only', { categories: ['Two', 'One'] }, false, true],
-  ['slug only', { slug: 'changed-slug' }, false, true],
   ['letter only', { letter: 'Ա' }, false, true],
   ['date only', { date: '2026-09-13' }, false, true],
   ['combined semantic', { title: 'Combined', content: '<p>Combined</p>', categories: ['Three'] }, true, true],
@@ -161,6 +169,26 @@ assert.equal('cover' in preserved.updatedHy.published, false, 'cover not project
 for (const field of ['description', 'image_alts', 'updated_at', 'generation']) {
   assert.deepEqual(preserved.updatedHy.published[field], valid.currentHy.published[field], `${field} preserved`);
 }
+
+const changedDescription = project({ description: 'Changed description' });
+assert.equal(changedDescription.updatedPost.description, 'Changed description', 'description change updates posts.json');
+assert.equal(changedDescription.updatedHy.published.description, 'Changed description', 'description change updates hy.json');
+const clearedDescription = project({ description: null });
+assert.equal(clearedDescription.updatedPost.description, null, 'explicit description clear writes null to posts.json');
+assert.equal(clearedDescription.updatedHy.published.description, null, 'explicit description clear writes null to hy.json');
+const omittedDescription = project({ title: 'Changed with omitted description' });
+assert.equal(omittedDescription.updatedPost.description, valid.currentPost.description, 'omitted description preserves posts.json');
+assert.equal(omittedDescription.updatedHy.published.description, valid.currentHy.published.description, 'omitted description preserves hy.json');
+const blankDescription = fixture();
+delete blankDescription.currentPost.description;
+blankDescription.currentHy = { ...blankDescription.currentHy, published: { ...blankDescription.currentHy.published, description: null } };
+blankDescription.currentItem = { ...blankDescription.currentItem, source_fingerprint: sourceFingerprintV1(blankDescription.currentHy.published) };
+const blankDescriptionResult = projectExistingHyPostUpdate({
+  ...blankDescription,
+  editedPost: editFrom(blankDescription.currentPost, { title: 'Editable without description', description: null }),
+});
+assert.equal(blankDescriptionResult.updatedPost.description, null, 'blank description is valid for an article without a description');
+assert.equal(blankDescriptionResult.updatedHy.published.description, null, 'blank description remains null in hy.json');
 
 const noOp = project();
 assert.deepEqual(noOp.changes, {
@@ -290,7 +318,6 @@ function translation(item) {
 }
 const translationAtCurrent = translation(valid.currentItem);
 assert.equal(deriveTranslationState(translationAtCurrent, preserved.updatedItem).state, 'OUTDATED');
-assert.equal(deriveTranslationState(translationAtCurrent, project({ slug: 'changed-slug' }).updatedItem).state, 'CURRENT');
 assert.equal(deriveTranslationState(translationAtCurrent, project({ date: '2026-09-13' }).updatedItem).state, 'CURRENT');
 assert.equal(deriveTranslationState(translationAtCurrent, project({ letter: 'Ա' }).updatedItem).state, 'CURRENT');
 
