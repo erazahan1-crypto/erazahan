@@ -32,6 +32,17 @@ function logicalTokens(content) {
   return tokens;
 }
 
+export function listLocalizedAssetIds(content) {
+  const assetIds = new Set();
+  const tokens = logicalTokens(content);
+  visit(tokens, (token) => {
+    if (token.type !== 'image') return;
+    const logical = parseLogicalAssetReference(token.href, token.text);
+    if (logical) assetIds.add(logical.asset_id);
+  });
+  return Object.freeze([...assetIds].sort((left, right) => left.localeCompare(right, 'en')));
+}
+
 // Pure validation shared by draft/publish callers. Context indexes are passed
 // explicitly, avoiding hidden global caches and repeated store scans.
 export function validateLocalizedBody({ content, imageAlts, locale, currentContentId = null, contentLinkIndex, mediaIndex, mode = 'draft' }) {

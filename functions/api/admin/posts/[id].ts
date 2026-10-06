@@ -26,7 +26,6 @@ import {
   pendingTokensInContent,
   PostImageValidationError,
   putWebpWithAvailableKey,
-  replacementKeysSafeToDelete,
   replacePendingImages,
   validateDeleteKeys,
   validateImageToken,
@@ -36,6 +35,10 @@ import {
   type PostImagesBucket,
 } from '../../../_lib/post-images';
 import { isContentId } from '../../../../src/lib/content-schema/schema.mjs';
+import { committedImageDeletionPlan, deleteCommittedImageKeys, uploadedImageCleanupKeys } from '../../../_lib/media-lifecycle.mjs';
+import { loadPersistedLocaleDocuments } from '../../../_lib/github-posts';
+
+const MEDIA_MANIFEST_PATH = 'src/data/content/media-manifest.v1.json';
 
 interface Context {
   request: Request;
@@ -62,6 +65,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
 
 export async function onRequestPut(context: Context): Promise<Response> {
   const uploadedKeys: string[] = [];
+  let commitOutcome: 'not_committed' | 'committed' | 'unknown' = 'not_committed';
   try {
     const requestUrl = new URL(context.request.url);
     if (context.request.headers.get('origin') !== requestUrl.origin) {
@@ -134,6 +138,19 @@ export async function onRequestPut(context: Context): Promise<Response> {
     }
     validateImageDeletionPlan(snapshot.posts, id, current.content, edited.content, deleteKeys);
 
+    let persistedAssetContext: { localeDocuments: unknown[]; mediaManifest: unknown } | null = null;
+    if (deleteKeys.length || replaceCleanupKeys.length) {
+      const manifestSnapshot = await loadSnapshotFiles(config, atomicSnapshot.snapshot, [MEDIA_MANIFEST_PATH]);
+      const manifestFile = manifestSnapshot.files.get(MEDIA_MANIFEST_PATH);
+      if (!manifestFile) throw new PostsConfigError('Managed media manifest is unavailable.');
+      let mediaManifest: unknown;
+      try { mediaManifest = JSON.parse(manifestFile.content); } catch { throw new PostsConfigError('Managed media manifest is invalid.'); }
+      persistedAssetContext = {
+        mediaManifest,
+        localeDocuments: await loadPersistedLocaleDocuments(config, atomicSnapshot.snapshot),
+      };
+    }
+
     const uploaded = new Map<string, { key: string; width: number; height: number }>();
     for (const token of pendingTokens) {
       const image = await validateProcessedWebp(files.get(token)!);
@@ -171,7 +188,11 @@ export async function onRequestPut(context: Context): Promise<Response> {
         noOp: transaction.noOp,
       };
       savedPosts = prepared.updatedPosts;
+      commitOutcome = 'committed';
     } catch (error) {
+      if (error && typeof error === 'object' && (error as { code?: unknown }).code === 'BRANCH_REF_UPDATE_FAILURE') {
+        commitOutcome = 'unknown';
+      }
       if (error instanceof AdminAtomicHyWriteError || error instanceof HyWriteProjectionError) {
         throw new PostsValidationError(error.message);
       }
@@ -186,18 +207,14 @@ export async function onRequestPut(context: Context): Promise<Response> {
 
     const deletedKeys: string[] = [];
     const warnings: string[] = [];
-    const replacementPlan = replacementKeysSafeToDelete(savedPosts, id, replaceCleanupKeys);
-    for (const key of replacementPlan.shared) warnings.push(`Старый файл ${key} сохранён в R2: он используется другой статьёй.`);
-    const safeReplacementDeletes = replacementPlan.safe;
-    for (const key of [...new Set([...deleteKeys, ...safeReplacementDeletes])]) {
-      try {
-        await context.env.POST_IMAGES!.delete(key);
-        deletedKeys.push(key);
-      } catch (error) {
-        console.error('R2 delete after GitHub save failed', key, error);
-        warnings.push(`Ссылка удалена, но файл ${key} не удалось удалить из R2.`);
-      }
-    }
+    const requestedDeletes = [...new Set([...deleteKeys, ...replaceCleanupKeys])];
+    const deletionPlan = persistedAssetContext
+      ? committedImageDeletionPlan(commitOutcome, { posts: savedPosts, ...persistedAssetContext }, requestedDeletes)
+      : { safe: [], retained: [] };
+    if (deletionPlan.retained.length) warnings.push('One or more R2 objects remain referenced by persisted content.');
+    const completedDeletes = await deleteCommittedImageKeys(context.env.POST_IMAGES!, deletionPlan.safe);
+    deletedKeys.push(...completedDeletes.deleted);
+    for (const key of completedDeletes.failed) warnings.push(`Ссылка удалена, но файл ${key} не удалось удалить из R2.`);
     return json({
       ok: true,
       ...result,
@@ -208,8 +225,9 @@ export async function onRequestPut(context: Context): Promise<Response> {
       url: `/${encodeURIComponent(edited.slug)}/`,
     });
   } catch (error) {
-    if (uploadedKeys.length && context.env.POST_IMAGES) {
-      await cleanupPostImageUploads(context.env.POST_IMAGES, uploadedKeys);
+    const cleanupKeys = uploadedImageCleanupKeys(commitOutcome, uploadedKeys);
+    if (cleanupKeys.length && context.env.POST_IMAGES) {
+      await cleanupPostImageUploads(context.env.POST_IMAGES, cleanupKeys);
     }
     return handleError(error);
   }
@@ -256,6 +274,9 @@ async function parseSaveRequest(request: Request, contentType: string): Promise<
 }
 
 function handleError(error: unknown): Response {
+  if (error && typeof error === 'object' && (error as { code?: unknown }).code === 'BRANCH_REF_UPDATE_FAILURE') {
+    return json({ ok: false, error: 'Save outcome is unknown. Reload the article before retrying.' }, 502);
+  }
   if (error instanceof AdminAtomicHyWriteError && (
     error.code === 'INVALID_WRITE_MODE' || error.code === 'INVALID_ATOMIC_BRANCH_CONFIRMATION' || error.code === 'INVALID_WRITE_ENVIRONMENT'
     || error.code === 'REGISTRY_POST_COUNT_MISMATCH'

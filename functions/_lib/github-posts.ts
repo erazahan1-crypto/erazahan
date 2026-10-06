@@ -140,6 +140,27 @@ export async function loadSnapshotFiles(
   return loadSnapshotFilesWithTransport(githubTransport(config), snapshot, paths);
 }
 
+const LOCALE_DOCUMENT_PATH = /^src\/data\/content\/dreams\/[0-9a-f]{2}\/[0-9a-f-]{36}\/(?:ru|en)\.json$/;
+
+// These reads stay pinned to the existing immutable Git tree. They are used
+// only before a potentially destructive R2 deletion decision.
+export async function loadPersistedLocaleDocuments(config: GitHubConfig, snapshot: MultiFileSnapshot): Promise<unknown[]> {
+  const tree = await github<GitTree & { truncated?: boolean }>(config, `/git/trees/${snapshot.treeSha}?recursive=1`);
+  if (!Array.isArray(tree.tree) || tree.truncated) throw new Error('GitHub locale document tree is incomplete.');
+  const documents: unknown[] = [];
+  for (const entry of tree.tree) {
+    if (entry.type !== 'blob' || !LOCALE_DOCUMENT_PATH.test(entry.path) || typeof entry.sha !== 'string' || !entry.sha) continue;
+    const blob = await github<GitBlob>(config, `/git/blobs/${entry.sha}`);
+    if (blob.encoding !== 'base64') throw new Error(`GitHub returned unsupported encoding for ${entry.path}`);
+    try {
+      documents.push(JSON.parse(decodeBase64(blob.content.replace(/\s/g, ''))));
+    } catch {
+      throw new Error(`GitHub returned invalid locale JSON for ${entry.path}`);
+    }
+  }
+  return documents;
+}
+
 export async function commitMultiFileTransaction(
   config: GitHubConfig,
   snapshot: MultiFileSnapshot,

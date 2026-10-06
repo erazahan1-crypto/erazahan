@@ -15,6 +15,13 @@ export class GitHubBranchConflictError extends GitHubTransactionError {
   }
 }
 
+export class GitHubCommitOutcomeUnknownError extends GitHubTransactionError {
+  constructor(cause = undefined) {
+    super('BRANCH_REF_UPDATE_FAILURE', 'GitHub branch update outcome is unknown', cause);
+    this.name = 'GitHubCommitOutcomeUnknownError';
+  }
+}
+
 function fail(code, message, cause = undefined) {
   throw new GitHubTransactionError(code, message, cause);
 }
@@ -184,7 +191,7 @@ export async function commitMultiFileTransaction(client, {
     await client.updateBranchRef({ branch: snapshot.branch, sha: commit.sha, force: false });
   } catch (error) {
     if (isBranchConflict(error)) throw new GitHubBranchConflictError(error);
-    fail('BRANCH_REF_UPDATE_FAILURE', 'GitHub branch ref update failed', error);
+    throw new GitHubCommitOutcomeUnknownError(error);
   }
   return {
     noOp: false,

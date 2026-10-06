@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createGitHubTransactionClient, loadMultiFileSnapshot } from '../../functions/_lib/github-posts.ts';
+import { createGitHubTransactionClient, loadMultiFileSnapshot, loadPersistedLocaleDocuments } from '../../functions/_lib/github-posts.ts';
 
 const POSTS = 'src/data/posts.json';
 const MISSING = 'src/data/content/dreams/aa/missing/ru.json';
@@ -55,5 +55,29 @@ try {
   restore();
 }
 
+const originalFetch = globalThis.fetch;
+globalThis.fetch = async (input) => {
+  const path = new URL(input).pathname;
+  if (path.endsWith('/git/trees/root-tree')) {
+    return json({ tree: [
+      { path: 'src/data/content/dreams/aa/aaaaaaaa-aaaa-5aaa-8aaa-aaaaaaaaaaaa/en.json', type: 'blob', sha: 'en-sha' },
+      { path: 'src/data/content/dreams/bb/bbbbbbbb-bbbb-5bbb-8bbb-bbbbbbbbbbbb/ru.json', type: 'blob', sha: 'ru-sha' },
+      { path: 'src/data/content/dreams/aa/aaaaaaaa-aaaa-5aaa-8aaa-aaaaaaaaaaaa/draft.json', type: 'blob', sha: 'ignored-sha' },
+    ] });
+  }
+  if (path.endsWith('/git/blobs/en-sha')) return json({ encoding: 'base64', content: 'eyJsb2NhbGUiOiJlbiJ9' });
+  if (path.endsWith('/git/blobs/ru-sha')) return json({ encoding: 'base64', content: 'eyJsb2NhbGUiOiJydSJ9' });
+  throw new Error(`Unexpected persisted-locale request: ${path}`);
+};
+try {
+  assert.deepEqual(
+    await loadPersistedLocaleDocuments(config, { treeSha: 'root-tree' }),
+    [{ locale: 'en' }, { locale: 'ru' }],
+    'all persisted RU and EN documents load from the immutable snapshot tree',
+  );
+} finally {
+  globalThis.fetch = originalFetch;
+}
+
 console.log('GITHUB POSTS SNAPSHOT PASS');
-console.log(JSON.stringify({ existing_file_loaded: true, missing_file_is_null: true, transport_failure_throws: true, transaction_client_factory: true }, null, 2));
+console.log(JSON.stringify({ existing_file_loaded: true, missing_file_is_null: true, transport_failure_throws: true, transaction_client_factory: true, persisted_locale_documents_loaded: true }, null, 2));
