@@ -5,13 +5,16 @@ import {
   validateHyRegistryEntries,
 } from '../../src/lib/content-write/project-hy-post.mjs';
 import { canonicalJsonEqual } from '../../src/lib/content-write/canonical-json.mjs';
+import {
+  listOccupiedNativeHySlugs,
+  normalizeUnprefixedPublicPath,
+} from '../../src/lib/content-schema/hy-public-route-reservations.mjs';
 import { resolveAdminWriteBranch } from './admin-write-environment-guard.mjs';
 
 export const HY_ADMIN_WRITE_MODE_ENV = 'ERAZAHAN_HY_ADMIN_WRITE_MODE';
 export const HY_ADMIN_ATOMIC_BRANCH_ENV = 'ERAZAHAN_HY_ADMIN_ATOMIC_BRANCH';
 export const POSTS_PATH = 'src/data/posts.json';
 export const REGISTRY_PATH = 'src/data/migrations/content-id-registry.v1.json';
-const RESERVED_HY_SLUGS = new Set(['admin', 'api', 'robots.txt', 'sitemap.xml', '404']);
 
 export class AdminAtomicHyWriteError extends Error {
   constructor(code, message, cause = undefined) {
@@ -164,10 +167,14 @@ export async function prepareAtomicHyCreate({ snapshot, editedPost, contentId, c
   if (entries.some((entry) => entry?.native?.post_index === postIndex || entry?.legacy?.original_array_index === postIndex)) {
     fail('POST_ID_COLLISION', 'next post id is already reserved');
   }
-  const normalizedSlug = editedPost?.slug?.normalize('NFKC').toLocaleLowerCase('hy-AM');
-  if (RESERVED_HY_SLUGS.has(normalizedSlug)) fail('SLUG_RESERVED', 'slug is reserved by the site');
-  if (typeof normalizedSlug !== 'string' || posts.some((post) => typeof post?.slug === 'string' && post.slug.normalize('NFKC').toLocaleLowerCase('hy-AM') === normalizedSlug)) {
+  const normalizedSlug = normalizeUnprefixedPublicPath(editedPost?.slug);
+  if (!normalizedSlug) fail('INVALID_SLUG', 'native HY slug must be a single public path segment');
+  const normalizedExistingSlug = normalizedSlug.toLocaleLowerCase('hy-AM');
+  if (posts.some((post) => typeof post?.slug === 'string' && post.slug.normalize('NFKC').toLocaleLowerCase('hy-AM') === normalizedExistingSlug)) {
     fail('SLUG_COLLISION', 'slug is already used by another HY dictionary post');
+  }
+  if (listOccupiedNativeHySlugs(posts).includes(normalizedSlug)) {
+    fail('PUBLIC_ROUTE_COLLISION', 'slug is reserved by an existing public route');
   }
   const sourceUrl = `https://erazahan.info/${encodeURIComponent(editedPost.slug)}/`;
   if (posts.some((post) => post?.sourceUrl === sourceUrl)) fail('SOURCE_URL_COLLISION', 'sourceUrl is already reserved');

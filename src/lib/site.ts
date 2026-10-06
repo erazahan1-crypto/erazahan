@@ -1,4 +1,5 @@
 import { selectedHyPosts } from './content-source/hy-content-source.mjs';
+import { LEGACY_HY_PATH_ALIASES } from './content-schema/hy-public-route-reservations.mjs';
 import pagesJson from '../data/pages.json';
 import menuJson from '../data/menu.json';
 import imagesJson from '../data/images.json';
@@ -485,9 +486,7 @@ export const nameLetterPages: NameLetterPage[] = (() => {
 export const nameLetterPageByPath = new Map(nameLetterPages.map((p) => [p.path, p]));
 
 // Устаревшие alias-пути имён → канонические пути буквенных страниц
-export const LEGACY_PATH_ALIASES: Record<string, string> = {
-  'arakan-anunner-a': 'արական-անուններ-սկսվող-ա-տառով',
-};
+export const LEGACY_PATH_ALIASES: Record<string, string> = LEGACY_HY_PATH_ALIASES;
 
 // ===== Чистка битых внутренних ссылок =====
 
