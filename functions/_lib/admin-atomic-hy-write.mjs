@@ -27,9 +27,10 @@ function fail(code, message, cause = undefined) {
 
 export function resolveHyAdminWriteMode(env) {
   const configured = env?.[HY_ADMIN_WRITE_MODE_ENV];
-  if (configured === undefined) return 'legacy';
-  if (configured === 'legacy' || configured === 'atomic') return configured;
-  fail('INVALID_WRITE_MODE', `${HY_ADMIN_WRITE_MODE_ENV} must be legacy or atomic`);
+  if (configured !== 'atomic') {
+    fail('INVALID_WRITE_MODE', `${HY_ADMIN_WRITE_MODE_ENV} must be explicitly configured as atomic`);
+  }
+  return configured;
 }
 
 export function resolveAtomicGitHubBranch(env) {

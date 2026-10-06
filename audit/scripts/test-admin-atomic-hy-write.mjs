@@ -162,8 +162,7 @@ async function getAdminPostEndpoint() {
 async function mockedEndpoint({ transport, mode, env, changes = {}, expectedVersion = POSTS_SHA, deleteAfterSuccess = false }) {
   try {
     const selectedEnv = env ?? (mode === undefined ? {} : { ERAZAHAN_HY_ADMIN_WRITE_MODE: mode });
-    const selected = resolveHyAdminWriteMode(selectedEnv);
-    if (selected === 'legacy') return { status: 200, route: 'legacy', noOp: false };
+    resolveHyAdminWriteMode(selectedEnv);
     const branch = resolveAtomicGitHubBranch(selectedEnv);
     const initial = await loadAtomicHyWriteSnapshot((paths) => loadMultiFileSnapshot(transport.client, { branch, paths }));
     if (initial.blobSha !== expectedVersion) return { status: 409, route: 'atomic', noOp: false };
@@ -196,6 +195,8 @@ for (const required of ['resolveHyAdminWriteMode', 'resolveAtomicGitHubBranch', 
   assert.match(endpointSource, new RegExp(required), `endpoint imports and uses ${required}`);
 }
 assert.equal(endpointSource.includes('process.env'), false, 'endpoint selector comes only from Worker bindings');
+assert.equal(endpointSource.includes('commitPosts'), false, 'HY updates cannot use the posts.json-only writer');
+assert.equal(endpointSource.includes('loadPostsSnapshot'), false, 'HY updates always load the atomic snapshot');
 assert.ok(
   endpointSource.lastIndexOf('resolveAtomicGitHubBranch(context.env)') < endpointSource.lastIndexOf('getGitHubConfig(context.env)'),
   'atomic branch confirmation precedes GitHub configuration and repository access',
@@ -221,7 +222,8 @@ const getSecond = await getAdminPost('1', { posts: getPosts, registry: getRegist
 assert.equal(getSecond.response.status, 200);
 assert.equal(getSecond.body.content_id, getRegistry.entries[1].content_id);
 assert.notEqual(getSecond.body.content_id, getFirst.body.content_id);
-{ const mock = installAdminPostGetFetch({ posts: getPosts, registry: getRegistry }); let r2Mutations = 0; try {
+async function assertRealPutFailsClosed(env, label) {
+  const mock = installAdminPostGetFetch({ posts: getPosts, registry: getRegistry }); let r2Mutations = 0; try {
   const endpoint = await getAdminPostEndpoint();
   const response = await endpoint.onRequestPut({
     request: new Request('https://site.test/api/admin/posts/0', {
@@ -231,13 +233,24 @@ assert.notEqual(getSecond.body.content_id, getFirst.body.content_id);
     params: { id: '0' },
     env: {
       GITHUB_TOKEN: 'test-token', ADMIN_GITHUB_REPO: 'test-owner/test-repo', ADMIN_GITHUB_BRANCH: 'main',
-      ERAZAHAN_HY_ADMIN_WRITE_MODE: 'atomic', ERAZAHAN_HY_ADMIN_ATOMIC_BRANCH: 'main', ERAZAHAN_ADMIN_DEPLOYMENT_CLASS: 'preview',
+      INTERNAL_ERROR_BODY: 'internal-response-body',
       POST_IMAGES: { delete: async () => { r2Mutations += 1; } },
+      ...env,
     },
   });
-  assert.equal(response.status, 503); const body = await response.json(); assert.equal(body.ok, false); assert.equal(body.writable, false);
-  assert.equal(mock.calls.length, 0, 'real HY endpoint rejects before GitHub access'); assert.equal(r2Mutations, 0, 'real HY endpoint rejects before R2 mutation');
-} finally { mock.restore(); } }
+  assert.equal(response.status, 503, label); const body = await response.json(); assert.equal(body.ok, false, label); assert.equal(body.writable, false, label);
+  const serialized = JSON.stringify(body);
+  for (const secret of ['test-token', 'test-owner/test-repo', 'internal-response-body']) assert.equal(serialized.includes(secret), false, `${label}: error is redacted`);
+  assert.equal(Object.hasOwn(body, 'stack'), false, `${label}: error has no stack trace`);
+  assert.equal(mock.calls.length, 0, `${label}: real HY endpoint rejects before GitHub access`); assert.equal(r2Mutations, 0, `${label}: real HY endpoint rejects before R2 mutation`);
+} finally { mock.restore(); }
+}
+await assertRealPutFailsClosed({}, 'missing write mode');
+await assertRealPutFailsClosed({ ERAZAHAN_HY_ADMIN_WRITE_MODE: 'legacy' }, 'legacy write mode');
+await assertRealPutFailsClosed({ ERAZAHAN_HY_ADMIN_WRITE_MODE: 'unexpected' }, 'unknown write mode');
+await assertRealPutFailsClosed({
+  ERAZAHAN_HY_ADMIN_WRITE_MODE: 'atomic', ERAZAHAN_HY_ADMIN_ATOMIC_BRANCH: 'main', ERAZAHAN_ADMIN_DEPLOYMENT_CLASS: 'preview',
+}, 'preview deployment targeting main');
 const invalidGet = await getAdminPost('invalid', { posts: getPosts, registry: getRegistry });
 assert.equal(invalidGet.response.status, 400);
 assert.equal(invalidGet.body.ok, false);
@@ -264,12 +277,14 @@ assert.ok(
   'post-commit R2 cleanup remains after the atomic transaction',
 );
 
-const defaultLegacy = fakeTransport();
-assert.deepEqual(await mockedEndpoint({ transport: defaultLegacy }), { status: 200, route: 'legacy', noOp: false });
-assert.equal(defaultLegacy.calls.ref, 0, 'unset selector does not activate Git atomic path');
-const explicitLegacy = fakeTransport();
-assert.equal((await mockedEndpoint({ transport: explicitLegacy, mode: 'legacy' })).route, 'legacy');
-assert.equal(explicitLegacy.calls.ref, 0);
+for (const [label, mode] of [['missing', undefined], ['legacy', 'legacy'], ['unknown', 'unexpected']]) {
+  const rejected = fakeTransport();
+  const result = await mockedEndpoint({ transport: rejected, mode });
+  assert.equal(result.status, 503, `${label} mode fails closed`);
+  assert.equal(result.error?.code, 'INVALID_WRITE_MODE', `${label} mode reports configuration failure`);
+  assertNoGitCalls(rejected.calls);
+  assert.deepEqual(rejected.calls.r2Deletes, [], `${label} mode does not mutate R2`);
+}
 
 const atomic = fakeTransport();
 const atomicResult = await mockedEndpoint({ transport: atomic, env: atomicEnv(), changes: { title: 'Changed title' } });
@@ -297,9 +312,6 @@ const crlfEditResult = await mockedEndpoint({ transport: crlfEdit, env: atomicEn
 assert.deepEqual(crlfEditResult.changedPaths, [POSTS_PATH, PATHS.item, PATHS.hy]);
 assert.ok(crlfEdit.calls.blobs.some((content) => content.includes('a\\r\\nB')), 'CRLF edit persists CRLF bytes');
 
-const invalid = fakeTransport();
-assert.equal((await mockedEndpoint({ transport: invalid, mode: 'unexpected' })).status, 503);
-assertNoGitCalls(invalid.calls);
 for (const env of [
   { ERAZAHAN_HY_ADMIN_WRITE_MODE: 'atomic' },
   { ERAZAHAN_HY_ADMIN_WRITE_MODE: 'atomic', ADMIN_GITHUB_BRANCH: '' },
@@ -351,9 +363,9 @@ assert.deepEqual(r2Failure.calls.r2Deletes, []);
 
 console.log('ADMIN ATOMIC HY WRITE PASS');
 console.log(JSON.stringify({
-  selector_default_and_legacy: true, atomic_mode: true, explicit_atomic_branch_confirmation: true, invalid_fails_closed: true,
+  atomic_mode_only: true, missing_unknown_and_legacy_fail_closed: true, explicit_atomic_branch_confirmation: true, invalid_fails_closed: true,
   semantic_posts_item_hy: true, slug_posts_hy_only: true, no_op_without_commit: true,
   source_url_immutable: true, stale_client_conflict: true, store_drift_rejected: true,
   branch_conflict: true, git_failures_no_fallback: true, same_snapshot_tree: true,
-  exactly_one_non_force_ref_update: true, r2_cleanup_only_after_success: true, mocked_only: true,
+  exactly_one_non_force_ref_update: true, r2_cleanup_only_after_success: true, real_endpoint_rejections: true,
 }, null, 2));

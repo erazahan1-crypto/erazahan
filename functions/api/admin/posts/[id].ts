@@ -1,9 +1,7 @@
 import {
-  commitPosts,
   commitMultiFileTransaction,
   getGitHubConfig,
   loadMultiFileSnapshot,
-  loadPostsSnapshot,
   loadSnapshotFiles,
   parsePostId,
   PostsConfigError,
@@ -86,16 +84,12 @@ export async function onRequestPut(context: Context): Promise<Response> {
     }
 
     let edited = validateEditablePost(body.post);
-    const writeMode = resolveHyAdminWriteMode(context.env);
+    resolveHyAdminWriteMode(context.env);
     // Validate the explicit atomic target before any GitHub or R2 operation.
-    if (writeMode === 'atomic') resolveAtomicGitHubBranch(context.env);
+    resolveAtomicGitHubBranch(context.env);
     const config = getGitHubConfig(context.env);
-    const atomicSnapshot = writeMode === 'atomic'
-      ? await loadAtomicHyWriteSnapshot((paths) => loadMultiFileSnapshot(config, paths))
-      : null;
-    const snapshot = atomicSnapshot
-      ? { posts: atomicSnapshot.posts, blobSha: atomicSnapshot.blobSha }
-      : await loadPostsSnapshot(config);
+    const atomicSnapshot = await loadAtomicHyWriteSnapshot((paths) => loadMultiFileSnapshot(config, paths));
+    const snapshot = { posts: atomicSnapshot.posts, blobSha: atomicSnapshot.blobSha };
     if (snapshot.blobSha !== expectedVersion) {
       throw new PostsConflictError('Статья или набор постов уже изменились. Перезагрузите страницу.');
     }
@@ -103,8 +97,8 @@ export async function onRequestPut(context: Context): Promise<Response> {
     if (!current || current.slug !== originalSlug) {
       throw new PostsConflictError('Позиция статьи изменилась. Перезагрузите страницу.');
     }
-    if (writeMode === 'atomic') assertAtomicSourceUrl(current, edited);
-    const nativeIdentity = atomicSnapshot?.registryEntries.find((entry) => entry?.native?.post_index === id)?.native;
+    assertAtomicSourceUrl(current, edited);
+    const nativeIdentity = atomicSnapshot.registryEntries.find((entry) => entry?.native?.post_index === id)?.native;
     if (nativeIdentity && edited.slug !== nativeIdentity.slug) {
       throw new PostsValidationError('Slug is immutable for a native HY dictionary post.');
     }
@@ -156,45 +150,38 @@ export async function onRequestPut(context: Context): Promise<Response> {
 
     let result: { commitSha: string | null; blobSha: string; noOp?: boolean };
     let savedPosts: Array<Record<string, unknown>>;
-    if (writeMode === 'atomic') {
-      try {
-        const prepared = await prepareAtomicHyWrite({
-          snapshot: atomicSnapshot!.snapshot,
-          postIndex: id,
-          currentPost: current,
-          editedPost: edited,
-          loadSnapshotFiles: (baseSnapshot, paths) => loadSnapshotFiles(config, baseSnapshot, paths),
-        });
-        const transaction = await commitMultiFileTransaction(
-          config,
-          prepared.snapshot,
-          snapshot.blobSha,
-          prepared.changes,
-          'Admin: update dream dictionary article',
-        );
-        result = {
-          commitSha: transaction.commitSha,
-          blobSha: transaction.blobShas.get('src/data/posts.json') || snapshot.blobSha,
-          noOp: transaction.noOp,
-        };
-        savedPosts = prepared.updatedPosts;
-      } catch (error) {
-        if (error instanceof AdminAtomicHyWriteError || error instanceof HyWriteProjectionError) {
-          throw new PostsValidationError(error.message);
-        }
-        if (error && typeof error === 'object' && (
-          (error as { code?: unknown }).code === 'STALE_POSTS_VERSION'
-          || (error as { code?: unknown }).code === 'BRANCH_REF_CONFLICT'
-        )) {
-          throw new PostsConflictError('Article or branch changed during save. Reload the page.');
-        }
-        throw error;
+    try {
+      const prepared = await prepareAtomicHyWrite({
+        snapshot: atomicSnapshot.snapshot,
+        postIndex: id,
+        currentPost: current,
+        editedPost: edited,
+        loadSnapshotFiles: (baseSnapshot, paths) => loadSnapshotFiles(config, baseSnapshot, paths),
+      });
+      const transaction = await commitMultiFileTransaction(
+        config,
+        prepared.snapshot,
+        snapshot.blobSha,
+        prepared.changes,
+        'Admin: update dream dictionary article',
+      );
+      result = {
+        commitSha: transaction.commitSha,
+        blobSha: transaction.blobShas.get('src/data/posts.json') || snapshot.blobSha,
+        noOp: transaction.noOp,
+      };
+      savedPosts = prepared.updatedPosts;
+    } catch (error) {
+      if (error instanceof AdminAtomicHyWriteError || error instanceof HyWriteProjectionError) {
+        throw new PostsValidationError(error.message);
       }
-    } else {
-      snapshot.posts[id] = { ...current, ...edited };
-      JSON.parse(JSON.stringify(snapshot.posts));
-      result = await commitPosts(config, snapshot, snapshot.posts);
-      savedPosts = snapshot.posts;
+      if (error && typeof error === 'object' && (
+        (error as { code?: unknown }).code === 'STALE_POSTS_VERSION'
+        || (error as { code?: unknown }).code === 'BRANCH_REF_CONFLICT'
+      )) {
+        throw new PostsConflictError('Article or branch changed during save. Reload the page.');
+      }
+      throw error;
     }
 
     const deletedKeys: string[] = [];
