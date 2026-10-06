@@ -18,7 +18,7 @@ import {
   resolveAtomicGitHubBranch,
   resolveHyAdminWriteMode,
 } from '../../../_lib/admin-atomic-hy-write.mjs';
-import { HyWriteProjectionError } from '../../../../src/lib/content-write/project-hy-post.mjs';
+import { classifyAdminHyWriteError } from '../../../_lib/admin-hy-error-classification.mjs';
 
 interface Context { request: Request; env: GitHubPostsEnv }
 
@@ -59,9 +59,24 @@ export async function onRequestPost(context: Context): Promise<Response> {
     });
     return json({ ok: true, id: String(prepared.postIndex), content_id: contentId, sourceUrl: prepared.projection.post.sourceUrl, commitSha: transaction.commitSha }, 201);
   } catch (error) {
-    if (error instanceof AdminAtomicHyWriteError || error instanceof HyWriteProjectionError || error instanceof PostsValidationError) {
-      const status = error instanceof AdminAtomicHyWriteError && ['INVALID_WRITE_MODE', 'INVALID_ATOMIC_BRANCH_CONFIRMATION', 'INVALID_WRITE_ENVIRONMENT'].includes(error.code) ? 503 : 400;
-      return json({ ok: false, error: error.message }, status);
+    const classification = classifyAdminHyWriteError(error);
+    if (classification?.kind === 'configuration') {
+      return json({ ok: false, code: classification.code, error: 'Admin writing is unavailable.' }, 503);
+    }
+    if (classification?.kind === 'integrity') {
+      return json({ ok: false, code: classification.code, error: 'Repository integrity validation failed.' }, 503);
+    }
+    if (classification?.kind === 'upstream') {
+      return json({ ok: false, code: classification.code, error: 'GitHub is temporarily unavailable.' }, 502);
+    }
+    if (classification?.kind === 'commit_outcome_unknown') {
+      return json({ ok: false, error: 'Create outcome is unknown. Reload the article before retrying.' }, 502);
+    }
+    if (classification?.kind === 'conflict') {
+      return json({ ok: false, error: 'Article collection changed during creation. Retry the request.', conflict: true }, 409);
+    }
+    if (error instanceof PostsValidationError) {
+      return json({ ok: false, error: error.message }, 400);
     }
     if (error instanceof PostsConfigError) return json({ ok: false, error: error.message }, 503);
     if (error instanceof PostsConflictError || (error && typeof error === 'object' && ['BRANCH_REF_CONFLICT', 'STALE_FILE_VERSION'].includes((error as { code?: string }).code || ''))) {

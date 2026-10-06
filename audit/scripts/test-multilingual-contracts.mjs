@@ -5,6 +5,7 @@ import { deriveNextSourceStateOnPublish, deriveTranslationState } from '../../sr
 import {
   applyPublishedSlugReservation,
   assertDraftSlugAvailable,
+  assertEnPublicSlug,
   assertRuPublicSlug,
   localeDocumentFilename,
   localeFromDocumentFilename,
@@ -58,6 +59,11 @@ for (const invalid of ['Ворона', 'ёлка', 'vorona', 'ворона_во_
   assert.throws(() => assertRuPublicSlug(invalid), `invalid stored RU slug ${invalid} rejected`);
 }
 
+for (const valid of ['crow', 'crow-dream-2026', 'Crow_Dream']) assert.equal(assertEnPublicSlug(valid), valid);
+for (const invalid of ['café', '😀', 'Ｆｕｌｌｗｉｄｔｈ', 'crow-ворона']) {
+  assert.throws(() => assertEnPublicSlug(invalid), `non-ASCII EN slug ${invalid} rejected`);
+}
+
 const currentHyPosts = JSON.parse(readFileSync('src/data/posts.json', 'utf8'));
 const currentRegistry = JSON.parse(readFileSync('src/data/migrations/content-id-registry.v1.json', 'utf8'));
 assert.equal(currentHyPosts.length, currentRegistry.entries.length, 'current HY corpus and registry have matching identities');
@@ -77,6 +83,12 @@ assert.throws(() => validateLocaleDocumentStorage({
   filename: 'ru.json',
   localeDocument: document('ru', 'ignored', { draft: payload('ru', 'Ворона', { based_on_source_fingerprint: item.source_fingerprint }) }),
 }), 'stored non-canonical RU draft is rejected at the locale-document boundary');
+
+assert.throws(() => validateLocaleDocumentStorage({
+  item,
+  filename: 'en.json',
+  localeDocument: document('en', 'ignored', { draft: payload('en', 'crow-ворона', { based_on_source_fingerprint: item.source_fingerprint }) }),
+}), 'stored non-ASCII EN draft is rejected at the locale-document boundary');
 
 const draftOnlyRu = document('ru', 'черновик-ру', { draft: payload('ru', 'черновик-ру', { based_on_source_fingerprint: item.source_fingerprint }) });
 const publishedRu = document('ru', 'сон-про-морду', { published: ruPublished });

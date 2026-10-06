@@ -71,6 +71,14 @@ const postEnv = { ...env, ERAZAHAN_LOCALE_ADMIN_ATOMIC_BRANCH: 'main', ERAZAHAN_
 const createBody = (overrides = {}) => ({ action: 'create_draft', content_id: A, locale: 'en', expected_locale_absent: true, expected_source_revision: 1, expected_source_fingerprint: FP, payload: payload('crow', 'Crow', { }), ...overrides });
 { const mock = installFetch({ allowWrites: true }); try { const res = await post(createBody(), { env: postEnv }); const body = await res.json(); assert.equal(res.status, 200); assert.equal(body.changed, true); assert.match(body.locale_blob_sha, /^[0-9a-f]{40}$/); assert.equal(JSON.stringify(body).includes('blobShas'), false); assert.equal(mock.calls.some((call) => call.method === 'POST'), true); } finally { mock.restore(); } }
 for (const [headers, expected] of [[{ origin: 'https://evil.test' }, 403], [{ origin: '' }, 403], [{ 'content-type': 'text/plain' }, 415]]) { const mock = installFetch(); try { const res = await post(createBody(), { env: postEnv, headers }); assert.equal(res.status, expected); assert.equal(mock.calls.length, 0); } finally { mock.restore(); } }
+for (const invalidSlug of ['café', '😀', 'Ｆｕｌｌｗｉｄｔｈ', 'crow-ворона']) {
+  const mock = installFetch({ allowWrites: true }); try {
+    const res = await post(createBody({ payload: payload(invalidSlug, 'Crow', {}) }), { env: postEnv });
+    assert.equal(res.status, 400, `${invalidSlug} is rejected by the translation API`);
+    assert.equal((await res.json()).code, 'DRAFT_INVALID');
+    assert.equal(mock.calls.some((call) => call.method !== 'GET'), false, `${invalidSlug} creates no GitHub write`);
+  } finally { mock.restore(); }
+}
 for (const bad of [{ action: '' }, { ...createBody(), extra: true }, { ...createBody(), payload: null }, { ...createBody(), expected_source_revision: '1' }, { ...createBody(), expected_source_fingerprint: 'bad' }, { ...createBody(), locale: 'hy' }]) { const mock = installFetch(); try { const res = await post(bad, { env: postEnv }); assert.equal(res.status, 400); assert.equal(mock.calls.length, 0); } finally { mock.restore(); } }
 for (const guardedEnv of [{ ...env }, { ...env, ADMIN_GITHUB_BRANCH: '' }, { ...env, ERAZAHAN_LOCALE_ADMIN_ATOMIC_BRANCH: '' }, { ...env, ERAZAHAN_LOCALE_ADMIN_ATOMIC_BRANCH: 'other' }]) { const mock = installFetch(); try { const res = await post(createBody(), { env: guardedEnv }); assert.equal(res.status, 503); assert.equal(mock.calls.length, 0); } finally { mock.restore(); } }
 for (const guardedEnv of [

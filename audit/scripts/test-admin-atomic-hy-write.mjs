@@ -104,7 +104,7 @@ function base64(value) {
   return btoa(unescape(encodeURIComponent(value)));
 }
 
-function installAdminPostGetFetch({ posts, registry }) {
+function installAdminPostGetFetch({ posts, registry, transportFailure = false }) {
   const original = globalThis.fetch;
   const calls = [];
   const tree = (entries) => new Response(JSON.stringify({ tree: entries }), { status: 200 });
@@ -113,16 +113,19 @@ function installAdminPostGetFetch({ posts, registry }) {
     const url = new URL(input);
     calls.push({ path: url.pathname, method: init.method ?? 'GET' });
     const path = url.pathname;
-    if (path.endsWith('/git/ref/heads/main')) return new Response(JSON.stringify({ object: { sha: 'commit-sha' } }), { status: 200 });
+    if (path.endsWith('/git/ref/heads/main')) {
+      if (transportFailure) return new Response('private upstream detail', { status: 500 });
+      return new Response(JSON.stringify({ object: { sha: 'commit-sha' } }), { status: 200 });
+    }
     if (path.endsWith('/git/commits/commit-sha')) return new Response(JSON.stringify({ tree: { sha: 'root-tree' } }), { status: 200 });
     if (path.endsWith('/git/trees/root-tree')) return tree([{ path: 'src', type: 'tree', sha: 'src-tree' }]);
     if (path.endsWith('/git/trees/src-tree')) return tree([{ path: 'data', type: 'tree', sha: 'data-tree' }]);
     if (path.endsWith('/git/trees/data-tree')) return tree([
-      { path: 'posts.json', type: 'blob', sha: 'posts-sha' },
+      { path: 'posts.json', type: 'blob', sha: POSTS_SHA },
       { path: 'migrations', type: 'tree', sha: 'migrations-tree' },
     ]);
     if (path.endsWith('/git/trees/migrations-tree')) return tree([{ path: 'content-id-registry.v1.json', type: 'blob', sha: 'registry-sha' }]);
-    if (path.endsWith('/git/blobs/posts-sha')) return blob(JSON.stringify(posts));
+    if (path.endsWith(`/git/blobs/${POSTS_SHA}`)) return blob(JSON.stringify(posts));
     if (path.endsWith('/git/blobs/registry-sha')) return blob(JSON.stringify(registry));
     return new Response('not found', { status: 404 });
   };
@@ -137,6 +140,25 @@ async function getAdminPost(id, fixture) {
       request: new Request(`https://site.test/api/admin/posts/${id}`),
       params: { id },
       env: { GITHUB_TOKEN: 'test-token', ADMIN_GITHUB_REPO: 'test-owner/test-repo', ADMIN_GITHUB_BRANCH: 'main' },
+    });
+    return { response, body: await response.json(), calls: mock.calls };
+  } finally {
+    mock.restore();
+  }
+}
+
+async function putAdminPost({ posts, registry, body, env, transportFailure = false }) {
+  const mock = installAdminPostGetFetch({ posts, registry, transportFailure });
+  try {
+    const endpoint = await getAdminPostEndpoint();
+    const response = await endpoint.onRequestPut({
+      request: new Request('https://site.test/api/admin/posts/0', {
+        method: 'PUT',
+        headers: { origin: 'https://site.test', 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+      params: { id: '0' },
+      env,
     });
     return { response, body: await response.json(), calls: mock.calls };
   } finally {
@@ -228,7 +250,7 @@ const getFirst = await getAdminPost('0', { posts: getPosts, registry: getRegistr
 assert.equal(getFirst.response.status, 200);
 assert.equal(getFirst.body.ok, true);
 assert.deepEqual(getFirst.body.post, getPosts[0]);
-assert.equal(getFirst.body.version, 'posts-sha');
+assert.equal(getFirst.body.version, POSTS_SHA);
 assert.equal(getFirst.body.writable, true);
 assert.equal(getFirst.body.content_id, getRegistry.entries[0].content_id);
 assert.equal(getFirst.calls.every((call) => call.method === 'GET'), true);
@@ -290,6 +312,30 @@ const invalidRegistryIdGet = await getAdminPost('1', { posts: getPosts, registry
 assert.equal(invalidRegistryIdGet.response.status, 503);
 assert.equal(Object.hasOwn(invalidRegistryIdGet.body, 'content_id'), false);
 assert.equal(JSON.stringify(getRegistry), registryBefore);
+const validPutBody = { version: POSTS_SHA, originalSlug: getPosts[0].slug, post: getPosts[0] };
+const endpointAtomicEnv = { GITHUB_TOKEN: 'test-token', ADMIN_GITHUB_REPO: 'test-owner/test-repo', ...atomicEnv('main') };
+const invalidPut = await putAdminPost({ posts: getPosts, registry: getRegistry, body: { ...validPutBody, post: null }, env: endpointAtomicEnv });
+assert.equal(invalidPut.response.status, 400, 'malformed editable post remains a client validation error');
+assert.equal(invalidPut.calls.length, 0, 'malformed post performs no GitHub request');
+const invalidModePut = await putAdminPost({
+  posts: getPosts, registry: getRegistry, body: validPutBody,
+  env: { GITHUB_TOKEN: 'test-token', ADMIN_GITHUB_REPO: 'test-owner/test-repo', ADMIN_GITHUB_BRANCH: 'main' },
+});
+assert.equal(invalidModePut.response.status, 503, 'invalid write mode remains unavailable');
+assert.equal(invalidModePut.body.code, 'SERVICE_UNAVAILABLE');
+assert.equal(invalidModePut.calls.length, 0, 'invalid write mode performs no GitHub request');
+const integrityPut = await putAdminPost({
+  posts: getPosts, registry: { entries: [getRegistry.entries[0]] }, body: validPutBody, env: endpointAtomicEnv,
+});
+assert.equal(integrityPut.response.status, 503, 'repository identity mismatch is an integrity failure');
+assert.equal(integrityPut.body.code, 'REPOSITORY_INTEGRITY');
+assert.equal(integrityPut.body.writable, false);
+assert.equal(integrityPut.calls.some((call) => call.method !== 'GET'), false, 'pre-write integrity failure does not write to GitHub');
+assert.equal(JSON.stringify(integrityPut.body).includes('test-token'), false, 'integrity response is redacted');
+const upstreamPut = await putAdminPost({ posts: getPosts, registry: getRegistry, body: validPutBody, env: endpointAtomicEnv, transportFailure: true });
+assert.equal(upstreamPut.response.status, 502, 'GitHub transport failure remains distinct from integrity');
+assert.equal(upstreamPut.body.code, 'UPSTREAM_FAILURE');
+assert.equal(JSON.stringify(upstreamPut.body).includes('private upstream detail'), false, 'upstream response is redacted');
 assert.ok(
   endpointSource.indexOf('const deletedKeys') > endpointSource.indexOf('commitMultiFileTransaction'),
   'post-commit R2 cleanup remains after the atomic transaction',

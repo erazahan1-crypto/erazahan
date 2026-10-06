@@ -11,14 +11,13 @@ import {
   type GitHubPostsEnv,
 } from '../../../_lib/github-posts';
 import {
-  AdminAtomicHyWriteError,
   assertAtomicSourceUrl,
   loadAtomicHyWriteSnapshot,
   prepareAtomicHyWrite,
   resolveAtomicGitHubBranch,
   resolveHyAdminWriteMode,
 } from '../../../_lib/admin-atomic-hy-write.mjs';
-import { HyWriteProjectionError } from '../../../../src/lib/content-write/project-hy-post.mjs';
+import { classifyAdminHyWriteError } from '../../../_lib/admin-hy-error-classification.mjs';
 import {
   cleanupPostImageUploads,
   contentReferencesImageKey,
@@ -193,9 +192,6 @@ export async function onRequestPut(context: Context): Promise<Response> {
       if (error && typeof error === 'object' && (error as { code?: unknown }).code === 'BRANCH_REF_UPDATE_FAILURE') {
         commitOutcome = 'unknown';
       }
-      if (error instanceof AdminAtomicHyWriteError || error instanceof HyWriteProjectionError) {
-        throw new PostsValidationError(error.message);
-      }
       if (error && typeof error === 'object' && (
         (error as { code?: unknown }).code === 'STALE_POSTS_VERSION'
         || (error as { code?: unknown }).code === 'BRANCH_REF_CONFLICT'
@@ -274,14 +270,21 @@ async function parseSaveRequest(request: Request, contentType: string): Promise<
 }
 
 function handleError(error: unknown): Response {
-  if (error && typeof error === 'object' && (error as { code?: unknown }).code === 'BRANCH_REF_UPDATE_FAILURE') {
+  const classification = classifyAdminHyWriteError(error);
+  if (classification?.kind === 'commit_outcome_unknown') {
     return json({ ok: false, error: 'Save outcome is unknown. Reload the article before retrying.' }, 502);
   }
-  if (error instanceof AdminAtomicHyWriteError && (
-    error.code === 'INVALID_WRITE_MODE' || error.code === 'INVALID_ATOMIC_BRANCH_CONFIRMATION' || error.code === 'INVALID_WRITE_ENVIRONMENT'
-    || error.code === 'REGISTRY_POST_COUNT_MISMATCH'
-  ) || (error instanceof HyWriteProjectionError && error.code === 'INVALID_REGISTRY')) {
-    return json({ ok: false, error: error.message, writable: false }, 503);
+  if (classification?.kind === 'configuration') {
+    return json({ ok: false, code: classification.code, error: 'Admin writing is unavailable.', writable: false }, 503);
+  }
+  if (classification?.kind === 'integrity') {
+    return json({ ok: false, code: classification.code, error: 'Repository integrity validation failed.', writable: false }, 503);
+  }
+  if (classification?.kind === 'upstream') {
+    return json({ ok: false, code: classification.code, error: 'GitHub is temporarily unavailable.' }, 502);
+  }
+  if (classification?.kind === 'conflict') {
+    return json({ ok: false, error: 'Article or branch changed during save. Reload the page.', conflict: true }, 409);
   }
   if (error instanceof PostsConfigError) return json({ ok: false, error: error.message, writable: false }, 503);
   if (error instanceof PostsConflictError) return json({ ok: false, error: error.message, conflict: true }, 409);

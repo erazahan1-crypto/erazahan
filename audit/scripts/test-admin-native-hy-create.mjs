@@ -51,6 +51,22 @@ for (const letter of ['ZZZ', 'A', 'ԴԴ', 'Ր', null]) {
   assert.equal(files.get('src/data/migrations/content-id-registry.v1.json').content, registryBefore, `${String(letter)} leaves registry unchanged`);
 }
 
+let integrityReads = 0;
+const integritySnapshot = {
+  ...snapshot,
+  files: new Map([...snapshot.files, [
+    'src/data/migrations/content-id-registry.v1.json', { sha: 'registry-sha', content: JSON.stringify({ entries: [] }) },
+  ]]),
+};
+await assert.rejects(() => prepareAtomicHyCreate({
+  snapshot: integritySnapshot,
+  editedPost: { slug: 'integrity-check', title: 'Integrity', date: '2026-02-03', letter: 'Ա', categories: ['test'], content: 'native content' },
+  contentId: generateUuidV7(1_700_000_000_012, (bytes) => bytes.fill(4)),
+  createdAt: '2026-02-03T04:05:06.000Z',
+  loadSnapshotFiles: async () => { integrityReads += 1; return integritySnapshot; },
+}), { code: 'REGISTRY_POST_COUNT_MISMATCH' });
+assert.equal(integrityReads, 0, 'registry integrity mismatch is rejected before any further repository write preparation');
+
 const omittedDescription = projectNativeHyPostCreate({
   contentId: generateUuidV7(1_700_000_000_001, (bytes) => bytes.fill(2)),
   postIndex: 1,

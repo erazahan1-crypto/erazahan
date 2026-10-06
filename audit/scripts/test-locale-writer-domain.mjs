@@ -75,6 +75,17 @@ const noChange = beginLocaleEdit({ item, locale: 'ru', localeDocument: published
 assert.throws(() => publishLocaleDraft({ item, locale: 'ru', localeDocument: noChange.localeDocument, draftClaims: noChange.draftClaims, publishedReservations: noChange.publishedReservations, publishedAt: '2026-09-16' }), (e) => e.code === 'NO_CHANGES');
 const en = createLocaleDraft({ item, locale: 'en', payload: payload('en', 'crow', 'Crow', 'D'), draftClaims: emptyClaims, publishedReservations: emptyReservations }); assert.equal(en.localeDocument.draft.alphabet_key, 'D');
 const enNull = createLocaleDraft({ item, locale: 'en', payload: payload('en', 'crow-null', 'Crow', null), draftClaims: emptyClaims, publishedReservations: emptyReservations }); assert.equal(enNull.localeDocument.draft.alphabet_key, null);
+for (const invalidSlug of ['café', '😀', 'Ｆｕｌｌｗｉｄｔｈ', 'crow-ворона']) {
+  assert.throws(() => createLocaleDraft({ item, locale: 'en', payload: payload('en', invalidSlug, 'Crow', 'C'), draftClaims: emptyClaims, publishedReservations: emptyReservations }), (error) => error.code === 'DRAFT_INVALID', `${invalidSlug} is rejected before a draft claim can be written`);
+}
+const invalidStoredEn = { ...en.localeDocument, draft: { ...en.localeDocument.draft, slug: 'crow-ворона' } };
+for (const operation of [
+  () => updateLocaleDraft({ item, locale: 'en', localeDocument: invalidStoredEn, payload: payload('en', 'crow', 'Crow'), draftClaims: en.draftClaims, publishedReservations: emptyReservations }),
+  () => beginLocaleEdit({ item, locale: 'en', localeDocument: { ...invalidStoredEn, draft: null, published: { ...invalidStoredEn.draft, version: 1, published_at: '2026-09-15' } }, draftClaims: emptyClaims, publishedReservations: emptyReservations }),
+  () => rebaseLocaleDraftToCurrentSource({ item: { ...item, source_revision: 8, source_fingerprint: 'c'.repeat(64) }, locale: 'en', localeDocument: invalidStoredEn, draftClaims: en.draftClaims, publishedReservations: emptyReservations }),
+  () => discardLocaleDraft({ item, locale: 'en', localeDocument: invalidStoredEn, draftClaims: en.draftClaims, publishedReservations: emptyReservations }),
+  () => publishLocaleDraft({ item, locale: 'en', localeDocument: invalidStoredEn, draftClaims: en.draftClaims, publishedReservations: emptyReservations, publishedAt: '2026-09-15' }),
+]) assert.throws(operation, (error) => error.code === 'DRAFT_INVALID');
 const immutableItem = structuredClone(item); const immutableClaims = structuredClone(emptyClaims); const immutablePayload = payload('en', 'owl', 'Owl', null);
 createLocaleDraft({ item, locale: 'en', payload: immutablePayload, draftClaims: immutableClaims, publishedReservations: emptyReservations });
 assert.deepEqual(item, immutableItem); assert.deepEqual(emptyClaims, immutableClaims);

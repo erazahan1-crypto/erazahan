@@ -61,9 +61,19 @@ export function assertRuPublicSlug(slug) {
   return slug;
 }
 
+export function assertEnPublicSlug(slug) {
+  assertPublicSlug(slug);
+  if (!/^[\x21-\x7e]+$/.test(slug)) fail('EN slug must use ASCII characters only');
+  return slug;
+}
+
 export function assertLocalePublicSlug(locale, slug) {
   assertSupportedLocale(locale);
-  const canonicalSlug = locale === 'ru' ? assertRuPublicSlug(slug) : assertPublicSlug(slug);
+  const canonicalSlug = locale === 'ru'
+    ? assertRuPublicSlug(slug)
+    : locale === 'en'
+      ? assertEnPublicSlug(slug)
+      : assertPublicSlug(slug);
   if (locale === 'ru' || locale === 'en') {
     if (reservedLocalizedDreamSlugs(locale).includes(canonicalSlug)) {
       fail(`${locale.toUpperCase()} slug is reserved`);

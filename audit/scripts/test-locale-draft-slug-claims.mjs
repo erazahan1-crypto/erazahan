@@ -12,6 +12,7 @@ assert.throws(() => validateLocaleDraftSlugClaims({ version: 1, claims: [{ local
 assert.throws(() => validateLocaleDraftSlugClaims({ version: 1, claims: [{ locale: 'ru', slug: 'search', content_id: A }] }));
 assert.throws(() => validateLocaleDraftSlugClaims({ version: 1, claims: [{ locale: 'en', slug: 'a', content_id: 'bad' }] }));
 assert.throws(() => validateLocaleDraftSlugClaims({ version: 1, claims: [{ locale: 'en', slug: 'a', content_id: A }, { locale: 'en', slug: 'a', content_id: A }] }));
+assert.throws(() => validateLocaleDraftSlugClaims({ version: 1, claims: [{ locale: 'en', slug: 'ворона', content_id: A }] }));
 const source = { version: 1, claims: [{ locale: 'ru', slug: 'я', content_id: A }, { locale: 'en', slug: 'z', content_id: B }] };
 const sorted = validateLocaleDraftSlugClaims(source); assert.deepEqual(sorted.claims.map((x) => `${x.locale}/${x.slug}`), ['en/z', 'ru/я']); assert.deepEqual(source.claims.map((x) => x.slug), ['я', 'z']);
 const claimed = claimDraftSlug({ registry: empty, publishedReservations: reservations, locale: 'ru', slug: 'ворона', content_id: A });
@@ -26,5 +27,5 @@ assert.equal(getDraftSlugOwner(releaseDraftSlug({ registry: claimed, locale: 'ru
 const permanent = { version: 1, reservations: [{ locale: 'ru', slug: 'сон', content_id: A, kind: 'active' }] };
 assert.throws(() => claimDraftSlug({ registry: empty, publishedReservations: permanent, locale: 'ru', slug: 'сон', content_id: B }), (e) => e.code === 'SLUG_PERMANENTLY_RESERVED');
 assert.equal(getDraftSlugOwner(claimDraftSlug({ registry: empty, publishedReservations: permanent, locale: 'ru', slug: 'сон', content_id: A }), { locale: 'ru', slug: 'сон' }), A);
-assert.equal(getDraftSlugOwner(claimDraftSlug({ registry: empty, publishedReservations: reservations, locale: 'en', slug: 'ворона', content_id: B }), { locale: 'ru', slug: 'ворона' }), null);
+assert.equal(getDraftSlugOwner(claimDraftSlug({ registry: empty, publishedReservations: reservations, locale: 'en', slug: '2026', content_id: B }), { locale: 'ru', slug: '2026' }), null);
 console.log('LOCALE DRAFT SLUG CLAIMS PASS');
