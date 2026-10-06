@@ -10,11 +10,12 @@ const repository = scanContentStore('src/data/content/dreams');
 const index = projectTranslationLinkIndex(repository);
 const again = projectTranslationLinkIndex(repository);
 
-assert.equal(index.length, 5800);
+assert.equal(index.length, registry.entries.length, 'every current registry identity is eligible for the link picker');
 assert.deepEqual(index, again, 'projection is deterministic');
-assert.equal(new Set(index.map((row) => row.content_id)).size, 5800);
+assert.equal(new Set(index.map((row) => row.content_id)).size, index.length);
 assert.deepEqual(index.map((row) => row.content_id), [...index.map((row) => row.content_id)].sort((a, b) => a.localeCompare(b, 'en')));
 const registryIds = new Set(registry.entries.map((entry) => entry.content_id));
+assert.deepEqual(new Set(index.map((row) => row.content_id)), registryIds, 'picker identity set matches the current registry exactly');
 for (const row of index) {
   assert.equal(registryIds.has(row.content_id), true);
   assert.deepEqual(Object.keys(row).sort(), ['content_id', 'slug', 'title']);
@@ -28,7 +29,7 @@ assert.throws(() => projectTranslationLinkIndex(oneRecord, { entries: [{ content
 assert.throws(() => projectTranslationLinkIndex({ records: [repository.records[0], repository.records[0]] }, { entries: [{ content_id: repository.records[0].content_id }] }), /counts differ/);
 
 const prepared = prepareSearchIndex(index);
-assert.equal(prepared.length, 5800, 'the index is prepared once as one collection');
+assert.equal(prepared.length, index.length, 'the current picker index is prepared once as one collection');
 const query = index.find((row) => row.title.trim())?.title.split(/\s+/u)[0] ?? '';
 const ranked = rankPreparedSearch(query, prepared, 12);
 assert.ok(ranked.length > 0 && ranked.length <= 12, 'common title term returns capped results');

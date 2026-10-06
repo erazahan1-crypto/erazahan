@@ -316,7 +316,7 @@ const deleteOneResult = await commitMultiFileTransaction(deleteOne.client, {
 });
 assert.deepEqual(deleteOneResult.changedPaths, [ITEM, POSTS]);
 assert.equal(deleteOne.calls.blobs.length, 1);
-assert.deepEqual(deleteOne.calls.trees[0].entries[0], { path: ITEM, sha: null });
+assert.deepEqual(deleteOne.calls.trees[0].entries[0], { path: ITEM, mode: '100644', type: 'blob', sha: null }, 'deletion is an explicit Git blob tree removal without content payload');
 
 const deleteMixed = fakeClient();
 const deleteMixedSnapshot = await snapshot(deleteMixed, [POSTS, ITEM, NEW_A]);

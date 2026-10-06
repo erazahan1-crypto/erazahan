@@ -72,7 +72,8 @@ try {
       }
     }
     const hy = listPublishedLocaleEntries(real, 'hy');
-    assert.equal(hy.length, 5800);
+    const canonicalHyPosts = JSON.parse(readFileSync('src/data/posts.json', 'utf8'));
+    assert.equal(hy.length, canonicalHyPosts.length, 'every current canonical HY post has a published HY entry');
     assert.equal(hy.filter((entry) => entry.path !== publicPathFor('hy', entry.slug)).length, 0);
     assertLocaleLetterOutput(path.resolve('dist'), 'ru', listPublishedAlphabetGroups(real, 'ru'), ['o-proekte'], routesByLocale.get('ru').map((route) => route.slug));
     assertLocaleLetterOutput(path.resolve('dist'), 'en', listPublishedAlphabetGroups(real, 'en'), ['about'], routesByLocale.get('en').map((route) => route.slug));

@@ -88,9 +88,9 @@ try {
   {
     const realPosts = JSON.parse(readFileSync('src/data/posts.json', 'utf8'));
     const real = loadHyDreamSeoBySlug(realPosts);
-    assert.equal(real.size, 5800);
+    assert.equal(real.size, realPosts.length, 'every current canonical HY post receives SEO context');
     const registry = JSON.parse(readFileSync('src/data/migrations/content-id-registry.v1.json', 'utf8'));
-    const contentIdBySourceUrl = new Map(registry.entries.map((entry) => [entry.legacy.original_source_url, entry.content_id]));
+    const contentIdBySourceUrl = new Map(registry.entries.map((entry) => [entry.legacy?.original_source_url ?? entry.native?.source_url, entry.content_id]));
     const repository = scanContentStore('src/data/content/dreams');
     const publishedPaths = new Map(['ru', 'en'].map((locale) => [locale, new Map(
       listPublishedLocaleEntries(repository, locale).map((entry) => [entry.content_id, entry.path]),

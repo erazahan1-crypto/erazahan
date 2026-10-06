@@ -57,7 +57,8 @@ try {
   assert.throws(() => listPublishedDreamSitemapEntries(scanContentStore(fixture()), 'de'));
   assert.equal(escapeSitemapXmlText(`a&<b>"'`), 'a&amp;&lt;b&gt;&quot;&apos;');
   const real = scanContentStore('src/data/content/dreams'); const realHy = listPublishedDreamSitemapEntries(real, 'hy');
-  assert.equal(realHy.length, 5800);
+  const canonicalHyPosts = JSON.parse(readFileSync('src/data/posts.json', 'utf8'));
+  assert.equal(realHy.length, canonicalHyPosts.length, 'HY sitemap candidates cover every current canonical HY post');
   for (const locale of ['ru', 'en']) {
     const expected = listPublishedLocaleEntries(real, locale);
     const entries = listPublishedDreamSitemapEntries(real, locale);

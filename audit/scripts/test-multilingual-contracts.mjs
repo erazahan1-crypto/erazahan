@@ -59,7 +59,8 @@ for (const invalid of ['Ворона', 'ёлка', 'vorona', 'ворона_во_
 }
 
 const currentHyPosts = JSON.parse(readFileSync('src/data/posts.json', 'utf8'));
-assert.equal(currentHyPosts.length, 5800, 'current HY corpus has 5800 posts');
+const currentRegistry = JSON.parse(readFileSync('src/data/migrations/content-id-registry.v1.json', 'utf8'));
+assert.equal(currentHyPosts.length, currentRegistry.entries.length, 'current HY corpus and registry have matching identities');
 for (const post of currentHyPosts) {
   assert.equal(publicPathFor('hy', post.slug), `/${post.slug}/`, `HY path remains unchanged for ${post.slug}`);
 }

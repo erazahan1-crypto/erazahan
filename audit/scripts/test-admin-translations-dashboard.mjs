@@ -33,11 +33,17 @@ for (const script of dashboardHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/scrip
 }
 
 const repository = scanContentStore('src/data/content/dreams');
+const canonicalHyPosts = JSON.parse(readFileSync('src/data/posts.json', 'utf8'));
 const rows = projectTranslationDashboard(repository);
 assert.equal(rows.length, repository.counts.hy_documents, 'every HY logical item projects once');
-assert.equal(rows.length, 5800, 'current canonical store cardinality');
+assert.equal(rows.length, canonicalHyPosts.length, 'every current canonical HY post projects once');
 assert.equal(new Set(rows.map((row) => row.content_id)).size, rows.length, 'no duplicate content IDs');
 for (const row of rows) assert.ok(row.hy.title && row.hy.slug, 'HY context is present');
+
+for (const locale of ['ru', 'en']) {
+  const expectedNotCreated = repository.records.filter((record) => !record.locales[locale]).length;
+  assert.equal(rows.filter((row) => row[locale].publication_state === 'NOT_CREATED').length, expectedNotCreated, `${locale} not-created count follows persisted locale documents`);
+}
 
 for (const record of repository.records) {
   const row = rows.find((candidate) => candidate.content_id === record.content_id);

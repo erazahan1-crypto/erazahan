@@ -18,6 +18,8 @@ const sourceFiles = [
   'src/data/posts.json',
   'src/data/migrations/content-id-registry.v1.json',
 ];
+const canonicalPosts = JSON.parse(readFileSync(path.join(ROOT, 'src/data/posts.json'), 'utf8'));
+const registry = JSON.parse(readFileSync(path.join(ROOT, 'src/data/migrations/content-id-registry.v1.json'), 'utf8'));
 const sourceBytesBefore = new Map(
   sourceFiles.map((file) => [file, readFileSync(path.join(ROOT, file))]),
 );
@@ -36,9 +38,10 @@ assert.deepEqual(loadSelectedHyPosts('legacy'), loadLegacyHyPosts(), 'legacy sel
 
 const legacy = loadLegacyHyPosts();
 const fromStore = loadNewHyPosts();
-assert.equal(legacy.length, 5800);
-assert.equal(fromStore.length, 5800);
-assert.equal(loadSelectedHyPosts('new').length, 5800, 'new selection loads the permanent HY store');
+assert.equal(legacy.length, canonicalPosts.length, 'legacy selection reads the current canonical post source');
+assert.equal(fromStore.length, registry.entries.length, 'new selection reads every current registry identity');
+assert.equal(fromStore.length, canonicalPosts.length, 'current registry and canonical posts remain in lockstep');
+assert.equal(loadSelectedHyPosts('new').length, canonicalPosts.length, 'new selection loads the permanent HY store');
 
 const compatibilityFields = [
   'slug',
@@ -57,19 +60,29 @@ for (let index = 0; index < legacy.length; index += 1) {
   const oldPost = legacy[index];
   const newPost = fromStore[index];
   assert.deepEqual(
-    Object.keys(newPost).sort(),
-    Object.keys(oldPost).sort(),
-    `post ${index} has the legacy-compatible public shape`,
+    Object.keys(newPost).filter((key) => key !== 'description').sort(),
+    Object.keys(oldPost).filter((key) => key !== 'description').sort(),
+    `post ${index} has the legacy-compatible public shape outside optional description`,
   );
   for (const field of compatibilityFields) {
-    assert.deepEqual(newPost[field], oldPost[field], `post ${index} ${field} parity`);
+    const expected = field === 'description' ? oldPost[field] ?? null : oldPost[field];
+    const actual = field === 'description' ? newPost[field] ?? null : newPost[field];
+    assert.deepEqual(actual, expected, `post ${index} ${field} parity`);
   }
   assert.equal(newPost.sourceUrl, oldPost.sourceUrl, `post ${index} sourceUrl provenance parity`);
   assert.deepEqual(newPost.comments, oldPost.comments, `post ${index} comments are the read-only legacy bridge`);
   assert.equal('content_id' in newPost, false, `post ${index} does not expose content_id`);
 }
 
-assert.ok(isDeepStrictEqual(fromStore, legacy), 'new HY compatibility adapter differs from legacy post shape');
+const normalizeOptionalNullDescription = (posts) => posts.map((post) => {
+  if (post.description !== null) return post;
+  const { description: _description, ...withoutDescription } = post;
+  return withoutDescription;
+});
+assert.ok(
+  isDeepStrictEqual(normalizeOptionalNullDescription(fromStore), normalizeOptionalNullDescription(legacy)),
+  'new HY compatibility adapter differs from legacy post semantics',
+);
 
 for (const file of sourceFiles) {
   assert.deepEqual(
@@ -90,7 +103,7 @@ console.log(JSON.stringify({
   invalid_value: 'hard failure',
   legacy_posts: legacy.length,
   new_posts: fromStore.length,
-  exact_compatibility_shape: true,
+  exact_compatibility_shape_except_optional_null_description: true,
   compatibility_fields: compatibilityFields,
   comments_bridge: 'legacy posts.json by registry sourceUrl; read-only',
   source_data_mutated: false,
