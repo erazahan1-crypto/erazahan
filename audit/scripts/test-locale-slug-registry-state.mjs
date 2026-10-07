@@ -12,7 +12,9 @@ const A = 'efa61838-86c8-56b8-815c-0a38b0a83242';
 const B = 'cadd4552-097e-5845-b59e-223c36c82488';
 
 function readRegistry(file, validator, arrayKey) {
-  const text = readFileSync(file, 'utf8');
+  // Git may materialize canonical LF JSON with CRLF line endings on Windows.
+  // Normalize only that checkout transformation before verifying canonical bytes.
+  const text = readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
   const registry = JSON.parse(text);
   assert.deepEqual(Object.keys(registry).sort(), [arrayKey, 'version']);
   assert.equal(registry.version, 1);

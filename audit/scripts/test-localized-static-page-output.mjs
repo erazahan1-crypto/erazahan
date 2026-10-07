@@ -36,8 +36,10 @@ for (const page of pages) {
   }
 }
 
-for (const [file, slug] of [['dist/ru/search-index.json', 'o-proekte'], ['dist/en/search-index.json', 'about'], ['dist/sitemap-ru.xml', 'o-proekte'], ['dist/sitemap-en.xml', 'about']]) {
-  assert.equal(read(file).includes(slug), false, `${slug} is absent from ${file}`);
+for (const [locale, slug] of [['ru', 'o-proekte'], ['en', 'about']]) {
+  const searchEntries = JSON.parse(read(`dist/${locale}/search-index.json`));
+  assert.equal(searchEntries.some((entry) => entry.slug === slug), false, `${locale} static About is absent from its search index`);
+  assert.equal(read(`dist/sitemap-${locale}.xml`).includes(`<loc>https://erazahan.info/${locale}/${slug}/</loc>`), false, `${locale} static About is absent from its sitemap`);
 }
 
 const hyAbout = read('dist/about/index.html');
