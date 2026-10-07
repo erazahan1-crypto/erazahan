@@ -102,7 +102,7 @@ const props = Astro.props;
 ---
 <Layout {...props}><p>layout test</p></Layout>
 `);
-    const result = spawnSync(process.execPath, [path.join(root, 'node_modules/astro/bin/astro.mjs'), 'build', '--force', '--outDir', outputDirectory], { cwd: root, encoding: 'utf8' });
+    const result = spawnSync(process.execPath, [path.join(root, 'node_modules/astro/bin/astro.mjs'), 'build', '--force', '--outDir', outputDirectory], { cwd: root, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
     assert.equal(result.status, 0, result.stderr || result.stdout);
     for (const [mode, expected] of Object.entries(expectations)) {
       const html = readFileSync(path.join(outputDirectory, 'stage12fa-layout-test', mode, 'index.html'), 'utf8');
