@@ -1,18 +1,6 @@
 {
   "content_id": "7c6f0b03-a101-556c-8dde-04671c76bcef",
-  "draft": {
-    "alphabet_key": "D",
-    "based_on_source_fingerprint": "5f2108c2ec42b0ab7b26d78526b10309a1cafce0b928c2df48e23f1096b5fb0e",
-    "based_on_source_revision": 2,
-    "content": "Wondering what it means to see a grazing duck in a dream? According to dream interpretations, to dream about a grazing duck is a highly favorable sign. This dream primarily symbolizes profit, benefit, and material gain. If you saw a grazing duck in a dream, it may indicate upcoming financial success, material well-being, or receiving positive and rewarding results from your recent endeavors.",
-    "description": "What does it mean to see a grazing duck in a dream? If you dream about a grazing duck, our dream dictionary explains the exact meaning. Find out why this symbol promises profit and financial success.",
-    "image_alts": {},
-    "slug": "grazing-duck-dream-meaning",
-    "tags": [
-      "Duck"
-    ],
-    "title": "Grazing Duck Dream Meaning: What Does It Symbolize?"
-  },
+  "draft": null,
   "locale": "en",
   "published": {
     "alphabet_key": "D",
@@ -23,9 +11,11 @@
     "image_alts": {},
     "published_at": "2026-10-07",
     "slug": "grazing-duck-dream-meaning",
-    "tags": [],
+    "tags": [
+      "Duck"
+    ],
     "title": "Grazing Duck Dream Meaning: What Does It Symbolize?",
-    "version": 1
+    "version": 2
   },
   "schema_version": 1
 }
