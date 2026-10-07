@@ -23,7 +23,7 @@ assert.match(workspacePage, /\/admin\/translations\/media-index\.json/, 'workspa
 assert.match(previewEndpoint, /renderLocalizedContent/, 'preview uses the public localized rendering pipeline');
 assert.match(previewEndpoint, /localizedAuthoringContext/, 'preview has the shared logical-reference context');
 
-function transport() {
+function transport({ refFailure } = {}) {
   const files = new Map([POSTS_PATH, REGISTRY_PATH, paths.item, paths.hy, DRAFT_CLAIMS_PATH, PUBLISHED_RESERVATIONS_PATH]
     .map((file, index) => [file, { sha: `${index}`.padStart(40, 'a'), content: readFileSync(file, 'utf8') }]));
   let commits = 0; let blobs = 0;
@@ -35,7 +35,7 @@ function transport() {
     async createBlob() { blobs += 1; return { sha: `${blobs}`.padStart(40, 'd') }; },
     async createTree() { return { sha: 'e'.repeat(40) }; },
     async createCommit() { commits += 1; return { sha: 'f'.repeat(40) }; },
-    async updateBranchRef() { return { sha: 'f'.repeat(40) }; },
+    async updateBranchRef() { if (refFailure) throw refFailure; return { sha: 'f'.repeat(40) }; },
   };
 }
 
@@ -67,6 +67,26 @@ const payload = (locale) => ({
     locales: { ru: { expectedLocaleAbsent: true, payload: payload('ru') }, en: { expectedLocaleAbsent: true, payload: invalid } },
   }));
   assert.equal(client.commits, 0, 'cross-language validation rejects the whole transaction before commit');
+}
+
+{
+  const client = transport();
+  const posts = JSON.parse(readFileSync(POSTS_PATH, 'utf8'));
+  const registry = JSON.parse(readFileSync(REGISTRY_PATH, 'utf8'));
+  const entry = registry.entries.find((entry) => entry.content_id === record.content_id);
+  const index = entry.legacy?.original_array_index ?? entry.native?.post_index;
+  const hy = { expectedPostsBlobSha: '0'.padStart(40, 'a'), originalSlug: posts[index].slug, post: { ...posts[index], title: `${posts[index].title} test` } };
+  const result = await saveWorkspace(client, { branch: 'main', contentId: record.content_id, hy, locales: { ru: { expectedLocaleAbsent: true, payload: payload('ru') }, en: { expectedLocaleAbsent: true, payload: payload('en') } } });
+  assert.equal(client.commits, 1, 'HY + RU + EN Save All uses one commit');
+  assert.deepEqual(result.saved, { hy: true, ru: true, en: true });
+  const staleClient = transport();
+  await assert.rejects(() => saveWorkspace(staleClient, { branch: 'main', contentId: record.content_id, hy: { ...hy, expectedPostsBlobSha: 'stale' } }), (e) => e.code === 'STALE_EDITOR');
+  assert.equal(staleClient.commits, 0);
+}
+for (const [refFailure, code] of [[Object.assign(new Error('conflict'), { status: 422 }), 'BRANCH_REF_CONFLICT'], [new Error('unknown transport outcome'), 'BRANCH_REF_UPDATE_FAILURE']]) {
+  const client = transport({ refFailure });
+  await assert.rejects(() => saveWorkspace(client, { branch: 'main', contentId: record.content_id, locales: { en: { expectedLocaleAbsent: true, payload: payload('en') } } }), (e) => e.code === code);
+  assert.equal(client.commits, 1, 'ref failure retains transaction outcome semantics');
 }
 
 console.log('ADMIN WORKSPACE SAVE PASS');

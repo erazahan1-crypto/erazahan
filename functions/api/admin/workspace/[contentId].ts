@@ -1,5 +1,6 @@
 import { isContentId } from '../../../../src/lib/content-schema/schema.mjs';
-import { validateEditablePost, createGitHubTransactionClient, getGitHubConfig, PostsConfigError, type GitHubPostsEnv } from '../../../_lib/github-posts';
+import { validateEditablePost, createGitHubTransactionClient, getGitHubConfig, PostsConfigError, type GitHubPostsEnv } from '../../../_lib/github-posts.ts';
+import { classifyAdminHyWriteError } from '../../../_lib/admin-hy-error-classification.mjs';
 import { resolveAdminWriteBranch } from '../../../_lib/admin-write-environment-guard.mjs';
 import { resolveAtomicGitHubBranch, resolveHyAdminWriteMode } from '../../../_lib/admin-atomic-hy-write.mjs';
 import { loadWorkspaceSnapshot, saveWorkspace, workspaceStateFromSnapshot } from '../../../_lib/admin-workspace-save.mjs';
@@ -29,13 +30,30 @@ function errorResponse(error: unknown) {
   return json({ ok: false, code: 'INTERNAL_ERROR', message: 'Save is temporarily unavailable.' }, 500);
 }
 
+function getErrorResponse(error: unknown, identityResolved: boolean) {
+  const stage = error && typeof error === 'object' ? (error as { code?: string }).code : undefined;
+  const classification = classifyAdminHyWriteError(error);
+  let status = 500;
+  let code = 'INTERNAL_ERROR';
+  if (stage === 'CONTENT_NOT_FOUND' && !identityResolved) { status = 404; code = 'CONTENT_NOT_FOUND'; }
+  else if (error instanceof PostsConfigError || classification?.kind === 'configuration') { status = 503; code = 'SERVICE_UNAVAILABLE'; }
+  else if (classification?.kind === 'integrity' || ['CONTENT_NOT_FOUND', 'INVALID_SNAPSHOT_STATE', 'INVALID_HY_SOURCE'].includes(stage ?? '')) { status = 503; code = 'REPOSITORY_INTEGRITY'; }
+  else if (classification?.kind === 'upstream') { status = 502; code = 'UPSTREAM_FAILURE'; }
+  // Follow the existing fixed-message logging convention; never log error/cause or identity.
+  const safeStage = ['REF_LOOKUP_FAILURE', 'COMMIT_LOOKUP_FAILURE', 'SNAPSHOT_FILE_FAILURE'].includes(stage ?? '') ? stage : code;
+  console.error('admin workspace: GET failed', code, safeStage);
+  return json({ ok: false, code, message: code === 'REPOSITORY_INTEGRITY' ? 'Workspace data is inconsistent.' : 'Workspace could not be loaded.' }, status);
+}
+
 export async function onRequestGet(context: Context) {
   const id = contentId(context); if (!id) return json({ ok: false, code: 'INVALID_REQUEST' }, 400);
+  let identityResolved = false;
   try {
     const config = getGitHubConfig(context.env);
     const loaded = await loadWorkspaceSnapshot(createGitHubTransactionClient(config), { branch: config.branch, contentId: id });
+    identityResolved = true;
     return json({ ok: true, ...workspaceStateFromSnapshot(loaded) });
-  } catch (error) { return errorResponse(error); }
+  } catch (error) { return getErrorResponse(error, identityResolved); }
 }
 
 export async function onRequestPost(context: Context) {

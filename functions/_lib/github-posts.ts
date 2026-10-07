@@ -229,14 +229,27 @@ function requiredString(value: unknown, label: string, max: number): string {
   return normalized;
 }
 
-async function findBlob(config: GitHubConfig, rootTreeSha: string, filePath: string): Promise<string | null> {
+async function readGitTree(config: GitHubConfig, treeSha: string): Promise<GitTree> {
+  const tree = await github<GitTree & { truncated?: boolean }>(config, `/git/trees/${treeSha}`);
+  if (!tree || !Array.isArray(tree.tree) || tree.truncated || tree.tree.some((entry) =>
+    !entry || typeof entry.path !== 'string' || !entry.path || entry.path.includes('/')
+    || !['blob', 'tree', 'commit'].includes(entry.type ?? '')
+    || typeof entry.sha !== 'string' || !entry.sha)
+    || new Set(tree.tree.map((entry) => entry.path)).size !== tree.tree.length) {
+    throw new Error('GitHub returned an invalid or incomplete tree');
+  }
+  return tree;
+}
+
+async function findBlob(config: GitHubConfig, rootTreeSha: string, filePath: string, readTree = (sha: string) => readGitTree(config, sha)): Promise<string | null> {
   const segments = filePath.split('/');
   let treeSha = rootTreeSha;
   for (let index = 0; index < segments.length; index += 1) {
-    const tree = await github<GitTree>(config, `/git/trees/${treeSha}`);
+    const tree = await readTree(treeSha);
     const entry = tree.tree.find((item) => item.path === segments[index]);
     const expected = index === segments.length - 1 ? 'blob' : 'tree';
-    if (!entry || entry.type !== expected) return null;
+    if (!entry) return null;
+    if (entry.type !== expected) throw new Error('GitHub tree entry has an unexpected type');
     treeSha = entry.sha;
   }
   return treeSha;
@@ -247,6 +260,22 @@ export function createGitHubTransactionClient(config: GitHubConfig) {
 }
 
 function githubTransport(config: GitHubConfig) {
+  // Immutable SHA keys only; each client owns its cache. Refs remain fresh.
+  const trees = new Map<string, Promise<GitTree>>();
+  async function readTree(sha: string): Promise<GitTree> {
+    let pending = trees.get(sha);
+    if (!pending) {
+      pending = readGitTree(config, sha);
+      trees.set(sha, pending);
+    }
+    try {
+      return await pending;
+    } catch (error) {
+      // A failed read must remain an error and may be retried, never a missing file.
+      if (trees.get(sha) === pending) trees.delete(sha);
+      throw error;
+    }
+  }
   return {
     async getBranchRef(branch: string) {
       const ref = await github<GitRef>(config, `/git/ref/heads/${encodeURIComponent(branch)}`);
@@ -257,7 +286,7 @@ function githubTransport(config: GitHubConfig) {
       return { treeSha: commit.tree.sha };
     },
     async readFileFromTree(treeSha: string, filePath: string) {
-      const blobSha = await findBlob(config, treeSha, filePath);
+      const blobSha = await findBlob(config, treeSha, filePath, readTree);
       if (blobSha === null) return null;
       const blob = await github<GitBlob>(config, `/git/blobs/${blobSha}`);
       if (blob.encoding !== 'base64') throw new Error(`GitHub returned unsupported encoding for ${filePath}`);
