@@ -106,36 +106,6 @@ export async function loadLocaleTranslationEditorState(client, input) {
   };
 }
 
-// Same editor projection as the single-locale loader, but based on a snapshot
-// supplied by the workspace loader so all panels describe one repository tree.
-export function localeTranslationEditorStateFromSnapshot({ snapshot, contentId, locale }) {
-  assertLocale(locale);
-  const base = hyStorePaths(contentId);
-  const paths = { ...base, locale: `${base.directory}/${locale}.json` };
-  const { item, hy, localeDocument, localeBlobSha } = validateSnapshot({ snapshot, contentId, locale, paths });
-  const current = localeDocument ?? { schema_version: 1, content_id: item.content_id, locale, draft: null, published: null };
-  const title = current.draft?.title ?? current.published?.title ?? null;
-  return {
-    content_id: item.content_id,
-    locale,
-    source: {
-      revision: item.source_revision,
-      fingerprint: item.source_fingerprint,
-      title: hy.published.title,
-      description: hy.published.description,
-      content: hy.published.content,
-      image_alts: structuredClone(hy.published.image_alts),
-      tags: structuredClone(hy.published.tags),
-      alphabet_key: hy.published.alphabet_key,
-    },
-    locale_document: localeDocument ? structuredClone(localeDocument) : null,
-    locale_blob_sha: localeBlobSha,
-    translation_state: deriveTranslationState(current, item),
-    slug_locked: (localeDocument?.published ?? null) !== null,
-    alphabet_suggestion: title === null ? null : classifyAlphabetKey(locale, title),
-  };
-}
-
 function assertAbsent(loaded, expectedLocaleAbsent) {
   if (expectedLocaleAbsent !== true || loaded.localeDocument !== null || loaded.localeBlobSha !== null) fail('STALE_EDITOR', 'Locale file presence changed; reload the editor');
 }
@@ -192,37 +162,6 @@ function validateLogicalBody(localeDocument, mode) {
     }
     fail(mode === 'publish' ? 'PUBLISH_INVALID' : 'DRAFT_INVALID', 'Localized content validation failed', error);
   }
-}
-
-// Prepares a workspace save from an already-pinned repository snapshot. It has
-// no transport side effects: callers may compose RU and EN changes with an HY
-// projection and commit the resulting set exactly once.
-export function prepareLocaleWorkspaceDraftSave({ snapshot, contentId, locale, payload, expectedLocaleAbsent, expectedLocaleBlobSha }) {
-  assertLocale(locale);
-  if (!isContentId(contentId)) fail('CONTENT_NOT_FOUND', 'content_id is invalid');
-  const base = hyStorePaths(contentId);
-  const paths = { ...base, locale: `${base.directory}/${locale}.json` };
-  const loaded = { snapshot, paths, ...validateSnapshot({ snapshot, contentId, locale, paths }) };
-  let result;
-  let operation = 'update';
-  if (loaded.localeDocument === null) {
-    assertAbsent(loaded, expectedLocaleAbsent);
-    result = createLocaleDraft({ item: loaded.item, locale, payload: structuredClone(payload), draftClaims: loaded.draftClaims, publishedReservations: loaded.publishedReservations });
-    operation = 'create';
-  } else {
-    assertExisting(loaded, expectedLocaleBlobSha);
-    const editableDocument = loaded.localeDocument.published && !loaded.localeDocument.draft
-      ? beginLocaleEdit({ item: loaded.item, locale, localeDocument: loaded.localeDocument, draftClaims: loaded.draftClaims, publishedReservations: loaded.publishedReservations }).localeDocument
-      : loaded.localeDocument;
-    result = updateLocaleDraft({ item: loaded.item, locale, localeDocument: editableDocument, payload: structuredClone(payload), draftClaims: loaded.draftClaims, publishedReservations: loaded.publishedReservations });
-  }
-  validateLogicalBody(result.localeDocument, 'draft');
-  const claims = claimsChange(loaded, result.draftClaims);
-  return {
-    loaded,
-    localeDocument: result.localeDocument,
-    changes: [localeChange(loaded, result.localeDocument, operation), ...(claims ? [claims] : [])],
-  };
 }
 
 export async function createLocaleDraftWrite(client, { branch, contentId, locale, payload, expectedLocaleAbsent, expectedSourceRevision, expectedSourceFingerprint }) {

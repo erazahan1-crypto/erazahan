@@ -140,12 +140,6 @@ const translationData = JSON.stringify(translations).replace(/</g, '\\u003c').re
       slug.textContent = row.slug;
       const actions = document.createElement('div');
       actions.className = 'flex flex-wrap gap-2';
-      const workspaceId = translation?.content_id ?? translations.content_ids[Number(row.id)];
-      const workspace = document.createElement('a');
-      workspace.href = `/admin/posts/workspace/?${new URLSearchParams({ content_id: workspaceId })}`;
-      workspace.className = 'inline-flex min-h-11 items-center rounded-xl border border-violet-400/40 bg-violet-500/10 px-3 text-sm font-semibold text-violet-100 hover:bg-violet-500/20';
-      workspace.textContent = 'HY / RU / EN';
-      workspace.title = 'Open multilingual workspace';
       const edit = document.createElement('a');
       edit.href = translation ? editorUrl(translation.content_id, language as 'ru' | 'en') : `/admin/posts/edit/?id=${encodeURIComponent(row.id)}`;
       edit.className = 'inline-flex min-h-11 items-center rounded-xl bg-violet-600 px-3 text-sm font-semibold text-white hover:bg-violet-500';
@@ -178,7 +172,6 @@ const translationData = JSON.stringify(translations).replace(/</g, '\\u003c').re
           actions.append(indicator);
         }
       }
-      if (!translation) actions.append(workspace);
       title.lang = language;
       actions.lang = 'ru';
       article.append(title, slug, actions);
