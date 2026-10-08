@@ -31,14 +31,14 @@ assert.match(source, /function canDiscard\(\)[\s\S]*state === 'DRAFT' \|\| state
 assert.match(source, /discardAction\.disabled = saving \|\| writeBlocked \|\| !canDiscard\(\)/);
 assert.match(source, /beginEditAction\.hidden = state !== 'PUBLISHED'/);
 assert.match(source, /beginEditAction\.disabled = saving \|\| writeBlocked \|\| !canBeginEdit\(\)/);
-assert.match(source, /async function publishDraft\(\)[\s\S]*if \(saving \|\| writeBlocked \|\| !canPublish\(\)[\s\S]*fetch\('\/api\/admin\/translations', \{ method: 'POST'/);
+assert.match(source, /async function publishDraft\(\)[\s\S]*if \(saving \|\| writeBlocked \|\| !canPublish\(\)[\s\S]*postTranslationWrite\(body\)/);
 assert.match(source, /publishAction\.addEventListener\('click', publishDraft\)/);
 assert.match(source, /fetch\('\/api\/admin\/translations', \{ method: 'POST'/);
 assert.match(source, /data-draft-action[^>]*disabled:cursor-not-allowed[^>]*disabled:opacity-60/);
 assert.equal(/data-draft-action[^>]*\sopacity-60(?:\s|")/.test(source), false);
 assert.match(source, /localeBlobSha = typeof .*locale_blob_sha/s);
 assert.match(source, /await load\(\)/);
-assert.match(source, /if \(!await load\(\)\) \{ writeBlocked = true; writeError\.textContent = 'Draft may have been saved/);
+assert.match(source, /if \(!await load\(\)\) \{ writeBlocked = true; writeError\.textContent = ambiguousTranslationWriteMessage\('save_draft'\)/);
 assert.match(source, /draftForm\.querySelectorAll[\s\S]*control\.disabled = saving/);
 assert.match(source, /if \(saving \|\| \(isDirty\(\)/);
 assert.match(source, /!localeBlobSha \|\| !loadedState\.locale_document\?\.draft/);
@@ -156,18 +156,19 @@ const beginState = {
   localeBlobSha: 'a'.repeat(40),
   updateDraftAction: () => {},
   writeError: { hidden: true, textContent: '' },
-  safeWriteMessage: () => 'error',
+  showWriteFailure: () => {},
+  ambiguousTranslationWriteMessage: () => 'uncertain write outcome',
   canBeginEdit: () => true,
   load: async () => { loadCount += 1; return true; },
-  fetch: (_url, options) => new Promise((resolve) => { requests.push(options); resolveRequest = resolve; }),
+  postTranslationWrite: (body) => new Promise((resolve) => { requests.push(body); resolveRequest = resolve; }),
 };
 const invokeBeginEdit = Function('state', `with (state) { ${executableBeginSource}; return beginEdit; }`)(beginState);
 const firstBegin = invokeBeginEdit();
 const secondBegin = invokeBeginEdit();
 assert.equal(requests.length, 1);
-assert.deepEqual(Object.keys(JSON.parse(requests[0].body)).sort(), ['action', 'content_id', 'expected_locale_blob_sha', 'locale']);
-assert.deepEqual(JSON.parse(requests[0].body), { action: 'begin_edit', content_id: beginState.loadedState.content_id, locale: beginState.loadedState.locale, expected_locale_blob_sha: beginState.localeBlobSha });
-resolveRequest({ ok: true, json: async () => ({ ok: true }) });
+assert.deepEqual(Object.keys(requests[0]).sort(), ['action', 'content_id', 'expected_locale_blob_sha', 'locale']);
+assert.deepEqual(requests[0], { action: 'begin_edit', content_id: beginState.loadedState.content_id, locale: beginState.loadedState.locale, expected_locale_blob_sha: beginState.localeBlobSha });
+resolveRequest({ kind: 'success', body: {} });
 await firstBegin;
 await secondBegin;
 assert.equal(loadCount, 1);
@@ -187,26 +188,27 @@ const discardState = {
   localeBlobSha: 'a'.repeat(40),
   updateDraftAction: () => {},
   writeError: { hidden: true, textContent: '' },
-  safeWriteMessage: () => 'error',
+  showWriteFailure: () => {},
+  ambiguousTranslationWriteMessage: () => 'uncertain write outcome',
   canDiscard: () => true,
   load: async () => { discardLoadCount += 1; return true; },
   window: { confirm: () => true },
-  fetch: (_url, options) => new Promise((resolve) => { discardRequests.push(options); resolveDiscard = resolve; }),
+  postTranslationWrite: (body) => new Promise((resolve) => { discardRequests.push(body); resolveDiscard = resolve; }),
 };
 const invokeDiscard = Function('state', `with (state) { ${executableDiscardSource}; return discardDraft; }`)(discardState);
 const firstDiscard = invokeDiscard();
 const secondDiscard = invokeDiscard();
 assert.equal(discardRequests.length, 1);
-assert.deepEqual(Object.keys(JSON.parse(discardRequests[0].body)).sort(), ['action', 'content_id', 'expected_locale_blob_sha', 'locale']);
-assert.deepEqual(JSON.parse(discardRequests[0].body), { action: 'discard', content_id: discardState.loadedState.content_id, locale: discardState.loadedState.locale, expected_locale_blob_sha: discardState.localeBlobSha });
-resolveDiscard({ ok: true, json: async () => ({ ok: true }) });
+assert.deepEqual(Object.keys(discardRequests[0]).sort(), ['action', 'content_id', 'expected_locale_blob_sha', 'locale']);
+assert.deepEqual(discardRequests[0], { action: 'discard', content_id: discardState.loadedState.content_id, locale: discardState.loadedState.locale, expected_locale_blob_sha: discardState.localeBlobSha });
+resolveDiscard({ kind: 'success', body: {} });
 await firstDiscard;
 await secondDiscard;
 assert.equal(discardLoadCount, 1);
 assert.equal(discardState.saving, false);
 
 let cancelledRequests = 0;
-const cancelledDiscard = Function('state', `with (state) { ${executableDiscardSource}; return discardDraft; }`)({ ...discardState, saving: false, window: { confirm: () => false }, fetch: () => { cancelledRequests += 1; } });
+const cancelledDiscard = Function('state', `with (state) { ${executableDiscardSource}; return discardDraft; }`)({ ...discardState, saving: false, window: { confirm: () => false }, postTranslationWrite: () => { cancelledRequests += 1; } });
 await cancelledDiscard();
 assert.equal(cancelledRequests, 0);
 
@@ -225,21 +227,22 @@ const rebaseState = {
   localeBlobSha: 'a'.repeat(40),
   updateDraftAction: () => {},
   writeError: { hidden: true, textContent: '' },
-  safeWriteMessage: () => 'error',
+  showWriteFailure: () => {},
+  ambiguousTranslationWriteMessage: () => 'uncertain write outcome',
   canRebase: () => true,
   isDirty: () => false,
   load: async () => { rebaseLoadCount += 1; return true; },
   window: { confirm: (message) => { confirmation = message; return true; } },
-  fetch: (_url, options) => new Promise((resolve) => { rebaseRequests.push(options); resolveRebase = resolve; }),
+  postTranslationWrite: (body) => new Promise((resolve) => { rebaseRequests.push(body); resolveRebase = resolve; }),
 };
 const invokeRebase = Function('state', `with (state) { ${executableRebaseSource}; return rebaseDraft; }`)(rebaseState);
 const firstRebase = invokeRebase();
 const secondRebase = invokeRebase();
 assert.equal(rebaseRequests.length, 1);
 assert.equal(confirmation, 'Mark this draft as reviewed against the current HY source?\n\nThe translation text will not be changed. This only updates which HY source version this draft is based on.');
-assert.deepEqual(Object.keys(JSON.parse(rebaseRequests[0].body)).sort(), ['action', 'content_id', 'expected_locale_blob_sha', 'locale']);
-assert.deepEqual(JSON.parse(rebaseRequests[0].body), { action: 'rebase', content_id: rebaseState.loadedState.content_id, locale: rebaseState.loadedState.locale, expected_locale_blob_sha: rebaseState.localeBlobSha });
-resolveRebase({ ok: true, json: async () => ({ ok: true, locale_document: { draft: {} } }) });
+assert.deepEqual(Object.keys(rebaseRequests[0]).sort(), ['action', 'content_id', 'expected_locale_blob_sha', 'locale']);
+assert.deepEqual(rebaseRequests[0], { action: 'rebase', content_id: rebaseState.loadedState.content_id, locale: rebaseState.loadedState.locale, expected_locale_blob_sha: rebaseState.localeBlobSha });
+resolveRebase({ kind: 'success', body: { locale_document: { draft: {} } } });
 await firstRebase;
 await secondRebase;
 assert.equal(rebaseLoadCount, 1);
@@ -249,7 +252,7 @@ assert.equal(rebaseState.saving, false);
 let dirtyRebaseRequests = 0;
 let dirtyRebaseLoads = 0;
 let dirtyRebaseConfirmations = 0;
-const dirtyRebase = Function('state', `with (state) { ${executableRebaseSource}; return rebaseDraft; }`)({ ...rebaseState, saving: false, isDirty: () => true, window: { confirm: () => { dirtyRebaseConfirmations += 1; return true; } }, load: async () => { dirtyRebaseLoads += 1; return true; }, fetch: () => { dirtyRebaseRequests += 1; } });
+const dirtyRebase = Function('state', `with (state) { ${executableRebaseSource}; return rebaseDraft; }`)({ ...rebaseState, saving: false, isDirty: () => true, window: { confirm: () => { dirtyRebaseConfirmations += 1; return true; } }, load: async () => { dirtyRebaseLoads += 1; return true; }, postTranslationWrite: () => { dirtyRebaseRequests += 1; } });
 await dirtyRebase();
 assert.equal(dirtyRebaseRequests, 0);
 assert.equal(dirtyRebaseLoads, 0);
@@ -257,13 +260,13 @@ assert.equal(dirtyRebaseConfirmations, 0);
 assert.equal(rebaseState.saving, false);
 
 let cancelledRebaseRequests = 0;
-const cancelledRebase = Function('state', `with (state) { ${executableRebaseSource}; return rebaseDraft; }`)({ ...rebaseState, saving: false, window: { confirm: () => false }, fetch: () => { cancelledRebaseRequests += 1; } });
+const cancelledRebase = Function('state', `with (state) { ${executableRebaseSource}; return rebaseDraft; }`)({ ...rebaseState, saving: false, window: { confirm: () => false }, postTranslationWrite: () => { cancelledRebaseRequests += 1; } });
 await cancelledRebase();
 assert.equal(cancelledRebaseRequests, 0);
 
 for (const code of ['STALE_EDITOR', 'BRANCH_REF_CONFLICT', 'NO_DRAFT']) {
   let loads = 0;
-  const errorState = { ...rebaseState, saving: false, writeBlocked: false, updateDraftAction: () => {}, writeError: { hidden: true, textContent: '' }, load: async () => { loads += 1; return true; }, window: { confirm: () => true }, fetch: async () => ({ ok: false, json: async () => ({ ok: false, code }) }) };
+  const errorState = { ...rebaseState, saving: false, writeBlocked: false, updateDraftAction: () => {}, writeError: { hidden: true, textContent: '' }, load: async () => { loads += 1; return true; }, window: { confirm: () => true }, postTranslationWrite: async () => ({ kind: 'server_rejection', code }) };
   const invoke = Function('state', `with (state) { ${executableRebaseSource}; return rebaseDraft; }`)(errorState);
   await invoke();
   assert.equal(loads, 1, `${code} reconciles authoritative state`);

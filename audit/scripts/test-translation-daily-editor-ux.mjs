@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
+import { ambiguousTranslationWriteMessage, formatTranslationWriteFailure, requestTranslationWrite } from '../../src/lib/admin-translation-write-diagnostics.mjs';
 
 const source = readFileSync('src/pages/admin/translations/edit.astro', 'utf8');
 assert.match(source, /data-source-toggle[^>]*type="button"[^>]*aria-expanded="false"[^>]*aria-controls="hy-source-fields"/);
@@ -38,16 +39,17 @@ const requests = [];
 const window = {};
 const script = source.match(/<script>([\s\S]*?)<\/script>/)[1]
   .replace(/import \{ prepareSearchIndex, rankPreparedSearch \} from '[^']+';/, '')
+  .replace(/import \{ ambiguousTranslationWriteMessage, formatTranslationWriteFailure, requestTranslationWrite \} from '[^']+';/, '')
   .replace(/\n    load\(\);\s*$/, '');
 const code = stripTypeScriptTypes(script);
-const controller = Function('document', 'window', 'location', 'fetch', `${code}
+const controller = Function('document', 'window', 'location', 'fetch', 'requestTranslationWrite', 'formatTranslationWriteFailure', 'ambiguousTranslationWriteMessage', `${code}
   return { initializeDraft, syncDraftFromForm, addTag, saveDraft, canPublish, isDirty,
     getBuffer: () => structuredClone(draftBuffer),
     reset: (data) => { loadedState = data; localeBlobSha = data.locale_blob_sha; initializeDraft(data); }
   };`)(document, window, { search: '?locale=en' }, async (url, options) => {
   requests.push(JSON.parse(options.body));
-  return { ok: false, json: async () => ({ ok: false, code: 'STALE_TEST' }) };
-});
+  return { ok: false, status: 409, text: async () => JSON.stringify({ ok: false, code: 'STALE_TEST' }) };
+}, requestTranslationWrite, formatTranslationWriteFailure, ambiguousTranslationWriteMessage);
 const payload = { slug: 'dream', title: 'Dream', description: null, content: 'Text', image_alts: { asset: '', meaningful: 'Localized ALT' }, tags: ['сон', 'Dream'], alphabet_key: 'D' };
 const fixture = {
   content_id: 'efa61838-86c8-56b8-815c-0a38b0a83242', locale: 'en', locale_blob_sha: 'a'.repeat(40),

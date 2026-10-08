@@ -119,6 +119,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
   <script>
     // @ts-ignore Shared client-side ranking helper.
     import { prepareSearchIndex, rankPreparedSearch } from '../../../lib/public-search.mjs';
+    import { ambiguousTranslationWriteMessage, formatTranslationWriteFailure, requestTranslationWrite } from '../../../lib/admin-translation-write-diagnostics.mjs';
     type Locale = 'ru' | 'en';
     type SyncState = 'CURRENT' | 'OUTDATED' | 'NOT_CREATED';
     type PublicationState = 'NOT_CREATED' | 'DRAFT' | 'PUBLISHED' | 'PUBLISHED_WITH_DRAFT';
@@ -493,7 +494,14 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       if (code === 'BRANCH_REF_CONFLICT') return 'This translation changed elsewhere. Reload and try again.';
       if (code === 'CONTENT_NOT_FOUND') return 'Translation content was not found.';
       if (code === 'LOCALE_UNSUPPORTED') return 'Choose RU or EN to open this translation.';
-      return 'Translation editing is temporarily unavailable.';
+      return 'Review the HTTP status and server code above before trying again.';
+    }
+    async function postTranslationWrite(body: unknown) {
+      return requestTranslationWrite(() => fetch('/api/admin/translations', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(body) }));
+    }
+    function showWriteFailure(outcome: Awaited<ReturnType<typeof postTranslationWrite>>, fallbackMessage = '') {
+      writeError.textContent = formatTranslationWriteFailure(outcome, outcome.kind === 'server_rejection' ? fallbackMessage || safeWriteMessage(outcome.code) : '');
+      writeError.hidden = false;
     }
     async function saveDraft() {
       if (saving || writeBlocked || !loadedState || !draftBuffer) return;
@@ -507,15 +515,15 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         ? { action, content_id: loadedState.content_id, locale: loadedState.locale, expected_locale_absent: true, expected_source_revision: loadedState.source.revision, expected_source_fingerprint: loadedState.source.fingerprint, payload }
         : { action, content_id: loadedState.content_id, locale: loadedState.locale, expected_locale_blob_sha: localeBlobSha, payload };
       try {
-        const response = await fetch('/api/admin/translations', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(body) });
-        const result: unknown = await response.json(); const code = result && typeof result === 'object' ? (result as { code?: unknown }).code : undefined; const message = result && typeof result === 'object' ? (result as { message?: unknown }).message : undefined;
-        if (!response.ok || !result || typeof result !== 'object' || (result as { ok?: unknown }).ok !== true) {
-          if (code === 'STALE_EDITOR') { const preserved = structuredClone(draftBuffer); await load(); draftBuffer = preserved; writeBufferToForm(preserved); writeBlocked = true; updateDirty(); }
-          writeError.textContent = typeof message === 'string' ? message : safeWriteMessage(code); writeError.hidden = false; return;
+        const outcome = await postTranslationWrite(body);
+        if (outcome.kind !== 'success') {
+          if (outcome.kind === 'server_rejection' && outcome.code === 'STALE_EDITOR') { const preserved = structuredClone(draftBuffer); await load(); draftBuffer = preserved; writeBufferToForm(preserved); writeBlocked = true; updateDirty(); }
+          showWriteFailure(outcome); return;
         }
-        localeBlobSha = typeof (result as { locale_blob_sha?: unknown }).locale_blob_sha === 'string' ? (result as { locale_blob_sha: string }).locale_blob_sha : localeBlobSha;
-        if (!await load()) { writeBlocked = true; writeError.textContent = 'Draft may have been saved. Reload to reconcile the latest server state before saving again.'; writeError.hidden = false; }
-      } catch { writeError.textContent = 'Translation editing is temporarily unavailable.'; writeError.hidden = false; }
+        const result = outcome.body;
+        localeBlobSha = typeof result.locale_blob_sha === 'string' ? result.locale_blob_sha : localeBlobSha;
+        if (!await load()) { writeBlocked = true; writeError.textContent = ambiguousTranslationWriteMessage('save_draft'); writeError.hidden = false; }
+      } catch { writeError.textContent = 'The editor could not reconcile this write. Your unsaved text remains in this browser.'; writeError.hidden = false; }
       finally { saving = false; updateDraftAction(); }
     }
     async function publishDraft() {
@@ -523,14 +531,13 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       saving = true; updateDraftAction(); writeError.hidden = true;
       const body = { action: 'publish', content_id: loadedState.content_id, locale: loadedState.locale, expected_locale_blob_sha: localeBlobSha };
       try {
-        const response = await fetch('/api/admin/translations', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(body) });
-        const result: unknown = await response.json(); const code = result && typeof result === 'object' ? (result as { code?: unknown }).code : undefined; const message = result && typeof result === 'object' ? (result as { message?: unknown }).message : undefined;
-        if (!response.ok || !result || typeof result !== 'object' || (result as { ok?: unknown }).ok !== true) {
-          if (code === 'STALE_EDITOR') { await load(); writeBlocked = true; }
-          writeError.textContent = typeof message === 'string' ? message : safeWriteMessage(code); writeError.hidden = false; return;
+        const outcome = await postTranslationWrite(body);
+        if (outcome.kind !== 'success') {
+          if (outcome.kind === 'server_rejection' && outcome.code === 'STALE_EDITOR') { await load(); writeBlocked = true; }
+          showWriteFailure(outcome); return;
         }
-        if (!await load()) { writeBlocked = true; writeError.textContent = 'Publication may have completed. Reload to reconcile the latest server state before trying again.'; writeError.hidden = false; }
-      } catch { writeError.textContent = 'Translation editing is temporarily unavailable.'; writeError.hidden = false; }
+        if (!await load()) { writeBlocked = true; writeError.textContent = ambiguousTranslationWriteMessage('publish'); writeError.hidden = false; }
+      } catch { writeError.textContent = 'The editor could not reconcile this write. Your unsaved text remains in this browser.'; writeError.hidden = false; }
       finally { saving = false; updateDraftAction(); }
     }
     async function discardDraft() {
@@ -542,15 +549,15 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       saving = true; updateDraftAction(); writeError.hidden = true;
       const body = { action: 'discard', content_id: loadedState.content_id, locale: loadedState.locale, expected_locale_blob_sha: localeBlobSha };
       try {
-        const response = await fetch('/api/admin/translations', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(body) });
-        const result: unknown = await response.json(); const code = result && typeof result === 'object' ? (result as { code?: unknown }).code : undefined;
-        if (!response.ok || !result || typeof result !== 'object' || (result as { ok?: unknown }).ok !== true) {
+        const outcome = await postTranslationWrite(body);
+        if (outcome.kind !== 'success') {
+          const code = outcome.kind === 'server_rejection' ? outcome.code : undefined;
           if (code === 'STALE_EDITOR' || code === 'BRANCH_REF_CONFLICT') { await load(); writeBlocked = true; updateDraftAction(); }
           else if (code === 'NO_DRAFT') await load();
-          writeError.textContent = safeWriteMessage(code); writeError.hidden = false; return;
+          showWriteFailure(outcome); return;
         }
-        if (!await load()) { writeBlocked = true; writeError.textContent = 'Draft may have been discarded. Reload to reconcile the latest server state before editing again.'; writeError.hidden = false; }
-      } catch { writeError.textContent = 'Translation editing is temporarily unavailable.'; writeError.hidden = false; }
+        if (!await load()) { writeBlocked = true; writeError.textContent = ambiguousTranslationWriteMessage('discard'); writeError.hidden = false; }
+      } catch { writeError.textContent = 'The editor could not reconcile this write. Your unsaved text remains in this browser.'; writeError.hidden = false; }
       finally { saving = false; updateDraftAction(); }
     }
     async function rebaseDraft() {
@@ -559,15 +566,15 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       saving = true; updateDraftAction(); writeError.hidden = true;
       const body = { action: 'rebase', content_id: loadedState.content_id, locale: loadedState.locale, expected_locale_blob_sha: localeBlobSha };
       try {
-        const response = await fetch('/api/admin/translations', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(body) });
-        const result: unknown = await response.json(); const code = result && typeof result === 'object' ? (result as { code?: unknown }).code : undefined;
-        if (!response.ok || !result || typeof result !== 'object' || (result as { ok?: unknown }).ok !== true) {
+        const outcome = await postTranslationWrite(body);
+        if (outcome.kind !== 'success') {
+          const code = outcome.kind === 'server_rejection' ? outcome.code : undefined;
           if (code === 'STALE_EDITOR' || code === 'BRANCH_REF_CONFLICT') { await load(); writeBlocked = true; updateDraftAction(); }
           else if (code === 'NO_DRAFT') await load();
-          writeError.textContent = safeWriteMessage(code); writeError.hidden = false; return;
+          showWriteFailure(outcome); return;
         }
-        if (!await load()) { writeBlocked = true; writeError.textContent = 'Draft may have been marked reviewed. Reload to reconcile the latest server state before editing again.'; writeError.hidden = false; }
-      } catch { writeError.textContent = 'Translation editing is temporarily unavailable.'; writeError.hidden = false; }
+        if (!await load()) { writeBlocked = true; writeError.textContent = ambiguousTranslationWriteMessage('rebase'); writeError.hidden = false; }
+      } catch { writeError.textContent = 'The editor could not reconcile this write. Your unsaved text remains in this browser.'; writeError.hidden = false; }
       finally { saving = false; updateDraftAction(); }
     }
     async function beginEdit() {
@@ -575,14 +582,14 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       saving = true; updateDraftAction(); writeError.hidden = true;
       const body = { action: 'begin_edit', content_id: loadedState.content_id, locale: loadedState.locale, expected_locale_blob_sha: localeBlobSha };
       try {
-        const response = await fetch('/api/admin/translations', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(body) });
-        const result: unknown = await response.json(); const code = result && typeof result === 'object' ? (result as { code?: unknown }).code : undefined;
-        if (!response.ok || !result || typeof result !== 'object' || (result as { ok?: unknown }).ok !== true) {
+        const outcome = await postTranslationWrite(body);
+        if (outcome.kind !== 'success') {
+          const code = outcome.kind === 'server_rejection' ? outcome.code : undefined;
           if (code === 'STALE_EDITOR' || code === 'BRANCH_REF_CONFLICT') { await load(); writeBlocked = true; updateDraftAction(); }
-          writeError.textContent = code === 'NO_DRAFT' ? 'This translation is no longer published without a draft. Reload to reconcile the latest state.' : safeWriteMessage(code); writeError.hidden = false; return;
+          showWriteFailure(outcome, code === 'NO_DRAFT' ? 'This translation is no longer published without a draft. Reload to reconcile the latest state.' : ''); return;
         }
-        if (!await load()) { writeBlocked = true; writeError.textContent = 'Editing may have started. Reload to reconcile the latest server state before making changes.'; writeError.hidden = false; }
-      } catch { writeError.textContent = 'Translation editing is temporarily unavailable.'; writeError.hidden = false; }
+        if (!await load()) { writeBlocked = true; writeError.textContent = ambiguousTranslationWriteMessage('begin_edit'); writeError.hidden = false; }
+      } catch { writeError.textContent = 'The editor could not reconcile this write. Your unsaved text remains in this browser.'; writeError.hidden = false; }
       finally { saving = false; updateDraftAction(); }
     }
     function addField(container: HTMLElement, label: string, value: string) {
