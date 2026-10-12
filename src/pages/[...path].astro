@@ -77,6 +77,13 @@ const isNamesHub = !!page && page.slug === 'anunneri-nshanakutyuny';
 const namesHubContent = isNamesHub && page ? fixNameGrids(page.content) : '';
 
 const isHub = !!page && page.slug === 'erazahan-online';
+const hubSeo = isHub
+  ? {
+      title: 'Համամարդկային Երազահան — Erazahan Hayeren',
+      description:
+        'Համամարդկային երազահան (Erazahan Online)՝ շուրջ 4000 ավանդական մեկնաբանությամբ։ Հայերեն այբբենական ցանկում գտեք ձեր երազի խորհրդանիշը և կարդացեք դրա նշանակությունը։',
+    }
+  : null;
 const stripHub = (html: string) =>
   html
     .replace(/<style[\s\S]*?<\/style>/gi, '')
@@ -105,6 +112,8 @@ const title = post ? post.title : namePage ? namePage.title : page ? page.title 
 const description = post
   ? (post.description && post.description.trim()) || excerptOf(post, 160)
   : namePage ? namePage.title : page ? page.title : 'Էջը գոյություն չունի';
+const metaTitle = hubSeo?.title ?? title;
+const metaDescription = hubSeo?.description ?? description;
 const cover = post ? postCover(post) : null;
 const coverSize = cover ? coverDimensions(cover) : null;
 const related = post ? relatedForPost(post) : [];
@@ -120,7 +129,7 @@ const crumbs = [
 ];
 ---
 
-<Layout title={title} description={description} type={post ? 'article' : 'website'} image={cover || undefined} locale={post ? seo.locale : undefined} alternates={post ? seo.alternates : undefined}>
+<Layout title={metaTitle} description={metaDescription} type={post ? 'article' : 'website'} image={cover || undefined} locale={post ? seo.locale : undefined} alternates={post ? seo.alternates : undefined}>
   {
     post ? (
       <article class="post-article reveal mx-auto max-w-3xl px-4 py-12 sm:px-6">
