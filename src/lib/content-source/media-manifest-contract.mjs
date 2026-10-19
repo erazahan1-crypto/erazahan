@@ -31,16 +31,26 @@ export function createMediaManifestIndex(manifest) {
   if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) fail('manifest must be an object');
   if (manifest.schema_version !== MEDIA_MANIFEST_SCHEMA_VERSION || !Array.isArray(manifest.assets) || Object.keys(manifest).length !== 2) fail('manifest must contain schema_version 1 and assets');
   const assetsById = new Map();
+  const assetIdsByPublicUrl = new Map();
   for (const candidate of manifest.assets) {
     const asset = validateRecord(candidate);
     if (assetsById.has(asset.asset_id)) fail(`duplicate asset_id ${asset.asset_id}`);
+    if (assetIdsByPublicUrl.has(asset.public_url)) fail(`duplicate public_url ${asset.public_url}`);
     assetsById.set(asset.asset_id, asset);
+    assetIdsByPublicUrl.set(asset.public_url, asset.asset_id);
   }
-  return Object.freeze({ assetsById });
+  return Object.freeze({ assetsById, assetIdsByPublicUrl });
 }
 
 export function resolveLogicalAssetReference(mediaIndex, assetId) {
   try { assertAssetId(assetId); } catch (error) { fail(error instanceof Error ? error.message : 'asset_id is invalid'); }
   if (!mediaIndex || !(mediaIndex.assetsById instanceof Map)) fail('media index is invalid');
   return mediaIndex.assetsById.get(assetId) ?? null;
+}
+
+export function resolveMediaAssetByPublicUrl(mediaIndex, publicUrl) {
+  if (!mediaIndex || !(mediaIndex.assetsById instanceof Map) || !(mediaIndex.assetIdsByPublicUrl instanceof Map)) fail('media index is invalid');
+  if (typeof publicUrl !== 'string') fail('public_url is invalid');
+  const assetId = mediaIndex.assetIdsByPublicUrl.get(publicUrl);
+  return assetId ? mediaIndex.assetsById.get(assetId) ?? null : null;
 }

@@ -103,6 +103,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         <section class="min-h-0 overflow-y-auto p-4 sm:p-5">
           <label class="block"><span class="mb-1.5 block text-sm font-semibold text-white">Find an asset</span><input data-managed-image-search type="search" autocomplete="off" placeholder="Search asset ID or type" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-white outline-none placeholder:text-slate-500 focus:border-violet-400" /></label>
           <p data-managed-image-status class="mt-3 text-sm text-slate-400" role="status">Loading managed images…</p>
+          <section data-hy-image-section hidden class="mt-5"><h3 class="text-sm font-semibold text-white">Images from HY source</h3><p class="mt-1 text-xs text-slate-400">Registered images can be selected. Legacy R2 images are registered once without uploading a copy.</p><div data-hy-image-results class="mt-3 grid gap-3 sm:grid-cols-2"></div></section>
           <div data-managed-image-results class="mt-3 grid gap-3 sm:grid-cols-2"></div>
           <div data-managed-image-alt-wrap hidden class="mt-5 rounded-xl border border-white/10 bg-night-950 p-4"><p data-managed-image-selected class="break-all text-xs text-slate-400"></p><label class="mt-3 block"><span class="mb-1.5 block text-sm font-semibold text-white">Localized ALT</span><input data-managed-image-alt type="text" maxlength="300" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-900 px-3 text-white outline-none focus:border-violet-400" /></label><label class="mt-3 flex items-center gap-2 text-sm text-slate-200"><input data-managed-image-decorative type="checkbox" class="h-4 w-4" /> Decorative image</label><p class="mt-3 text-xs text-slate-400">Reusing an asset updates its localized ALT for every occurrence in this localized document.</p><p data-managed-image-error hidden class="mt-3 rounded-xl border border-rose-400/30 bg-rose-500/10 p-3 text-sm text-rose-200" role="alert"></p></div>
         </section>
@@ -127,6 +128,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     type TranslationResponse = {
       ok: true; content_id: string; locale: Locale;
       source: { revision: number; fingerprint: string; title: string; description: string | null; content: string; image_alts: Record<string, string>; tags: string[]; alphabet_key: string | null };
+      hy_images: HyImageRecord[];
       locale_document: { draft: Payload | null; published: Payload | null } | null;
       locale_blob_sha: string | null;
       translation_state: { state: string; publication_state: PublicationState; draft_synchronization: SyncState; published_synchronization: SyncState };
@@ -170,6 +172,8 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     const managedImageSearch = document.querySelector<HTMLInputElement>('[data-managed-image-search]')!;
     const managedImageStatus = document.querySelector<HTMLElement>('[data-managed-image-status]')!;
     const managedImageResults = document.querySelector<HTMLElement>('[data-managed-image-results]')!;
+    const hyImageSection = document.querySelector<HTMLElement>('[data-hy-image-section]')!;
+    const hyImageResults = document.querySelector<HTMLElement>('[data-hy-image-results]')!;
     const managedImageAltWrap = document.querySelector<HTMLElement>('[data-managed-image-alt-wrap]')!;
     const managedImageSelected = document.querySelector<HTMLElement>('[data-managed-image-selected]')!;
     const managedImageAlt = document.querySelector<HTMLInputElement>('[data-managed-image-alt]')!;
@@ -197,6 +201,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     let savedContentSelection = { start: 0, end: 0, text: '' };
     let selectedLinkTarget: TranslationLinkRecord | null = null;
     type TranslationMediaRecord = { asset_id: string; public_url: string; mime_type?: string; width?: number; height?: number };
+    type HyImageRecord = { url: string; syntax: 'html' | 'markdown'; ownership: 'owned_r2' | 'manual_review'; asset_id: string | null; public_url: string | null };
     let translationMediaIndex: TranslationMediaRecord[] | null = null;
     let translationMediaIndexRequest: Promise<TranslationMediaRecord[]> | null = null;
     let managedImageSession = 0;
@@ -229,11 +234,19 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         && stringMap(source.image_alts) && Array.isArray(source.tags) && source.tags.every((tag) => typeof tag === 'string')
         && (typeof source.alphabet_key === 'string' || source.alphabet_key === null);
     }
+    function validHyImages(value: unknown): value is HyImageRecord[] {
+      return Array.isArray(value) && value.every((row) => !!row && typeof row === 'object'
+        && typeof (row as HyImageRecord).url === 'string' && /^https?:\/\//.test((row as HyImageRecord).url)
+        && ((row as HyImageRecord).syntax === 'html' || (row as HyImageRecord).syntax === 'markdown')
+        && ((row as HyImageRecord).ownership === 'owned_r2' || (row as HyImageRecord).ownership === 'manual_review')
+        && ((row as HyImageRecord).asset_id === null || (typeof (row as HyImageRecord).asset_id === 'string' && CONTENT_ID_RE.test((row as HyImageRecord).asset_id)))
+        && ((row as HyImageRecord).public_url === null || (typeof (row as HyImageRecord).public_url === 'string' && /^https:\/\//.test((row as HyImageRecord).public_url))));
+    }
     function validResponse(value: unknown): value is TranslationResponse {
       if (!value || typeof value !== 'object') return false;
       const data = value as Partial<TranslationResponse>;
       return data.ok === true && typeof data.content_id === 'string' && CONTENT_ID_RE.test(data.content_id) && validLocale(data.locale ?? null)
-        && validSource(data.source) && !!data.translation_state && typeof data.translation_state === 'object'
+        && validSource(data.source) && validHyImages(data.hy_images) && !!data.translation_state && typeof data.translation_state === 'object'
         && validPublication(data.translation_state.publication_state) && validSync(data.translation_state.draft_synchronization) && validSync(data.translation_state.published_synchronization)
         && typeof data.slug_locked === 'boolean' && (typeof data.alphabet_suggestion === 'string' || data.alphabet_suggestion === null)
         && (typeof data.locale_blob_sha === 'string' || data.locale_blob_sha === null) && (data.locale_document === null || (
@@ -416,7 +429,47 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     function updateManagedImageInsert() { managedImageInsert.disabled = !selectedManagedImage || (!managedImageDecorative.checked && !managedImageAlt.value.trim()); }
     function resetManagedImageDialog() {
       selectedManagedImage = null; managedImageSearch.value = ''; managedImageResults.replaceChildren(); managedImageAltWrap.hidden = true;
-      managedImageAlt.value = ''; managedImageAlt.disabled = false; managedImageDecorative.checked = false; managedImageError.hidden = true; managedImageInsert.disabled = true;
+      hyImageResults.replaceChildren(); hyImageSection.hidden = true; managedImageAlt.value = ''; managedImageAlt.disabled = false; managedImageDecorative.checked = false; managedImageError.hidden = true; managedImageInsert.disabled = true;
+    }
+    function managedImageCard(asset: TranslationMediaRecord, label: string, onSelect: () => void) {
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'overflow-hidden rounded-xl border border-white/10 bg-night-950 text-left hover:border-violet-400 focus:border-violet-400';
+      const image = document.createElement('img'); image.src = asset.public_url; image.alt = ''; image.loading = 'lazy'; image.className = 'h-32 w-full bg-black/20 object-contain';
+      const details = document.createElement('div'); details.className = 'p-3';
+      const title = document.createElement('strong'); title.className = 'block text-sm text-white'; title.textContent = label;
+      const id = document.createElement('code'); id.className = 'mt-1 block break-all text-xs text-slate-300'; id.textContent = asset.asset_id;
+      details.append(title, id); button.append(image, details); button.addEventListener('click', onSelect); return button;
+    }
+    function renderHyImageResults() {
+      const images = loadedState?.hy_images ?? []; hyImageResults.replaceChildren(); hyImageSection.hidden = images.length === 0;
+      for (const image of images) {
+        if (image.asset_id && image.public_url) {
+          hyImageResults.append(managedImageCard({ asset_id: image.asset_id, public_url: image.public_url }, 'Managed HY image', () => selectManagedImage({ asset_id: image.asset_id!, public_url: image.public_url! })));
+          continue;
+        }
+        const card = document.createElement('div'); card.className = 'rounded-xl border border-white/10 bg-night-950 p-3';
+        const url = document.createElement('code'); url.className = 'block break-all text-xs text-slate-300'; url.textContent = image.url;
+        const status = document.createElement('p'); status.className = 'mt-2 text-xs text-slate-400';
+        if (image.ownership === 'owned_r2') {
+          status.textContent = 'Legacy R2 image — registration does not upload or alter the object.';
+          const register = document.createElement('button'); register.type = 'button'; register.className = 'mt-3 min-h-11 rounded-xl border border-violet-400/50 px-3 text-sm font-semibold text-violet-100 hover:bg-violet-500/10'; register.textContent = 'Register and select';
+          register.addEventListener('click', () => { void registerHyImage(image, register); }); card.append(url, status, register);
+        } else {
+          status.textContent = 'External or unrecognized URL — manual review required; it cannot be registered automatically.'; card.append(url, status);
+        }
+        hyImageResults.append(card);
+      }
+    }
+    async function registerHyImage(image: HyImageRecord, button: HTMLButtonElement) {
+      if (!loadedState || image.ownership !== 'owned_r2' || saving) return;
+      button.disabled = true; managedImageStatus.textContent = 'Checking R2 object and registering the legacy image…';
+      const outcome = await postTranslationWrite({ action: 'register_legacy_image', content_id: loadedState.content_id, locale: loadedState.locale, url: image.url });
+      if (outcome.kind !== 'success' || !validMediaIndex([(outcome.body as { asset?: unknown }).asset])) {
+        showManagedImageError(outcome.kind === 'server_rejection' ? safeWriteMessage(outcome.code) : 'Legacy image registration could not be confirmed.'); button.disabled = false; renderHyImageResults(); return;
+      }
+      const asset = (outcome.body as { asset: TranslationMediaRecord }).asset;
+      translationMediaIndex = [...(translationMediaIndex ?? []), asset].filter((row, index, rows) => rows.findIndex((candidate) => candidate.asset_id === row.asset_id) === index);
+      loadedState.hy_images = loadedState.hy_images.map((row) => row.url === image.url ? { ...row, asset_id: asset.asset_id, public_url: asset.public_url } : row);
+      managedImageStatus.textContent = 'Legacy image registered.'; renderHyImageResults(); selectManagedImage(asset);
     }
     function renderManagedImageResults() {
       const session = managedImageSession; const query = managedImageSearch.value.trim().toLowerCase();
@@ -426,12 +479,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       const matches = translationMediaIndex.filter((asset) => !query || `${asset.asset_id} ${asset.mime_type ?? ''}`.toLowerCase().includes(query));
       managedImageStatus.textContent = matches.length ? `${matches.length} managed image${matches.length === 1 ? '' : 's'} available.` : 'No managed images match that search.';
       for (const asset of matches) {
-        const button = document.createElement('button'); button.type = 'button'; button.className = 'overflow-hidden rounded-xl border border-white/10 bg-night-950 text-left hover:border-violet-400 focus:border-violet-400';
-        const image = document.createElement('img'); image.src = asset.public_url; image.alt = ''; image.loading = 'lazy'; image.className = 'h-32 w-full bg-black/20 object-contain';
-        const details = document.createElement('div'); details.className = 'p-3';
-        const id = document.createElement('code'); id.className = 'block break-all text-xs text-slate-200'; id.textContent = asset.asset_id;
-        const meta = document.createElement('p'); meta.className = 'mt-1 text-xs text-slate-400'; meta.textContent = [asset.mime_type, asset.width && asset.height ? `${asset.width}×${asset.height}` : ''].filter(Boolean).join(' · ');
-        details.append(id, meta); button.append(image, details); button.addEventListener('click', () => selectManagedImage(asset)); managedImageResults.append(button);
+        managedImageResults.append(managedImageCard(asset, [asset.mime_type, asset.width && asset.height ? `${asset.width}×${asset.height}` : 'Managed image'].filter(Boolean).join(' · '), () => selectManagedImage(asset)));
       }
     }
     function selectManagedImage(asset: TranslationMediaRecord) {
@@ -446,7 +494,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       managedImageSession += 1; savedImageSelection = { start: contentField.selectionStart, end: contentField.selectionEnd }; resetManagedImageDialog();
       managedImageDialog.showModal(); managedImageSearch.focus(); managedImageStatus.textContent = 'Loading managed images…';
       const session = managedImageSession;
-      try { await loadTranslationMediaIndex(); if (session !== managedImageSession || !managedImageDialog.open) return; renderManagedImageResults(); }
+      try { await loadTranslationMediaIndex(); if (session !== managedImageSession || !managedImageDialog.open) return; renderHyImageResults(); renderManagedImageResults(); }
       catch (error) { if (session !== managedImageSession || !managedImageDialog.open) return; managedImageStatus.textContent = error instanceof Error ? error.message : 'Unable to load managed images.'; managedImageStatus.className = 'mt-3 text-sm text-rose-300'; }
     }
     function closeManagedImageDialog() { managedImageDialog.close(); }

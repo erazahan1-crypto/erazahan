@@ -2,8 +2,10 @@ import { isContentId, isSourceFingerprint } from '../../../../src/lib/content-sc
 import { beginLocaleEditWrite, ControlledLocalizedValidationError, createLocaleDraftWrite, discardLocaleDraftWrite, loadLocaleTranslationEditorState, publishLocaleDraftWrite, rebaseLocaleDraftWrite, updateLocaleDraftWrite } from '../../../_lib/admin-locale-draft-write.mjs';
 import { createGitHubTransactionClient, getGitHubConfig, PostsConfigError, type GitHubPostsEnv } from '../../../_lib/github-posts.ts';
 import { resolveAdminWriteBranch } from '../../../_lib/admin-write-environment-guard.mjs';
+import { registerLegacyHyImage, LegacyHyMediaError } from '../../../_lib/legacy-hy-media.mjs';
+import type { PostImagesBucket } from '../../../_lib/post-images';
 
-interface Context { request: Request; env: GitHubPostsEnv & { ERAZAHAN_LOCALE_ADMIN_ATOMIC_BRANCH?: string; ERAZAHAN_ADMIN_DEPLOYMENT_CLASS?: string }; }
+interface Context { request: Request; env: GitHubPostsEnv & { ERAZAHAN_LOCALE_ADMIN_ATOMIC_BRANCH?: string; ERAZAHAN_ADMIN_DEPLOYMENT_CLASS?: string; POST_IMAGES?: PostImagesBucket }; }
 
 function json(body: unknown, status = 200, headers: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...headers } });
@@ -43,9 +45,13 @@ export async function onRequestGet(context: Context): Promise<Response> {
 
 function postInput(body: unknown) {
   if (!plainObject(body) || typeof body.action !== 'string') throw Object.assign(new Error(), { code: 'INVALID_REQUEST' });
-  if (!['create_draft', 'update_draft', 'begin_edit', 'rebase', 'discard', 'publish'].includes(body.action)) throw Object.assign(new Error(), { code: 'INVALID_ACTION' });
+  if (!['create_draft', 'update_draft', 'begin_edit', 'rebase', 'discard', 'publish', 'register_legacy_image'].includes(body.action)) throw Object.assign(new Error(), { code: 'INVALID_ACTION' });
   const identity = typeof body.content_id === 'string' && isContentId(body.content_id) && (body.locale === 'ru' || body.locale === 'en');
   if (!identity) throw Object.assign(new Error(), { code: 'INVALID_REQUEST' });
+  if (body.action === 'register_legacy_image') {
+    if (!exactKeys(body, ['action', 'content_id', 'locale', 'url']) || typeof body.url !== 'string' || body.url.length > 2048) throw Object.assign(new Error(), { code: 'INVALID_REQUEST' });
+    return { action: body.action, contentId: body.content_id, locale: body.locale, sourceUrl: body.url };
+  }
   const payload = body.payload;
   if (body.action === 'create_draft') {
     if (!exactKeys(body, ['action', 'content_id', 'locale', 'expected_locale_absent', 'expected_source_revision', 'expected_source_fingerprint', 'payload'])
@@ -63,6 +69,11 @@ function postInput(body: unknown) {
 
 function writeError(error: unknown) {
   const code = error && typeof error === 'object' ? (error as { code?: string }).code : undefined;
+  if (error instanceof LegacyHyMediaError) {
+    if (['LEGACY_URL_INVALID', 'LEGACY_IMAGE_NOT_IN_SOURCE', 'LEGACY_IMAGE_NOT_OWNED', 'R2_OBJECT_MISSING'].includes(code ?? '')) return json({ ok: false, code }, 400);
+    if (['R2_UNAVAILABLE', 'MEDIA_MANIFEST_UNAVAILABLE', 'MEDIA_MANIFEST_INVALID'].includes(code ?? '')) return json({ ok: false, code }, 503);
+    if (code === 'R2_LOOKUP_FAILURE') return json({ ok: false, code }, 502);
+  }
   if (error instanceof ControlledLocalizedValidationError) return json({ ok: false, code, message: error.message }, 400);
   if (code === 'INVALID_ACTION') return json({ ok: false, code }, 400);
   if (code === 'CONTENT_NOT_FOUND') return json({ ok: false, code }, 404);
@@ -86,6 +97,10 @@ export async function onRequestPost(context: Context): Promise<Response> {
     const branch = writerGuard(context.env);
     const config = getGitHubConfig(context.env); const client = createGitHubTransactionClient(config);
     let result;
+    if (input.action === 'register_legacy_image') {
+      const legacy = await registerLegacyHyImage(client, { ...input, branch, bucket: context.env.POST_IMAGES });
+      return json({ ok: true, changed: legacy.changed, content_id: input.contentId, locale: input.locale, asset: legacy.asset });
+    }
     if (input.action === 'create_draft') result = await createLocaleDraftWrite(client, { ...input, branch });
     else if (input.action === 'update_draft') result = await updateLocaleDraftWrite(client, { ...input, branch });
     else if (input.action === 'begin_edit') result = await beginLocaleEditWrite(client, { ...input, branch });

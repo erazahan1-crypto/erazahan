@@ -16,6 +16,7 @@ import { hyStorePaths } from '../../src/lib/content-write/project-hy-post.mjs';
 import { commitMultiFileTransaction, loadMultiFileSnapshot } from './github-multifile.mjs';
 import { localizedAuthoringContext } from './localized-reference-context.mjs';
 import { LocalizedContentValidationError, validateLocalizedBody } from '../../src/lib/localized-content-pipeline.mjs';
+import { projectHyImageReferences } from '../../src/lib/content-source/hy-legacy-images.mjs';
 
 export const DRAFT_CLAIMS_PATH = 'src/data/content/locale-draft-slug-claims.v1.json';
 export const PUBLISHED_RESERVATIONS_PATH = 'src/data/content/locale-slug-reservations.v1.json';
@@ -103,6 +104,8 @@ export async function loadLocaleTranslationEditorState(client, input) {
     translation_state: deriveTranslationState(current, item),
     slug_locked: (localeDocument?.published ?? null) !== null,
     alphabet_suggestion: title === null ? null : classifyAlphabetKey(input.locale, title),
+    hy_images: projectHyImageReferences(hy.published.content, localizedAuthoringContext.mediaIndex)
+      .map(({ source_url, ...image }) => ({ ...image, url: source_url })),
   };
 }
 
