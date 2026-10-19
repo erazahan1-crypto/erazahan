@@ -1,21 +1,27 @@
 {
-  "schema_version": 1,
   "assets": [
     {
       "asset_id": "019c2a10-4e61-7a32-8c15-2a37bcf94d02",
+      "height": 900,
+      "mime_type": "image/webp",
       "public_url": "https://images.erazahan.info/posts/erazahan-bexer-2.webp",
       "source_url": "https://images.erazahan.info/posts/erazahan-bexer-2.webp",
-      "mime_type": "image/webp",
-      "width": 1600,
-      "height": 900
+      "width": 1600
     },
     {
       "asset_id": "019c2a10-4e61-7b48-9e26-8d51ca0743f9",
+      "height": 900,
+      "mime_type": "image/webp",
       "public_url": "https://images.erazahan.info/posts/erazahan-bad.webp",
       "source_url": "https://images.erazahan.info/posts/erazahan-bad.webp",
+      "width": 1600
+    },
+    {
+      "asset_id": "01a153dc-d761-758e-89c0-f0d7bfe64308",
       "mime_type": "image/webp",
-      "width": 1600,
-      "height": 900
+      "public_url": "https://images.erazahan.info/posts/erazahan-badi-mis-utel.webp",
+      "source_url": "https://images.erazahan.info/posts/erazahan-badi-mis-utel.webp"
     }
-  ]
+  ],
+  "schema_version": 1
 }
