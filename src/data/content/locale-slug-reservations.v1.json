@@ -47,6 +47,12 @@
       "kind": "active",
       "locale": "en",
       "slug": "killing-duck"
+    },
+    {
+      "content_id": "2973adfc-341e-5cba-a048-c0cb868bac5d",
+      "kind": "active",
+      "locale": "ru",
+      "slug": "сонник-есть-мясо-утки"
     }
   ],
   "version": 1
