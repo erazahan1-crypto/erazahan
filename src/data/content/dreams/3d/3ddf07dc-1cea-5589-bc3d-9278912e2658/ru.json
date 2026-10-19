@@ -1,6 +1,8 @@
 {
   "content_id": "3ddf07dc-1cea-5589-bc3d-9278912e2658",
-  "draft": {
+  "draft": null,
+  "locale": "ru",
+  "published": {
     "alphabet_key": "У",
     "based_on_source_fingerprint": "b3e473fa74deb85e9f2ebef52d541be732bf96e196f1d44a2e3628b1facb86a1",
     "based_on_source_revision": 1,
@@ -9,6 +11,7 @@
     "image_alts": {
       "019c2a10-4e61-7a32-8c15-2a37bcf94d02": ""
     },
+    "published_at": "2026-10-19",
     "slug": "усы-во-сне",
     "tags": [
       "усы",
@@ -16,9 +19,8 @@
       "деньги",
       "толкование снов"
     ],
-    "title": "Усы во сне — значение и толкование"
+    "title": "Усы во сне — значение и толкование",
+    "version": 1
   },
-  "locale": "ru",
-  "published": null,
   "schema_version": 1
 }
