@@ -3,11 +3,12 @@ import { readFileSync } from 'node:fs';
 import { loadTranslationMediaIndex } from '../../src/lib/content-source/translation-media-index.mjs';
 
 const index = loadTranslationMediaIndex();
-assert.equal(index.length, 2, 'current manifest projection count');
+assert.equal(index.length, 3, 'current manifest projection count');
 assert.deepEqual(index, loadTranslationMediaIndex(), 'projection is deterministic');
 assert.equal(new Set(index.map((asset) => asset.asset_id)).size, index.length, 'asset IDs are unique');
 for (const asset of index) {
-  assert.deepEqual(Object.keys(asset).sort(), ['asset_id', 'height', 'mime_type', 'public_url', 'width']);
+  assert.ok(Object.keys(asset).every((key) => ['asset_id', 'height', 'mime_type', 'public_url', 'width'].includes(key)));
+  for (const key of ['asset_id', 'mime_type', 'public_url']) assert.ok(Object.hasOwn(asset, key));
   assert.match(asset.asset_id, /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
   assert.match(asset.public_url, /^https:\/\//);
   assert.equal('source_url' in asset, false);
@@ -60,6 +61,8 @@ assert.match(editor, /managedImageDialog\.addEventListener\('close'/);
 assert.match(editor, /contentField\.focus\(\); syncDraftFromForm\(\);/);
 assert.match(editor, /data-managed-image-decorative/);
 assert.match(editor, /managedImageAlt\.disabled = true/);
+assert.match(editor, /Use HY Image/);
+assert.match(editor, /HY image is ready\. Add localized ALT text, then insert it\./);
 assert.equal(editor.includes('pending-image:'), false);
 assert.equal(editor.includes('source_url'), false);
 

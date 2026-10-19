@@ -65,7 +65,9 @@ const duckReferences = extractHyImageReferences(duckHy.published.content);
 assert.equal(duckItem.source_revision, 4, 'regression source is the production Admin revision');
 assert.equal(duckHy.published.version, 4, 'regression source is the production published version');
 assert.deepEqual(duckReferences.map((reference) => reference.source_url), [DUCK_URL], 'production HY image is discovered from canonical published content');
-assert.equal(currentManifest.assets.some((asset) => asset.public_url === DUCK_URL), false, 'production HY image starts unregistered');
+const registeredDuck = currentManifest.assets.find((asset) => asset.public_url === DUCK_URL);
+assert.ok(registeredDuck, 'production HY image is registered once in the current manifest');
+{ const test = fixture({ contentId: DUCK_ID, itemDocument: duckItem, hyDocument: duckHy, ownedUrl: DUCK_URL, manifest: currentManifest }); const result = await registerLegacyHyImage(test.client, { branch: 'main', contentId: DUCK_ID, locale: 'ru', sourceUrl: DUCK_URL, bucket: test.bucket }); assert.equal(result.changed, false); assert.equal(result.asset.asset_id, registeredDuck.asset_id); assert.equal(test.calls.heads, 0, 'current manifest reuses the existing asset without an R2 write'); }
 
 {
   const test = fixture({ contentId: DUCK_ID, itemDocument: duckItem, hyDocument: duckHy, ownedUrl: DUCK_URL });

@@ -119,7 +119,7 @@ function assertExisting(loaded, expectedLocaleBlobSha) {
 }
 function assertSource(loaded, expectedSourceRevision, expectedSourceFingerprint) {
   if (expectedSourceRevision !== loaded.item.source_revision || expectedSourceFingerprint !== loaded.item.source_fingerprint) {
-    fail('SOURCE_CHANGED', 'HY source changed; reload before creating a draft');
+    fail('SOURCE_CHANGED', 'HY source changed; reload the editor before writing');
   }
 }
 async function transact(client, loaded, changes, message, localeDocument, expectedLocaleBlobSha = undefined) {
@@ -216,9 +216,10 @@ export async function discardLocaleDraftWrite(client, { branch, contentId, local
   return { ...await transact(client, loaded, changes.filter(Boolean), 'Admin: discard locale draft', result.localeDocument, expectedLocaleBlobSha), localeDocument: result.localeDocument };
 }
 
-export async function publishLocaleDraftWrite(client, { branch, contentId, locale, expectedLocaleBlobSha }) {
+export async function publishLocaleDraftWrite(client, { branch, contentId, locale, expectedLocaleBlobSha, expectedSourceRevision, expectedSourceFingerprint, allowOutdatedSource }) {
   const loaded = await loadLocaleDraftSnapshot(client, { branch, contentId, locale });
   assertExisting(loaded, expectedLocaleBlobSha);
+  assertSource(loaded, expectedSourceRevision, expectedSourceFingerprint);
   assertFirstPublishReservationConsistency(loaded);
   try {
     const result = publishLocaleDraft({
@@ -228,6 +229,7 @@ export async function publishLocaleDraftWrite(client, { branch, contentId, local
       draftClaims: loaded.draftClaims,
       publishedReservations: loaded.publishedReservations,
       publishedAt: new Date().toISOString().slice(0, 10),
+      allowOutdatedSource,
     });
     validateLogicalBody(result.localeDocument, 'publish');
     const claims = claimsChange(loaded, result.draftClaims);

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import { ambiguousTranslationWriteMessage, formatTranslationWriteFailure, requestTranslationWrite } from '../../src/lib/admin-translation-write-diagnostics.mjs';
+import { parseTranslationImport } from '../../src/lib/translation-import-contract.mjs';
 
 const source = readFileSync('src/pages/admin/translations/edit.astro', 'utf8');
 assert.match(source, /data-source-toggle[^>]*type="button"[^>]*aria-expanded="false"[^>]*aria-controls="hy-source-fields"/);
@@ -21,6 +22,7 @@ class Element {
   textContent = ''; classList = { toggle() {} };
   addEventListener(name, handler) { this.listeners[name] = handler; }
   setAttribute(name, value) { this.attributes[name] = value; }
+  removeAttribute(name) { delete this.attributes[name]; }
   append(...children) { this.children.push(...children); }
   replaceChildren(...children) { this.children = children; }
   focus() { focused = this; }
@@ -39,23 +41,40 @@ const requests = [];
 const window = {};
 const script = source.match(/<script>([\s\S]*?)<\/script>/)[1]
   .replace(/import \{ prepareSearchIndex, rankPreparedSearch \} from '[^']+';/, '')
+  .replace(/import \{ parseTranslationImport \} from '[^']+';/, '')
   .replace(/import \{ ambiguousTranslationWriteMessage, formatTranslationWriteFailure, requestTranslationWrite \} from '[^']+';/, '')
   .replace(/\n    load\(\);\s*$/, '');
 const code = stripTypeScriptTypes(script);
-const controller = Function('document', 'window', 'location', 'fetch', 'requestTranslationWrite', 'formatTranslationWriteFailure', 'ambiguousTranslationWriteMessage', `${code}
+const controller = Function('document', 'window', 'location', 'fetch', 'requestTranslationWrite', 'formatTranslationWriteFailure', 'ambiguousTranslationWriteMessage', 'parseTranslationImport', `${code}
   return { initializeDraft, syncDraftFromForm, addTag, saveDraft, canPublish, isDirty,
+    publishedLocaleUrl, renderViewOnSite,
     getBuffer: () => structuredClone(draftBuffer),
     reset: (data) => { loadedState = data; localeBlobSha = data.locale_blob_sha; initializeDraft(data); }
   };`)(document, window, { search: '?locale=en' }, async (url, options) => {
   requests.push(JSON.parse(options.body));
   return { ok: false, status: 409, text: async () => JSON.stringify({ ok: false, code: 'STALE_TEST' }) };
-}, requestTranslationWrite, formatTranslationWriteFailure, ambiguousTranslationWriteMessage);
+}, requestTranslationWrite, formatTranslationWriteFailure, ambiguousTranslationWriteMessage, parseTranslationImport);
 const payload = { slug: 'dream', title: 'Dream', description: null, content: 'Text', image_alts: { asset: '', meaningful: 'Localized ALT' }, tags: ['сон', 'Dream'], alphabet_key: 'D' };
 const fixture = {
   content_id: 'efa61838-86c8-56b8-815c-0a38b0a83242', locale: 'en', locale_blob_sha: 'a'.repeat(40),
   translation_state: { publication_state: 'DRAFT', draft_synchronization: 'CURRENT' },
   locale_document: { draft: payload, published: null }, slug_locked: false, alphabet_suggestion: 'D',
 };
+assert.equal(controller.publishedLocaleUrl({ locale: 'ru', locale_document: { draft: null, published: { slug: 'son-ob-utke' } } }), '/ru/son-ob-utke/');
+assert.equal(controller.publishedLocaleUrl({ locale: 'en', locale_document: { draft: null, published: { slug: 'duck-dream' } } }), '/en/duck-dream/');
+assert.equal(controller.publishedLocaleUrl({ locale: 'ru', locale_document: { draft: { slug: 'draft-only' }, published: null } }), null, 'draft-only never gets a public URL');
+assert.equal(controller.publishedLocaleUrl({ locale: 'en', locale_document: { draft: { slug: 'draft' }, published: { slug: 'published' } } }), '/en/published/', 'published-with-draft uses the published slug');
+assert.equal(controller.publishedLocaleUrl({ locale: 'hy', locale_document: { draft: null, published: { slug: 'fallback' } } }), null, 'there is no cross-language or HY fallback');
+controller.renderViewOnSite({ locale: 'ru', translation_state: { publication_state: 'PUBLISHED' }, locale_document: { draft: null, published: { slug: 'son-ob-utke' } } });
+assert.equal(node('view-on-site').hidden, false);
+assert.equal(node('view-on-site-link').href, '/ru/son-ob-utke/');
+assert.match(node('view-on-site-deployment').textContent, /Cloudflare Pages deployment succeeds/);
+controller.renderViewOnSite({ locale: 'en', translation_state: { publication_state: 'PUBLISHED_WITH_DRAFT' }, locale_document: { draft: { slug: 'draft' }, published: { slug: 'published' } } });
+assert.equal(node('view-on-site-link').href, '/en/published/');
+assert.match(node('view-on-site-version').textContent, /does not include the draft/);
+controller.renderViewOnSite({ locale: 'ru', translation_state: { publication_state: 'DRAFT' }, locale_document: { draft: { slug: 'draft-only' }, published: null } });
+assert.equal(node('view-on-site').hidden, true);
+assert.equal(node('view-on-site-unavailable').hidden, false);
 controller.reset(fixture);
 assert.equal(controller.isDirty(), false);
 assert.equal(controller.canPublish(), true);

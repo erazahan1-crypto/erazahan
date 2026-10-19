@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { parseTranslationImport } from '../../src/lib/translation-import-contract.mjs';
+import { assertLocalePublicSlug } from '../../src/lib/content-schema/multilingual-contract.mjs';
+
+const valid = { title: 'Duck meat', slug: 'duck-meat', description: 'Meaning', content: 'A [logical](content://efa61838-86c8-56b8-815c-0a38b0a83242) image ![](asset://019c2a10-4e61-7a32-8c15-2a37bcf94d02)', tags: ['duck', 'dream'], alphabet_key: 'D', image_alts: { '019c2a10-4e61-7a32-8c15-2a37bcf94d02': 'Duck' } };
+const parsed = parseTranslationImport(JSON.stringify(valid));
+assert.equal(parsed.ok, true); assert.deepEqual(parsed.value, valid);
+const fenced = parseTranslationImport(`\`\`\`json\n${JSON.stringify(valid)}\n\`\`\``);
+assert.equal(fenced.ok, true); assert.equal(fenced.value.content, valid.content, 'logical references are copied verbatim');
+for (const input of ['{bad', '[]', JSON.stringify({ ...valid, extra: true }), JSON.stringify({ ...valid, tags: 'duck' }), JSON.stringify({ ...valid, image_alts: [] })]) assert.equal(parseTranslationImport(input).ok, false);
+const ruImport = { ...valid, slug: 'сонник-есть-мясо-утки', title: 'Есть мясо утки во сне', description: null, alphabet_key: 'У' };
+assert.equal(parseTranslationImport(JSON.stringify(ruImport)).ok, true);
+assert.equal(assertLocalePublicSlug('ru', ruImport.slug), ruImport.slug, 'RU imports use canonical Cyrillic public slugs');
+assert.throws(() => assertLocalePublicSlug('ru', 'eating-duck-meat-dream'), /Russian Cyrillic/, 'Latin transliteration cannot pass the server RU slug contract');
+
+const editor = readFileSync('src/pages/admin/translations/edit.astro', 'utf8');
+const contract = readFileSync('audit/translation-import-contract.md', 'utf8');
+assert.match(editor, /Import Translation/);
+assert.match(editor, /parseTranslationImport/);
+assert.match(editor, /data-import-preview/);
+assert.match(editor, /Applying replaces all editable local fields\. It does not save or publish\./);
+assert.match(editor, /slug_locked.*Import cannot change it/s);
+assert.match(editor, /locale === 'ru'[\s\S]*?\[\\u0430-\\u044f0-9\]/);
+assert.match(editor, /if \(isDirty\(\) && !window\.confirm\('Import can replace unsaved local changes/s);
+assert.equal(editor.includes("action: 'import'"), false);
+assert.match(contract, /All seven fields are required/);
+assert.match(contract, /"slug": "сонник-есть-мясо-утки"/);
+assert.match(contract, /transliterated Latin slugs are rejected/);
+assert.match(contract, /Import never calls a write API, saves, publishes, creates assets, or changes HY provenance/);
+console.log('TRANSLATION IMPORT PASS');

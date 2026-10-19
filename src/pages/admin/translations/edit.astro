@@ -32,11 +32,17 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         <div><dt class="text-slate-400">Slug</dt><dd data-slug-lock class="mt-1 text-slate-200"></dd></div>
         <div><dt class="text-slate-400">Alphabet</dt><dd data-alphabet-suggestion class="mt-1 text-slate-200"></dd></div>
       </dl>
+      <div data-view-on-site hidden class="mt-4 rounded-xl border border-white/10 bg-night-950 p-3">
+        <a data-view-on-site-link target="_blank" rel="noopener noreferrer" class="inline-flex min-h-11 items-center rounded-xl border border-violet-400/50 px-4 text-sm font-semibold text-violet-100 hover:bg-violet-500/10">View on site / Посмотреть на сайте</a>
+        <p data-view-on-site-version class="mt-2 text-sm text-slate-300"></p>
+        <p data-view-on-site-deployment class="mt-2 text-xs text-amber-200"></p>
+      </div>
+      <p data-view-on-site-unavailable hidden class="mt-4 text-sm text-slate-400">This locale has a draft only. Publish it before viewing it on the public site.</p>
     </section>
 
     <section class="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
       <h2 class="font-display text-xl font-bold text-white">Synchronization</h2>
-      <p data-outdated-warning hidden class="mt-3 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-sm text-amber-200">HY source has changed. This screen does not make any automatic changes.</p>
+      <p data-outdated-warning hidden class="mt-3 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-sm text-amber-200">HY source changed: current revision <strong data-outdated-current-revision></strong>; this translation is based on revision <strong data-outdated-translation-revision></strong>. Review it, rebase it, or publish it as outdated.</p>
       <div class="mt-4 grid gap-3 sm:grid-cols-2">
         <div class="rounded-xl border border-white/10 bg-night-950 p-3"><p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Draft</p><code data-draft-sync class="mt-2 block text-sm text-slate-200"></code></div>
         <div class="rounded-xl border border-white/10 bg-night-950 p-3"><p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Published</p><code data-published-sync class="mt-2 block text-sm text-slate-200"></code></div>
@@ -47,7 +53,6 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       <div class="flex flex-wrap items-center justify-between gap-3"><h2 class="font-display text-xl font-bold text-white">HY source</h2><div class="flex items-center gap-3"><span class="text-xs text-slate-400">Read only</span><button data-source-toggle type="button" aria-expanded="false" aria-controls="hy-source-fields" class="min-h-11 rounded-xl border border-white/10 px-3 text-sm font-semibold text-slate-200 hover:bg-white/5">Show HY source</button></div></div>
       <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
         <div><dt class="text-slate-400">Revision</dt><dd data-source-revision class="mt-1 text-slate-200"></dd></div>
-        <div><dt class="text-slate-400">Fingerprint</dt><dd data-source-fingerprint class="mt-1 break-all font-mono text-xs text-slate-300"></dd></div>
       </dl>
       <div id="hy-source-fields" data-source-fields hidden class="mt-5" aria-label="Read-only HY source"></div>
     </section>
@@ -79,10 +84,14 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         <label class="block"><span class="mb-1 block text-sm font-semibold text-white">Alphabet key</span><input data-draft-field="alphabet_key" class="min-h-11 w-full rounded-xl border border-white/10 bg-night-950 px-3 text-white" /></label>
         <button data-use-alphabet type="button" hidden class="min-h-11 rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/5">Use suggestion</button>
         <p data-form-error hidden class="rounded-xl border border-rose-400/30 bg-rose-500/10 p-3 text-sm text-rose-200"></p>
-        <div class="flex flex-wrap items-center gap-3"><button data-draft-action type="button" disabled class="min-h-11 rounded-xl bg-violet-600 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" aria-describedby="draft-save-help"></button><button data-publish-action type="button" hidden disabled class="min-h-11 rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-60" aria-describedby="publish-help">Publish</button><button data-rebase-action type="button" hidden disabled class="min-h-11 rounded-xl border border-amber-400/40 px-4 text-sm font-semibold text-amber-100 hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-60" aria-describedby="rebase-help rebase-dirty-help">Mark reviewed for current HY</button><button data-discard-action type="button" hidden disabled class="min-h-11 rounded-xl border border-rose-400/40 px-4 text-sm font-semibold text-rose-200 hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-60">Discard Draft</button><p id="draft-save-help" class="text-xs text-slate-400">Changes are saved to the server.</p><p id="publish-help" hidden class="text-xs text-slate-400">Save local changes before publishing the saved server draft.</p><p id="rebase-help" hidden class="text-xs text-slate-400">Translation text will not change.</p><p id="rebase-dirty-help" hidden class="text-xs text-amber-200">Save your draft changes before marking it reviewed.</p></div>
+        <div class="flex flex-wrap items-center gap-3"><button data-import-action type="button" class="min-h-11 rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/5">Import Translation</button><button data-draft-action type="button" disabled class="min-h-11 rounded-xl bg-violet-600 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" aria-describedby="draft-save-help"></button><button data-publish-action type="button" hidden disabled class="min-h-11 rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-60" aria-describedby="publish-help">Publish</button><button data-rebase-action type="button" hidden disabled class="min-h-11 rounded-xl border border-amber-400/40 px-4 text-sm font-semibold text-amber-100 hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-60" aria-describedby="rebase-help rebase-dirty-help">Rebase to current HY</button><button data-discard-action type="button" hidden disabled class="min-h-11 rounded-xl border border-rose-400/40 px-4 text-sm font-semibold text-rose-200 hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-60">Discard Draft</button><p id="draft-save-help" class="text-xs text-slate-400">Changes are saved to the server.</p><p id="publish-help" hidden class="text-xs text-slate-400">Save local changes before publishing the saved server draft.</p><p id="rebase-help" hidden class="text-xs text-slate-400">Translation text will not change.</p><p id="rebase-dirty-help" hidden class="text-xs text-amber-200">Save your draft changes before rebasing.</p></div>
       </form>
       <div data-locale-snapshots class="mt-5 space-y-5"></div>
     </section>
+
+    <dialog data-import-dialog class="m-auto w-[min(48rem,calc(100vw-2rem))] max-w-none overflow-hidden rounded-2xl border border-white/10 bg-night-900 p-0 text-slate-200 shadow-2xl backdrop:bg-black/70">
+      <div class="flex max-h-[min(48rem,calc(100vh-2rem))] flex-col"><div class="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-5"><div><h2 class="font-display text-xl font-bold text-white">Import Translation</h2><p class="mt-1 text-xs text-slate-400">Paste one JSON translation prepared outside the site. Import only fills this local form.</p></div><button data-import-close type="button" aria-label="Close" class="grid min-h-11 min-w-11 place-items-center rounded-xl border border-white/10 text-xl hover:bg-white/5">×</button></div><section class="min-h-0 overflow-y-auto p-4 sm:p-5"><label class="block"><span class="mb-1.5 block text-sm font-semibold text-white">Paste translation from ChatGPT</span><textarea data-import-input rows="14" class="w-full rounded-xl border border-white/10 bg-night-950 p-3 font-mono text-sm text-white"></textarea></label><p data-import-error hidden class="mt-3 rounded-xl border border-rose-400/30 bg-rose-500/10 p-3 text-sm text-rose-200" role="alert"></p><section data-import-preview hidden class="mt-4 rounded-xl border border-white/10 bg-night-950 p-4"><h3 class="font-semibold text-white">Preview</h3><div data-import-preview-fields class="mt-3 text-sm text-slate-200"></div><p class="mt-3 text-xs text-amber-200">Applying replaces all editable local fields. It does not save or publish.</p></section></section><div class="flex flex-wrap justify-end gap-3 border-t border-white/10 px-4 py-3 sm:px-5"><button data-import-cancel type="button" class="min-h-11 rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/5">Cancel</button><button data-import-preview-action type="button" class="min-h-11 rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/5">Preview</button><button data-import-apply type="button" disabled class="min-h-11 rounded-xl bg-violet-600 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">Apply to form</button></div></div>
+    </dialog>
 
     <dialog data-internal-link-dialog class="m-auto w-[min(42rem,calc(100vw-2rem))] max-w-none overflow-hidden rounded-2xl border border-white/10 bg-night-900 p-0 text-slate-200 shadow-2xl backdrop:bg-black/70">
       <div class="flex max-h-[min(44rem,calc(100vh-2rem))] flex-col">
@@ -113,18 +122,19 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
 
     <details class="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
       <summary class="cursor-pointer text-sm font-semibold text-slate-200">Technical metadata</summary>
-      <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2"><div><dt class="text-slate-400">Locale blob SHA</dt><dd data-locale-blob-sha class="mt-1 break-all font-mono text-xs text-slate-300"></dd></div><div><dt class="text-slate-400">Backend state</dt><dd data-derived-state class="mt-1 font-mono text-xs text-slate-300"></dd></div></dl>
+      <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2"><div><dt class="text-slate-400">Locale blob SHA</dt><dd data-locale-blob-sha class="mt-1 break-all font-mono text-xs text-slate-300"></dd></div><div><dt class="text-slate-400">HY fingerprint</dt><dd data-source-fingerprint class="mt-1 break-all font-mono text-xs text-slate-300"></dd></div><div><dt class="text-slate-400">Backend state</dt><dd data-derived-state class="mt-1 font-mono text-xs text-slate-300"></dd></div></dl>
     </details>
   </div>
 
   <script>
     // @ts-ignore Shared client-side ranking helper.
     import { prepareSearchIndex, rankPreparedSearch } from '../../../lib/public-search.mjs';
+    import { parseTranslationImport } from '../../../lib/translation-import-contract.mjs';
     import { ambiguousTranslationWriteMessage, formatTranslationWriteFailure, requestTranslationWrite } from '../../../lib/admin-translation-write-diagnostics.mjs';
     type Locale = 'ru' | 'en';
     type SyncState = 'CURRENT' | 'OUTDATED' | 'NOT_CREATED';
     type PublicationState = 'NOT_CREATED' | 'DRAFT' | 'PUBLISHED' | 'PUBLISHED_WITH_DRAFT';
-    type Payload = { slug: string; title: string; description: string | null; content: string; image_alts: Record<string, string>; tags: string[]; alphabet_key: string | null; version?: number; published_at?: string };
+    type Payload = { slug: string; title: string; description: string | null; content: string; image_alts: Record<string, string>; tags: string[]; alphabet_key: string | null; based_on_source_revision: number; based_on_source_fingerprint: string; version?: number; published_at?: string };
     type TranslationResponse = {
       ok: true; content_id: string; locale: Locale;
       source: { revision: number; fingerprint: string; title: string; description: string | null; content: string; image_alts: Record<string, string>; tags: string[]; alphabet_key: string | null };
@@ -141,11 +151,17 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     const locale = params.get('locale');
     const status = document.querySelector<HTMLElement>('[data-status]')!;
     const editor = document.querySelector<HTMLElement>('[data-editor]')!;
+    const viewOnSite = document.querySelector<HTMLElement>('[data-view-on-site]')!;
+    const viewOnSiteLink = document.querySelector<HTMLAnchorElement>('[data-view-on-site-link]')!;
+    const viewOnSiteVersion = document.querySelector<HTMLElement>('[data-view-on-site-version]')!;
+    const viewOnSiteDeployment = document.querySelector<HTMLElement>('[data-view-on-site-deployment]')!;
+    const viewOnSiteUnavailable = document.querySelector<HTMLElement>('[data-view-on-site-unavailable]')!;
     const draftForm = document.querySelector<HTMLFormElement>('[data-draft-form]')!;
     const dirtyIndicator = document.querySelector<HTMLElement>('[data-dirty]')!;
     const formError = document.querySelector<HTMLElement>('[data-form-error]')!;
     const draftAction = document.querySelector<HTMLButtonElement>('[data-draft-action]')!;
     const publishAction = document.querySelector<HTMLButtonElement>('[data-publish-action]')!;
+    const importAction = document.querySelector<HTMLButtonElement>('[data-import-action]')!;
     const rebaseAction = document.querySelector<HTMLButtonElement>('[data-rebase-action]')!;
     const discardAction = document.querySelector<HTMLButtonElement>('[data-discard-action]')!;
     const beginEditAction = document.querySelector<HTMLButtonElement>('[data-begin-edit-action]')!;
@@ -185,13 +201,23 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     const tagInput = document.querySelector<HTMLInputElement>('[data-tag-input]')!;
     const tagChips = document.querySelector<HTMLElement>('[data-tag-chips]')!;
     const tagMessage = document.querySelector<HTMLElement>('[data-tag-message]')!;
-    type EditablePayload = Omit<Payload, 'version' | 'published_at'>;
+    const importDialog = document.querySelector<HTMLDialogElement>('[data-import-dialog]')!;
+    const importInput = document.querySelector<HTMLTextAreaElement>('[data-import-input]')!;
+    const importClose = document.querySelector<HTMLButtonElement>('[data-import-close]')!;
+    const importCancel = document.querySelector<HTMLButtonElement>('[data-import-cancel]')!;
+    const importPreviewAction = document.querySelector<HTMLButtonElement>('[data-import-preview-action]')!;
+    const importApply = document.querySelector<HTMLButtonElement>('[data-import-apply]')!;
+    const importError = document.querySelector<HTMLElement>('[data-import-error]')!;
+    const importPreview = document.querySelector<HTMLElement>('[data-import-preview]')!;
+    const importPreviewFields = document.querySelector<HTMLElement>('[data-import-preview-fields]')!;
+    type EditablePayload = Omit<Payload, 'version' | 'published_at' | 'based_on_source_revision' | 'based_on_source_fingerprint'>;
     let draftBuffer: EditablePayload | null = null;
     let draftBaseline = '';
     let loadedState: TranslationResponse | null = null;
     let localeBlobSha: string | null = null;
     let saving = false;
     let writeBlocked = false;
+    let parsedImport: EditablePayload | null = null;
     type TranslationLinkRecord = { content_id: string; title: string; slug: string };
     let translationLinkIndex: TranslationLinkRecord[] | null = null;
     let preparedTranslationLinkIndex: ReturnType<typeof prepareSearchIndex> | null = null;
@@ -224,6 +250,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       return typeof payload.slug === 'string' && typeof payload.title === 'string' && (typeof payload.description === 'string' || payload.description === null)
         && typeof payload.content === 'string' && stringMap(payload.image_alts) && Array.isArray(payload.tags) && payload.tags.every((tag) => typeof tag === 'string')
         && (typeof payload.alphabet_key === 'string' || payload.alphabet_key === null)
+        && Number.isInteger(payload.based_on_source_revision) && typeof payload.based_on_source_fingerprint === 'string'
         && (!published || (Number.isInteger(payload.version) && typeof payload.published_at === 'string'));
     }
     function validSource(value: unknown): value is TranslationResponse['source'] {
@@ -263,6 +290,22 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         link.classList.toggle('text-white', next === active);
         link.onclick = (event) => { if (saving || (isDirty() && !window.confirm('Discard unsaved changes and switch locale?'))) event.preventDefault(); };
       });
+    }
+    function publishedLocaleUrl(data: TranslationResponse): string | null {
+      const slug = data.locale_document?.published?.slug;
+      return validLocale(data.locale) && typeof slug === 'string' && slug.length > 0 ? `/${data.locale}/${encodeURIComponent(slug)}/` : null;
+    }
+    function renderViewOnSite(data: TranslationResponse) {
+      const url = publishedLocaleUrl(data);
+      const hasDraftOnly = !url && !!data.locale_document?.draft;
+      viewOnSite.hidden = !url;
+      viewOnSiteUnavailable.hidden = !hasDraftOnly;
+      if (!url) { viewOnSiteLink.removeAttribute('href'); return; }
+      viewOnSiteLink.href = url;
+      viewOnSiteVersion.textContent = data.translation_state.publication_state === 'PUBLISHED_WITH_DRAFT'
+        ? 'Opens the currently published version. It does not include the draft or unsaved editor changes.'
+        : 'Opens the currently published version.';
+      viewOnSiteDeployment.textContent = 'After Publish, the page can appear or update only after the Cloudflare Pages deployment succeeds. This editor does not verify deployment or claim that the new revision is live.';
     }
     function emptyDraft(): EditablePayload { return { slug: '', title: '', description: null, content: '', image_alts: {}, tags: [], alphabet_key: null }; }
     function copyDraft(payload: Payload): EditablePayload { return { slug: payload.slug, title: payload.title, description: payload.description, content: payload.content, image_alts: structuredClone(payload.image_alts), tags: [...payload.tags], alphabet_key: payload.alphabet_key }; }
@@ -311,6 +354,29 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     function locallyValidAlphabet(value: string) {
       if (!value) return true;
       return locale === 'en' ? /^[A-Z]$/.test(value) : /^[\u0410-\u042f\u0401]$/u.test(value);
+    }
+    function importErrorMessage(message: string) { parsedImport = null; importApply.disabled = true; importPreview.hidden = true; importError.textContent = message; importError.hidden = false; }
+    function importedPayload(raw: string): EditablePayload | null {
+      const parsed = parseTranslationImport(raw); if (!parsed.ok) { importErrorMessage(parsed.message); return null; }
+      const record = parsed.value;
+      if (!locallyValidSlug(record.slug) || !locallyValidAlphabet(record.alphabet_key ?? '')) { importErrorMessage('Imported slug or alphabet key is invalid for this locale.'); return null; }
+      if (loadedState?.slug_locked && record.slug !== loadedState.locale_document?.published?.slug) { importErrorMessage('This translation has a published locked slug. Import cannot change it.'); return null; }
+      return { slug: record.slug, title: record.title, description: record.description, content: record.content, image_alts: structuredClone(record.image_alts) as Record<string, string>, tags: [...record.tags], alphabet_key: record.alphabet_key };
+    }
+    function previewImport() {
+      importError.hidden = true; const imported = importedPayload(importInput.value); if (!imported) return;
+      parsedImport = imported; importPreviewFields.replaceChildren();
+      for (const [label, value] of [['Title', imported.title], ['Slug', imported.slug], ['Description', imported.description ?? ''], ['Content', imported.content], ['Tags', imported.tags.join(', ')], ['Alphabet key', imported.alphabet_key ?? ''], ['Image alts', JSON.stringify(imported.image_alts, null, 2)]]) addField(importPreviewFields, label, value);
+      importPreview.hidden = false; importApply.disabled = false;
+    }
+    function openImportDialog() {
+      if (!draftBuffer || saving) return;
+      if (isDirty() && !window.confirm('Import can replace unsaved local changes. Continue to preview the imported translation?')) return;
+      parsedImport = null; importInput.value = ''; importError.hidden = true; importPreview.hidden = true; importApply.disabled = true; importDialog.showModal(); importInput.focus();
+    }
+    function applyImport() {
+      if (!parsedImport || !draftBuffer) return;
+      draftBuffer = structuredClone(parsedImport); writeBufferToForm(draftBuffer); syncDraftFromForm(); importDialog.close();
     }
     function syncDraftFromForm() {
       if (!draftBuffer) return;
@@ -451,7 +517,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         const status = document.createElement('p'); status.className = 'mt-2 text-xs text-slate-400';
         if (image.ownership === 'owned_r2') {
           status.textContent = 'Legacy R2 image — registration does not upload or alter the object.';
-          const register = document.createElement('button'); register.type = 'button'; register.className = 'mt-3 min-h-11 rounded-xl border border-violet-400/50 px-3 text-sm font-semibold text-violet-100 hover:bg-violet-500/10'; register.textContent = 'Register and select';
+          const register = document.createElement('button'); register.type = 'button'; register.className = 'mt-3 min-h-11 rounded-xl border border-violet-400/50 px-3 text-sm font-semibold text-violet-100 hover:bg-violet-500/10'; register.textContent = 'Use HY Image';
           register.addEventListener('click', () => { void registerHyImage(image, register); }); card.append(url, status, register);
         } else {
           status.textContent = 'External or unrecognized URL — manual review required; it cannot be registered automatically.'; card.append(url, status);
@@ -464,12 +530,13 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       button.disabled = true; managedImageStatus.textContent = 'Checking R2 object and registering the legacy image…';
       const outcome = await postTranslationWrite({ action: 'register_legacy_image', content_id: loadedState.content_id, locale: loadedState.locale, url: image.url });
       if (outcome.kind !== 'success' || !validMediaIndex([(outcome.body as { asset?: unknown }).asset])) {
-        showManagedImageError(outcome.kind === 'server_rejection' ? safeWriteMessage(outcome.code) : 'Legacy image registration could not be confirmed.'); button.disabled = false; renderHyImageResults(); return;
+        const message = outcome.kind === 'server_rejection' ? safeWriteMessage(outcome.code) : 'Legacy image registration could not be confirmed.';
+        managedImageStatus.textContent = message; showManagedImageError(message); button.disabled = false; renderHyImageResults(); return;
       }
       const asset = (outcome.body as { asset: TranslationMediaRecord }).asset;
       translationMediaIndex = [...(translationMediaIndex ?? []), asset].filter((row, index, rows) => rows.findIndex((candidate) => candidate.asset_id === row.asset_id) === index);
       loadedState.hy_images = loadedState.hy_images.map((row) => row.url === image.url ? { ...row, asset_id: asset.asset_id, public_url: asset.public_url } : row);
-      managedImageStatus.textContent = 'Legacy image registered.'; renderHyImageResults(); selectManagedImage(asset);
+      managedImageStatus.textContent = 'HY image is ready. Add localized ALT text, then insert it.'; renderHyImageResults(); selectManagedImage(asset);
     }
     function renderManagedImageResults() {
       const session = managedImageSession; const query = managedImageSearch.value.trim().toLowerCase();
@@ -514,7 +581,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       const state = data.translation_state.publication_state; const editable = state === 'NOT_CREATED' || state === 'DRAFT' || state === 'PUBLISHED_WITH_DRAFT';
       draftForm.hidden = !editable; draftBuffer = null; draftBaseline = ''; formError.hidden = true; writeError.hidden = true; writeBlocked = false;
       beginEditAction.hidden = state !== 'PUBLISHED';
-      publishAction.hidden = state !== 'DRAFT' && state !== 'PUBLISHED_WITH_DRAFT'; publishHelp.hidden = publishAction.hidden;
+      publishAction.hidden = state !== 'DRAFT' && state !== 'PUBLISHED_WITH_DRAFT'; publishAction.textContent = data.translation_state.draft_synchronization === 'OUTDATED' ? 'Publish anyway' : 'Publish'; publishHelp.hidden = publishAction.hidden;
       rebaseAction.hidden = !((state === 'DRAFT' || state === 'PUBLISHED_WITH_DRAFT') && !!data.locale_document?.draft && data.translation_state.draft_synchronization === 'OUTDATED'); rebaseHelp.hidden = rebaseAction.hidden; rebaseDirtyHelp.hidden = rebaseAction.hidden || !isDirty();
       discardAction.hidden = state !== 'DRAFT' && state !== 'PUBLISHED_WITH_DRAFT';
       if (!editable) { updateDirty(); return; }
@@ -530,7 +597,8 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     }
     function safeWriteMessage(code: unknown) {
       if (code === 'STALE_EDITOR') return 'This translation changed elsewhere. Reload and compare your local text before saving again.';
-      if (code === 'SOURCE_OUTDATED') return 'HY source changed. Rebase the saved draft before publishing.';
+      if (code === 'SOURCE_CHANGED') return 'HY source changed. Reload the current source before trying again.';
+      if (code === 'SOURCE_OUTDATED') return 'HY source changed. Use Publish anyway after reviewing the warning, or rebase to current HY.';
       if (code === 'NO_CHANGES') return 'There are no publishable changes in the saved draft.';
       if (code === 'NO_DRAFT') return 'There is no saved draft to publish.';
       if (code === 'DRAFT_INVALID') return 'The saved draft is invalid and cannot be published.';
@@ -551,6 +619,12 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       writeError.textContent = formatTranslationWriteFailure(outcome, outcome.kind === 'server_rejection' ? fallbackMessage || safeWriteMessage(outcome.code) : '');
       writeError.hidden = false;
     }
+    async function reloadPreservingDraft() {
+      const preserved = draftBuffer ? structuredClone(draftBuffer) : null;
+      const loaded = await load();
+      if (preserved) { draftBuffer = preserved; writeBufferToForm(preserved); updateDirty(); }
+      return loaded;
+    }
     async function saveDraft() {
       if (saving || writeBlocked || !loadedState || !draftBuffer) return;
       syncDraftFromForm(); if (!formError.hidden || !isDirty()) return;
@@ -565,7 +639,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
       try {
         const outcome = await postTranslationWrite(body);
         if (outcome.kind !== 'success') {
-          if (outcome.kind === 'server_rejection' && outcome.code === 'STALE_EDITOR') { const preserved = structuredClone(draftBuffer); await load(); draftBuffer = preserved; writeBufferToForm(preserved); writeBlocked = true; updateDirty(); }
+          if (outcome.kind === 'server_rejection' && ['STALE_EDITOR', 'SOURCE_CHANGED', 'BRANCH_REF_CONFLICT'].includes(outcome.code ?? '')) { await reloadPreservingDraft(); writeBlocked = true; }
           showWriteFailure(outcome); return;
         }
         const result = outcome.body;
@@ -576,12 +650,14 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     }
     async function publishDraft() {
       if (saving || writeBlocked || !canPublish() || !loadedState || !localeBlobSha) return;
+      const outdated = loadedState.translation_state.draft_synchronization === 'OUTDATED';
+      if (outdated && !window.confirm(`HY source is now revision ${loadedState.source.revision}; this draft is based on revision ${loadedState.locale_document?.draft?.based_on_source_revision}.\n\nPublish anyway? The translation will remain marked OUTDATED until you explicitly rebase it. Its text will not be changed.`)) return;
       saving = true; updateDraftAction(); writeError.hidden = true;
-      const body = { action: 'publish', content_id: loadedState.content_id, locale: loadedState.locale, expected_locale_blob_sha: localeBlobSha };
+      const body = { action: 'publish', content_id: loadedState.content_id, locale: loadedState.locale, expected_locale_blob_sha: localeBlobSha, expected_source_revision: loadedState.source.revision, expected_source_fingerprint: loadedState.source.fingerprint, allow_outdated_source: outdated };
       try {
         const outcome = await postTranslationWrite(body);
         if (outcome.kind !== 'success') {
-          if (outcome.kind === 'server_rejection' && outcome.code === 'STALE_EDITOR') { await load(); writeBlocked = true; }
+          if (outcome.kind === 'server_rejection' && ['STALE_EDITOR', 'SOURCE_CHANGED', 'BRANCH_REF_CONFLICT'].includes(outcome.code ?? '')) { await reloadPreservingDraft(); writeBlocked = true; }
           showWriteFailure(outcome); return;
         }
         if (!await load()) { writeBlocked = true; writeError.textContent = ambiguousTranslationWriteMessage('publish'); writeError.hidden = false; }
@@ -600,7 +676,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         const outcome = await postTranslationWrite(body);
         if (outcome.kind !== 'success') {
           const code = outcome.kind === 'server_rejection' ? outcome.code : undefined;
-          if (code === 'STALE_EDITOR' || code === 'BRANCH_REF_CONFLICT') { await load(); writeBlocked = true; updateDraftAction(); }
+          if (code === 'STALE_EDITOR' || code === 'BRANCH_REF_CONFLICT' || code === 'SOURCE_CHANGED') { await reloadPreservingDraft(); writeBlocked = true; updateDraftAction(); }
           else if (code === 'NO_DRAFT') await load();
           showWriteFailure(outcome); return;
         }
@@ -617,7 +693,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         const outcome = await postTranslationWrite(body);
         if (outcome.kind !== 'success') {
           const code = outcome.kind === 'server_rejection' ? outcome.code : undefined;
-          if (code === 'STALE_EDITOR' || code === 'BRANCH_REF_CONFLICT') { await load(); writeBlocked = true; updateDraftAction(); }
+          if (code === 'STALE_EDITOR' || code === 'BRANCH_REF_CONFLICT' || code === 'SOURCE_CHANGED') { await reloadPreservingDraft(); writeBlocked = true; updateDraftAction(); }
           else if (code === 'NO_DRAFT') await load();
           showWriteFailure(outcome); return;
         }
@@ -633,7 +709,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         const outcome = await postTranslationWrite(body);
         if (outcome.kind !== 'success') {
           const code = outcome.kind === 'server_rejection' ? outcome.code : undefined;
-          if (code === 'STALE_EDITOR' || code === 'BRANCH_REF_CONFLICT') { await load(); writeBlocked = true; updateDraftAction(); }
+          if (code === 'STALE_EDITOR' || code === 'BRANCH_REF_CONFLICT' || code === 'SOURCE_CHANGED') { await reloadPreservingDraft(); writeBlocked = true; updateDraftAction(); }
           showWriteFailure(outcome, code === 'NO_DRAFT' ? 'This translation is no longer published without a draft. Reload to reconcile the latest state.' : ''); return;
         }
         if (!await load()) { writeBlocked = true; writeError.textContent = ambiguousTranslationWriteMessage('begin_edit'); writeError.hidden = false; }
@@ -658,12 +734,15 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     function render(data: TranslationResponse) {
       loadedState = data; localeBlobSha = data.locale_blob_sha;
       configureLocaleLinks(data.content_id, data.locale);
+      renderViewOnSite(data);
       text('[data-current-locale]', data.locale.toUpperCase()); text('[data-content-id]', data.content_id); text('[data-publication-state]', data.translation_state.publication_state);
       text('[data-publication-label]', ({ NOT_CREATED: 'No translation document', DRAFT: 'Draft only', PUBLISHED: 'Published', PUBLISHED_WITH_DRAFT: 'Published with draft' } as Record<PublicationState, string>)[data.translation_state.publication_state]);
       text('[data-slug-lock]', data.slug_locked ? 'Published slug is locked.' : 'Slug may still change before first publication.');
       text('[data-alphabet-suggestion]', data.alphabet_suggestion === null ? 'No suggestion.' : `Suggested alphabet key: ${data.alphabet_suggestion}`);
       text('[data-draft-sync]', data.translation_state.draft_synchronization); text('[data-published-sync]', data.translation_state.published_synchronization);
       document.querySelector<HTMLElement>('[data-outdated-warning]')!.hidden = data.translation_state.draft_synchronization !== 'OUTDATED' && data.translation_state.published_synchronization !== 'OUTDATED';
+      const outdatedPayload = data.locale_document?.draft?.based_on_source_revision ?? data.locale_document?.published?.based_on_source_revision;
+      text('[data-outdated-current-revision]', String(data.source.revision)); text('[data-outdated-translation-revision]', outdatedPayload === undefined ? 'unknown' : String(outdatedPayload));
       text('[data-source-revision]', String(data.source.revision)); text('[data-source-fingerprint]', data.source.fingerprint);
       const source = document.querySelector<HTMLElement>('[data-source-fields]')!; source.replaceChildren(); addField(source, 'Title', data.source.title); addField(source, 'Description', data.source.description ?? ''); addField(source, 'Content', data.source.content); addField(source, 'Image alts', JSON.stringify(data.source.image_alts, null, 2)); addField(source, 'Tags', data.source.tags.join(', ')); addField(source, 'Alphabet key', data.source.alphabet_key ?? '—');
       text('[data-locale-blob-sha]', data.locale_blob_sha ?? 'Not created'); text('[data-derived-state]', data.translation_state.state);
@@ -692,6 +771,12 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
     internalLinkAnchor.addEventListener('input', () => { internalLinkAnchorError.hidden = true; });
     internalLinkInsert.addEventListener('click', insertInternalLink);
     insertImageAction.addEventListener('click', () => { void openManagedImageDialog(); });
+    importAction.addEventListener('click', openImportDialog);
+    importClose.addEventListener('click', () => importDialog.close());
+    importCancel.addEventListener('click', () => importDialog.close());
+    importPreviewAction.addEventListener('click', previewImport);
+    importApply.addEventListener('click', applyImport);
+    importDialog.addEventListener('close', () => { parsedImport = null; importApply.disabled = true; });
     managedImageClose.addEventListener('click', closeManagedImageDialog);
     managedImageCancel.addEventListener('click', closeManagedImageDialog);
     managedImageSearch.addEventListener('input', renderManagedImageResults);

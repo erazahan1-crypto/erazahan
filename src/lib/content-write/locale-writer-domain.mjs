@@ -73,11 +73,11 @@ export function discardLocaleDraft({ item, locale, localeDocument, draftClaims, 
   return Object.freeze({ localeDocument: documentFor(item, locale, null, structuredClone(localeDocument.published)), draftClaims, publishedReservations });
 }
 
-export function publishLocaleDraft({ item, locale, localeDocument, draftClaims, publishedReservations, publishedAt }) {
+export function publishLocaleDraft({ item, locale, localeDocument, draftClaims, publishedReservations, publishedAt, allowOutdatedSource = false }) {
   localeOnly(locale); validItem(item); if (!localeDocument?.draft) fail('NO_DRAFT', 'No locale draft exists'); validateExisting(item, locale, localeDocument);
   assertDraftOnlyClaim(localeDocument, draftClaims, locale, item);
   const { draft, published } = localeDocument;
-  if (!sameProvenance(draft, { based_on_source_revision: item.source_revision, based_on_source_fingerprint: item.source_fingerprint })) fail('SOURCE_OUTDATED', 'Draft must be explicitly reviewed against the current HY source');
+  if (!allowOutdatedSource && !sameProvenance(draft, { based_on_source_revision: item.source_revision, based_on_source_fingerprint: item.source_fingerprint })) fail('SOURCE_OUTDATED', 'Draft must be explicitly reviewed against the current HY source');
   if (published && draft.slug !== published.slug) fail('PUBLISHED_SLUG_LOCKED', 'Published locale slug is locked');
   if (published && canonicalJsonEqual(draft, withoutPublishedMeta(published))) fail('NO_CHANGES', 'Draft has no publishable changes');
   const nextPublished = { ...structuredClone(draft), version: published ? published.version + 1 : 1, published_at: publishedAt };

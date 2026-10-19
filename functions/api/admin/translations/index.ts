@@ -59,6 +59,13 @@ function postInput(body: unknown) {
       || !isSourceFingerprint(body.expected_source_fingerprint) || !plainObject(payload) || !exactKeys(payload, PAYLOAD_KEYS)) throw Object.assign(new Error(), { code: 'INVALID_REQUEST' });
     return { action: body.action, contentId: body.content_id, locale: body.locale, payload, expectedLocaleAbsent: true, expectedSourceRevision: body.expected_source_revision, expectedSourceFingerprint: body.expected_source_fingerprint };
   }
+  if (body.action === 'publish') {
+    if (!exactKeys(body, ['action', 'content_id', 'locale', 'expected_locale_blob_sha', 'expected_source_revision', 'expected_source_fingerprint', 'allow_outdated_source'])
+      || typeof body.expected_locale_blob_sha !== 'string' || !/^[0-9a-f]{40}$/.test(body.expected_locale_blob_sha)
+      || !Number.isInteger(body.expected_source_revision) || body.expected_source_revision < 1
+      || !isSourceFingerprint(body.expected_source_fingerprint) || typeof body.allow_outdated_source !== 'boolean') throw Object.assign(new Error(), { code: 'INVALID_REQUEST' });
+    return { action: body.action, contentId: body.content_id, locale: body.locale, expectedLocaleBlobSha: body.expected_locale_blob_sha, expectedSourceRevision: body.expected_source_revision, expectedSourceFingerprint: body.expected_source_fingerprint, allowOutdatedSource: body.allow_outdated_source };
+  }
   if (!exactKeys(body, body.action === 'update_draft'
     ? ['action', 'content_id', 'locale', 'expected_locale_blob_sha', 'payload']
     : ['action', 'content_id', 'locale', 'expected_locale_blob_sha'])
@@ -106,7 +113,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
     else if (input.action === 'begin_edit') result = await beginLocaleEditWrite(client, { ...input, branch });
     else if (input.action === 'rebase') result = await rebaseLocaleDraftWrite(client, { ...input, branch });
     else if (input.action === 'discard') result = await discardLocaleDraftWrite(client, { ...input, branch });
-    else if (input.action === 'publish') result = await publishLocaleDraftWrite(client, { branch, contentId: input.contentId, locale: input.locale, expectedLocaleBlobSha: input.expectedLocaleBlobSha });
+    else if (input.action === 'publish') result = await publishLocaleDraftWrite(client, { branch, contentId: input.contentId, locale: input.locale, expectedLocaleBlobSha: input.expectedLocaleBlobSha, expectedSourceRevision: input.expectedSourceRevision, expectedSourceFingerprint: input.expectedSourceFingerprint, allowOutdatedSource: input.allowOutdatedSource });
     else throw Object.assign(new Error(), { code: 'INVALID_ACTION' });
     return json({ ok: true, changed: result.changed, ...(result.code ? { code: result.code } : {}), content_id: input.contentId, locale: input.locale, locale_document: result.localeDocument, locale_blob_sha: result.localeBlobSha });
   } catch (error) { return writeError(error); }
