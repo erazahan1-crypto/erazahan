@@ -13,6 +13,7 @@ export class LocalizedContentValidationError extends Error {
 }
 const fail = (code, message) => { throw new LocalizedContentValidationError(code, message); };
 const reservedInHtml = /\b(?:href|src)\s*=\s*(['"]?)\s*(?:content|asset):/i;
+const reservedLogicalScheme = /\b(?:content|asset):\/\//i;
 
 function visit(tokens, visitor) {
   for (const token of tokens ?? []) {
@@ -26,6 +27,12 @@ function logicalTokens(content) {
   const tokens = marked.lexer(content, { gfm: true, breaks: false });
   visit(tokens, (token) => {
     if (token.type === 'html' && reservedInHtml.test(token.raw)) {
+      fail('LOGICAL_REFERENCE_NONCANONICAL', 'Reserved content:// and asset:// schemes must use Markdown links or images');
+    }
+    // `marked` leaves a bare reserved scheme in a text token. Reject it during
+    // draft/publish validation, rather than letting it reach the renderer's
+    // final HTML defense as visible text.
+    if (token.type === 'text' && reservedLogicalScheme.test(token.text)) {
       fail('LOGICAL_REFERENCE_NONCANONICAL', 'Reserved content:// and asset:// schemes must use Markdown links or images');
     }
   });

@@ -22,6 +22,7 @@ for (const [content, imageAlts, code] of [
   [`[missing](content://11111111-1111-5111-8111-111111111111)`, {}, 'CONTENT_REFERENCE_MISSING'],
   [`![](asset://${UNKNOWN_ASSET})`, { [UNKNOWN_ASSET]: 'x' }, 'ASSET_REFERENCE_MISSING'],
   ['<a href="content://efa61838-86c8-56b8-815c-0a38b0a83242">bad</a>', {}, 'LOGICAL_REFERENCE_NONCANONICAL'],
+  [`(asset://${ASSET})`, { [ASSET]: 'x' }, 'LOGICAL_REFERENCE_NONCANONICAL'],
 ]) assert.throws(() => render(content, imageAlts), (error) => error.code === code);
 
 assert.doesNotThrow(() => validateLocalizedBody({ content: `![](asset://${ASSET}) [draft](content://${DRAFT})`, imageAlts: {}, locale: 'en', currentContentId: A, contentLinkIndex: index, mediaIndex, mode: 'draft' }));
