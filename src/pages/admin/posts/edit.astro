@@ -78,9 +78,10 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         <section class="rounded-xl border border-white/10 bg-night-950/60 p-3" aria-labelledby="translations-heading">
           <h2 id="translations-heading" class="text-sm font-semibold text-white">Translations</h2>
           <p data-translations-unavailable class="mt-2 text-xs text-slate-400">Translations unavailable</p>
-          <div data-translation-links hidden class="mt-3 flex gap-2" aria-label="Translation editor locales">
+          <div data-translation-links hidden class="mt-3 flex flex-wrap gap-2" aria-label="Translation editor locales">
             <a data-translation-link="ru" class="inline-flex min-h-11 items-center rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/5">RU</a>
             <a data-translation-link="en" class="inline-flex min-h-11 items-center rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/5">EN</a>
+            <a data-translation-batch-link class="inline-flex min-h-11 items-center rounded-xl bg-violet-600 px-4 text-sm font-semibold text-white hover:bg-violet-500">Publish RU + EN</a>
           </div>
         </section>
         <label class="block">
@@ -284,6 +285,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         const locale = link.dataset.translationLink as 'ru' | 'en';
         link.href = `/admin/translations/edit/?${new URLSearchParams({ content_id: contentId, locale })}`;
       });
+      document.querySelector<HTMLAnchorElement>('[data-translation-batch-link]')!.href = `/admin/translations/batch/?${new URLSearchParams({ content_id: contentId })}`;
       translationsUnavailable.hidden = true;
       translationLinks.hidden = false;
     }
@@ -1017,10 +1019,11 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
         replaceImageKeys.clear();
         if (result.blobSha) version = result.blobSha;
         if (result.post) populate(result.post);
+        configureTranslationLinks(result.content_id);
         if (result.url) openSite.href = result.url;
         const warning = result.warnings?.length ? ` ${result.warnings.join(' ')}` : '';
         showStatus(
-          `Изменения сохранены в GitHub. Cloudflare опубликует их после новой сборки.${warning}`,
+          `Изменения сохранены в GitHub. Можно сразу продолжить с RU + EN — ждать Cloudflare не нужно.${warning}`,
           result.warnings?.length ? 'neutral' : 'success',
         );
       } catch (error) {

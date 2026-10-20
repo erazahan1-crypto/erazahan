@@ -1,0 +1,138 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="Publish RU + EN — Admin">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="text-sm font-medium text-violet-300">RU / EN localization</p>
+      <h1 class="mt-1 font-display text-3xl font-bold text-white">Publish RU + EN</h1>
+      <p class="mt-2 max-w-3xl text-sm text-slate-400">Import one or two prepared translations, review the final state, then create one GitHub transaction. No draft is saved during preview.</p>
+    </div>
+    <a href="/admin/translations/" class="inline-flex min-h-11 items-center rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/5">All translations</a>
+  </div>
+
+  <section data-status class="mt-6 rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-sm text-slate-300" role="status">Loading the current GitHub HY snapshot…</section>
+  <section data-editor hidden class="mt-6 space-y-5">
+    <section class="rounded-2xl border border-violet-400/20 bg-violet-500/[0.06] p-4">
+      <p class="text-xs font-semibold uppercase tracking-wide text-violet-200">HY source</p>
+      <h2 data-hy-title class="mt-1 font-display text-xl font-bold text-white"></h2>
+      <p class="mt-2 text-sm text-slate-300">Revision <code data-source-revision></code> · <code data-source-fingerprint class="break-all"></code></p>
+      <details class="mt-3"><summary class="cursor-pointer text-sm font-semibold text-violet-100">Show HY source</summary><pre data-hy-content class="mt-3 max-h-72 overflow-auto whitespace-pre-wrap rounded-xl border border-white/10 bg-night-950 p-3 text-sm text-slate-200"></pre></details>
+    </section>
+    <div data-locale-cards class="grid gap-5 xl:grid-cols-2"></div>
+    <section data-preview hidden class="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+      <h2 class="font-display text-xl font-bold text-white">Read-only publication preview</h2>
+      <p class="mt-2 text-sm text-slate-400">The server validated the selected translations against the current Git snapshot. Publishing repeats all preconditions.</p>
+      <div data-preview-list class="mt-4 grid gap-3"></div>
+      <div class="mt-5 flex flex-wrap gap-3"><button data-open-confirm type="button" class="min-h-11 rounded-xl bg-violet-600 px-5 text-sm font-semibold text-white hover:bg-violet-500">Publish selected translations</button><button data-reset-preview type="button" class="min-h-11 rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 hover:bg-white/5">Edit selection</button></div>
+    </section>
+    <div class="flex flex-wrap gap-3"><button data-preview-action type="button" class="min-h-11 rounded-xl border border-white/10 px-5 text-sm font-semibold text-slate-100 hover:bg-white/5">Preview selected translations</button></div>
+  </section>
+
+  <dialog data-confirm class="m-auto w-[min(40rem,calc(100vw-2rem))] rounded-2xl border border-white/10 bg-night-900 p-0 text-slate-200 shadow-2xl backdrop:bg-black/70">
+    <form method="dialog" class="p-5"><h2 class="font-display text-xl font-bold text-white">Confirm batch publication</h2><p data-confirm-copy class="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-300"></p><p class="mt-3 text-xs text-amber-200">This creates one GitHub commit. Cloudflare deployment may still be in progress afterwards.</p><div class="mt-5 flex flex-wrap justify-end gap-3"><button value="cancel" class="min-h-11 rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200">Cancel</button><button data-publish-action value="publish" class="min-h-11 rounded-xl bg-violet-600 px-5 text-sm font-semibold text-white">Confirm and publish</button></div></form>
+  </dialog>
+
+  <script>
+    import { parseTranslationImport } from '../../../lib/translation-import-contract.mjs';
+    type Locale = 'ru' | 'en';
+    type ImportedPayload = { slug: string; title: string; description: string | null; content: string; image_alts: Record<string, string>; tags: string[]; alphabet_key: string | null };
+    type LocaleSnapshot = ImportedPayload & { based_on_source_revision: number; based_on_source_fingerprint: string; version?: number; published_at?: string };
+    type LocaleDocument = { draft: LocaleSnapshot | null; published: LocaleSnapshot | null } | null;
+    type LocaleState = { locale: Locale; locale_document: LocaleDocument; locale_blob_sha: string | null; slug_locked: boolean; translation_state: { publication_state: string; draft_synchronization: string; published_synchronization: string } };
+    type EditorState = { ok: true; content_id: string; source: { revision: number; fingerprint: string; title: string; content: string }; locales: Record<Locale, LocaleState> };
+    type Candidate = { include: boolean; mode: 'import' | 'saved_draft'; raw: string; payload: ImportedPayload | null; replacePublished: boolean; allowOutdated: boolean; error: string | null };
+    const contentId = new URLSearchParams(location.search).get('content_id');
+    const status = document.querySelector<HTMLElement>('[data-status]')!;
+    const editor = document.querySelector<HTMLElement>('[data-editor]')!;
+    const cards = document.querySelector<HTMLElement>('[data-locale-cards]')!;
+    const preview = document.querySelector<HTMLElement>('[data-preview]')!;
+    const previewList = document.querySelector<HTMLElement>('[data-preview-list]')!;
+    const confirmDialog = document.querySelector<HTMLDialogElement>('[data-confirm]')!;
+    const confirmCopy = document.querySelector<HTMLElement>('[data-confirm-copy]')!;
+    const previewAction = document.querySelector<HTMLButtonElement>('[data-preview-action]')!;
+    const publishAction = document.querySelector<HTMLButtonElement>('[data-publish-action]')!;
+    let state: EditorState | null = null;
+    let reviewed = false;
+    let lastPreview: Array<{ locale: Locale; published: ImportedPayload }> = [];
+    const candidates: Record<Locale, Candidate> = {
+      ru: { include: false, mode: 'import', raw: '', payload: null, replacePublished: false, allowOutdated: false, error: null },
+      en: { include: false, mode: 'import', raw: '', payload: null, replacePublished: false, allowOutdated: false, error: null },
+    };
+    function message(text: string, tone: 'neutral' | 'error' | 'success' = 'neutral') {
+      status.hidden = false; status.textContent = text;
+      status.className = `mt-6 rounded-2xl border p-4 text-sm ${tone === 'error' ? 'border-rose-400/30 bg-rose-500/10 text-rose-200' : tone === 'success' ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200' : 'border-white/10 bg-white/[0.035] text-slate-300'}`;
+    }
+    function validId(value: string | null) { return !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[57][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value); }
+    function create(tag: string, className = '') { const element = document.createElement(tag); element.className = className; return element; }
+    function field(parent: HTMLElement, label: string, value: string) { const block = create('div', 'rounded-xl border border-white/10 bg-night-950 p-3'); const title = create('p', 'text-xs font-semibold uppercase tracking-wide text-slate-400'); title.textContent = label; const text = create('pre', 'mt-2 max-h-44 overflow-auto whitespace-pre-wrap break-words text-sm text-slate-200'); text.textContent = value; block.append(title, text); parent.append(block); }
+    function stateText(locale: LocaleState) { return `${locale.translation_state.publication_state} · draft ${locale.translation_state.draft_synchronization} · published ${locale.translation_state.published_synchronization}`; }
+    function renderCards() {
+      if (!state) return; cards.replaceChildren();
+      for (const locale of ['ru', 'en'] as const) {
+        const current = state.locales[locale]; const candidate = candidates[locale]; const section = create('section', 'rounded-2xl border border-white/10 bg-white/[0.035] p-5');
+        const title = create('h2', 'font-display text-2xl font-bold text-white'); title.textContent = locale.toUpperCase();
+        const detail = create('p', 'mt-2 text-sm text-slate-400'); detail.textContent = stateText(current);
+        const published = create('p', 'mt-1 text-xs text-slate-400'); published.textContent = current.locale_document?.published ? `Published: ${current.locale_document.published.title} · ${current.locale_document.published.slug}` : 'No published translation';
+        const includeLabel = create('label', 'mt-4 flex min-h-11 items-center gap-3 rounded-xl border border-white/10 px-3 text-sm font-semibold text-white'); const include = document.createElement('input'); include.type = 'checkbox'; include.checked = candidate.include; include.onchange = () => { candidate.include = include.checked; candidate.error = null; reviewed = false; preview.hidden = true; renderCards(); }; includeLabel.append(include, document.createTextNode('Include in publish'));
+        const textarea = document.createElement('textarea'); textarea.rows = 12; textarea.placeholder = 'Paste exactly one JSON translation from ChatGPT'; textarea.value = candidate.raw; textarea.className = 'mt-4 w-full rounded-xl border border-white/10 bg-night-950 p-3 font-mono text-sm text-white'; textarea.disabled = candidate.mode === 'saved_draft'; textarea.oninput = () => { candidate.raw = textarea.value; candidate.payload = null; candidate.error = null; reviewed = false; preview.hidden = true; };
+        const controls = create('div', 'mt-3 flex flex-wrap gap-2'); const importButton = create('button', 'min-h-11 rounded-xl border border-white/10 px-3 text-sm font-semibold text-slate-200 hover:bg-white/5') as HTMLButtonElement; importButton.type = 'button'; importButton.textContent = 'Validate JSON'; importButton.disabled = candidate.mode === 'saved_draft';
+        const hint = create('p', 'text-xs text-slate-400');
+        importButton.onclick = () => { const parsed = parseTranslationImport(candidate.raw); if (!parsed.ok) { candidate.error = parsed.message; renderCards(); return; } candidate.payload = structuredClone(parsed.value) as ImportedPayload; candidate.include = true; candidate.mode = 'import'; candidate.error = null; hint.textContent = `Ready: ${candidate.payload.title} · ${candidate.payload.slug} · ${Object.keys(candidate.payload.image_alts).length} image ALT values`; hint.className = 'text-xs text-emerald-200'; reviewed = false; preview.hidden = true; renderCards(); };
+        controls.append(importButton);
+        if (current.locale_document?.draft) { const saved = create('button', 'min-h-11 rounded-xl border border-white/10 px-3 text-sm font-semibold text-slate-200 hover:bg-white/5') as HTMLButtonElement; saved.type = 'button'; saved.textContent = candidate.mode === 'saved_draft' ? 'Using saved draft' : 'Use saved draft'; saved.onclick = () => { candidate.mode = 'saved_draft'; candidate.include = true; candidate.payload = null; candidate.error = null; reviewed = false; preview.hidden = true; renderCards(); }; controls.append(saved); }
+        if (current.locale_document?.published) { const replacement = create('label', 'mt-3 flex items-start gap-2 text-xs text-amber-200'); const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.checked = candidate.replacePublished; checkbox.onchange = () => { candidate.replacePublished = checkbox.checked; reviewed = false; preview.hidden = true; }; replacement.append(checkbox, document.createTextNode('I understand this replaces the existing published translation.')); section.append(title, detail, published, includeLabel, textarea, controls, replacement); } else section.append(title, detail, published, includeLabel, textarea, controls);
+        const existingSynchronization = current.locale_document?.draft ? current.translation_state.draft_synchronization : current.translation_state.published_synchronization;
+        if ((current.locale_document?.draft || current.locale_document?.published) && existingSynchronization === 'OUTDATED') { const outdated = create('label', 'mt-3 flex items-start gap-2 text-xs text-amber-200'); const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.checked = candidate.allowOutdated; checkbox.onchange = () => { candidate.allowOutdated = checkbox.checked; candidate.error = null; reviewed = false; preview.hidden = true; }; outdated.append(checkbox, document.createTextNode('Publish this translation as OUTDATED; keep its original provenance.')); section.append(outdated); }
+        if (candidate.payload) { const imported = create('div', 'mt-4 grid gap-2'); field(imported, 'Imported title / slug', `${candidate.payload.title}\n${candidate.payload.slug}`); field(imported, 'Description', candidate.payload.description ?? '—'); field(imported, 'Content', candidate.payload.content); field(imported, 'Tags and image ALT', `${candidate.payload.tags.join(', ') || '—'}\n${JSON.stringify(candidate.payload.image_alts, null, 2)}`); section.append(imported); }
+        if (hint.textContent) section.append(hint); if (candidate.error) { const error = create('p', 'mt-3 rounded-xl border border-rose-400/30 bg-rose-500/10 p-3 text-sm text-rose-200'); error.textContent = candidate.error; section.append(error); } cards.append(section);
+      }
+    }
+    function selections() {
+      if (!state) throw new Error('Editor state is unavailable');
+      return (['ru', 'en'] as const).filter((locale) => candidates[locale].include).map((locale) => {
+        const candidate = candidates[locale]; const current = state!.locales[locale]; const version = current.locale_blob_sha ? { expected_locale_blob_sha: current.locale_blob_sha } : { expected_locale_absent: true };
+        return candidate.mode === 'import'
+          ? { locale, mode: 'import', ...version, payload: candidate.payload, replace_published: candidate.replacePublished, allow_outdated_source: candidate.allowOutdated }
+          : { locale, mode: 'saved_draft', expected_locale_blob_sha: current.locale_blob_sha, replace_published: candidate.replacePublished, allow_outdated_source: candidate.allowOutdated };
+      });
+    }
+    function request(action: 'preview_batch' | 'publish_batch') {
+      if (!state) throw new Error('Editor state is unavailable');
+      const selected = selections();
+      if (!selected.length) throw new Error('Select RU, EN, or both translations.');
+      if (selected.some((entry) => entry.mode === 'import' && !entry.payload)) throw new Error('Validate the JSON for every imported translation before continuing.');
+      return { action, content_id: state.content_id, expected_source_revision: state.source.revision, expected_source_fingerprint: state.source.fingerprint, selections: selected };
+    }
+    async function post(action: 'preview_batch' | 'publish_batch') {
+      const response = await fetch('/api/admin/translations/batch', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(request(action)) });
+      const body = await response.json().catch(() => ({})); if (!response.ok || !body.ok) throw Object.assign(new Error(body.code || 'Batch request failed.'), { code: body.code, locale: body.locale }); return body;
+    }
+    function safeError(code: unknown) { return ({ DRAFT_INVALID: 'The translation is invalid, including its logical links or image ALT data.', PUBLISH_INVALID: 'The translation cannot be published in its current state.', NO_DRAFT: 'There is no saved draft to publish.', SOURCE_OUTDATED: 'This translation is based on an older HY source. Confirm OUTDATED publication or use the explicit Rebase flow.', STALE_EDITOR: 'This translation changed in GitHub. Reloaded state is required.', PUBLISHED_REPLACEMENT_CONFIRMATION_REQUIRED: 'Confirm replacement of the existing Published version.', SLUG_CLAIMED: 'This slug is claimed by another draft.', SLUG_PERMANENTLY_RESERVED: 'This slug is permanently reserved.' } as Record<string, string>)[typeof code === 'string' ? code : ''] ?? 'The batch request could not be completed.'; }
+    function showLocaleError(error: unknown) { const locale = (error as { locale?: unknown })?.locale; if (locale === 'ru' || locale === 'en') { candidates[locale].error = safeError((error as { code?: unknown }).code); renderCards(); return true; } return false; }
+    async function previewBatch() {
+      if (previewAction.disabled) return; previewAction.disabled = true;
+      try { message('Validating the selected translations…'); const result = await post('preview_batch'); reviewed = true; lastPreview = (result.locales as Array<{ locale: Locale; published: ImportedPayload }>).map(({ locale, published }) => ({ locale, published })); previewList.replaceChildren(); for (const locale of result.locales as Array<{ locale: Locale; replaces_published: boolean; replaces_draft: boolean; published: ImportedPayload; synchronization: string }>) { const item = create('article', 'rounded-xl border border-white/10 bg-night-950 p-4'); const heading = create('h3', 'font-semibold text-white'); heading.textContent = `${locale.locale.toUpperCase()} · ${locale.published.title}`; const details = create('p', 'mt-2 whitespace-pre-wrap break-words text-sm text-slate-300'); details.textContent = `${locale.published.slug}\n${locale.replaces_published ? 'Existing Published will be replaced.' : 'A new Published version will be created.'}\n${locale.replaces_draft ? 'Existing Draft will be consumed by this publication.' : ''}\nSynchronization: ${locale.synchronization}`; item.append(heading, details); previewList.append(item); } preview.hidden = false; message('Preview validated. Confirm the final publication when ready.', 'success'); }
+      catch (error) { reviewed = false; preview.hidden = true; const code = (error as { code?: string }).code; const localized = showLocaleError(error); message(code === 'SOURCE_CHANGED' ? 'HY changed. Reload the editor; your pasted JSON remains in this browser.' : localized ? 'Correct the highlighted language and preview again.' : safeError(code), 'error'); }
+      finally { previewAction.disabled = false; }
+    }
+    function loadedStateMatchesLastPreview() { return !!state && lastPreview.length > 0 && lastPreview.every(({ locale, published }) => { const current = state!.locales[locale].locale_document?.published; return !!current && current.slug === published.slug && current.title === published.title && current.description === published.description && current.content === published.content && current.alphabet_key === published.alphabet_key && JSON.stringify(current.tags) === JSON.stringify(published.tags) && JSON.stringify(current.image_alts) === JSON.stringify(published.image_alts); }); }
+    async function publishBatch() {
+      if (!reviewed) return; publishAction.disabled = true;
+      try { message('Creating one atomic GitHub transaction…'); const result = await post('publish_batch'); confirmDialog.close(); message(result.changed ? 'Translations saved to GitHub. Waiting for Cloudflare deployment.' : 'No publishable changes were found.', result.changed ? 'success' : 'neutral'); reviewed = false; preview.hidden = true; await load(); }
+      catch (error) { const code = (error as { code?: string }).code; const localized = showLocaleError(error); const reloaded = await load(); message(reloaded ? (code === 'SOURCE_CHANGED' || code === 'STALE_EDITOR' || code === 'BRANCH_REF_CONFLICT' ? 'Repository state changed and was reloaded. Your pasted JSON remains in this browser.' : loadedStateMatchesLastPreview() ? 'GitHub now contains the previewed Published snapshots. No retry was sent.' : 'GitHub state was reloaded after an uncertain write result. No retry was sent; the previewed publication is not confirmed.') : (localized ? 'Correct the highlighted language. Your pasted JSON remains in this browser.' : safeError(code)), 'error'); }
+      finally { publishAction.disabled = false; }
+    }
+    async function load(): Promise<boolean> {
+      if (!validId(contentId)) { message('A valid content ID is required.', 'error'); return false; }
+      try { const response = await fetch(`/api/admin/translations/batch?${new URLSearchParams({ content_id: contentId! })}`, { headers: { accept: 'application/json' } }); const data = await response.json(); if (!response.ok || !data.ok) throw new Error(data.code || 'Could not load the translation batch editor.'); state = data as EditorState; document.querySelector<HTMLElement>('[data-hy-title]')!.textContent = state.source.title; document.querySelector<HTMLElement>('[data-source-revision]')!.textContent = String(state.source.revision); document.querySelector<HTMLElement>('[data-source-fingerprint]')!.textContent = state.source.fingerprint; document.querySelector<HTMLElement>('[data-hy-content]')!.textContent = state.source.content; editor.hidden = false; message('Current GitHub snapshot loaded. Cloudflare deployment is not required before publishing translations.'); renderCards(); return true; }
+      catch (error) { message(error instanceof Error ? error.message : 'Could not load the translation batch editor.', 'error'); return false; }
+    }
+    previewAction.addEventListener('click', previewBatch);
+    document.querySelector<HTMLButtonElement>('[data-open-confirm]')!.addEventListener('click', () => { if (!state || !reviewed) return; const selected = selections(); const replacements = selected.filter((entry) => state!.locales[entry.locale].locale_document?.published); confirmCopy.textContent = `Publish ${selected.map((entry) => entry.locale.toUpperCase()).join(' + ')} in one GitHub commit?${replacements.length ? `\n\nYou are replacing Published: ${replacements.map((entry) => entry.locale.toUpperCase()).join(', ')}.` : ''}`; confirmDialog.showModal(); });
+    document.querySelector<HTMLButtonElement>('[data-reset-preview]')!.addEventListener('click', () => { reviewed = false; preview.hidden = true; });
+    publishAction.addEventListener('click', (event) => { event.preventDefault(); void publishBatch(); });
+    void load();
+  </script>
+</AdminLayout>

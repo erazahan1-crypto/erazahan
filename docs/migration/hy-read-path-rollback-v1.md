@@ -38,9 +38,13 @@ Rollback succeeds only when OLD returns to full baseline parity, all protected d
 
 ## Editorial-write risk during the rollback window
 
-The current admin write target remains `src/data/posts.json`. The permanent HY store is a static snapshot and does not update after an admin edit.
+> **Historical cutover note.** The paragraphs below describe the pre-atomic HY writer that existed during the original read-path migration. They are retained as release history, not as the current runtime model.
 
-If NEW is active, an editor changes HY through the old admin, and rollback then occurs, the edit exists in `posts.json` and becomes visible after rollback but was absent from NEW while NEW was active. A later switch back to the unchanged store would hide that edit again. This is a production-cutover blocker until an explicit write policy is approved.
+The current HY writer atomically projects an edit to `src/data/posts.json`, the matching `item.json`, and `hy.json` from one immutable GitHub snapshot, then advances the branch ref once. It verifies projection parity and recalculates `source_revision` / `source_fingerprint`; the HY store is therefore no longer a static snapshot after an accepted HY edit.
+
+The pre-atomic admin wrote only `src/data/posts.json`. If NEW had been active, an editor could have changed HY through that old admin and the permanent store would not have been updated.
+
+That historical behaviour was a production-cutover blocker. It does not apply to the current atomic writer; normal GitHub SHA preconditions and branch-ref conflicts remain the applicable concurrency controls.
 
 Recommended pre-cutover policy: freeze HY editorial writes for the entire preview/cutover/rollback observation window. This is the smallest auditable option and avoids implementing unreviewed dual-write behavior. If continuous editing is required, design and validate a controlled old-to-new sync/export after every admin edit before approving production NEW mode. Dual-write requires its own failure and reconciliation design and is not part of this stage.
 
@@ -50,7 +54,7 @@ The approved policy for the first production read-path cutover is **editorial fr
 
 ### Why the freeze is required
 
-The current HY editor reads and commits only `src/data/posts.json`. Its GitHub write transaction has no write target, acknowledgement, or revision coordination for `src/data/content/dreams/`. The permanent store is therefore a static migration snapshot until a separately controlled import/sync is run.
+The pre-atomic HY editor read and committed only `src/data/posts.json`. Its GitHub transaction had no write target, acknowledgement, or revision coordination for `src/data/content/dreams/`. The permanent store was therefore a static migration snapshot until a separately controlled import/sync ran.
 
 The following sequence is unsafe without a freeze:
 
@@ -92,7 +96,7 @@ The freeze cannot end merely because NEW was deployed. Before any release decisi
 - the rollback observation window has ended and its decision is recorded; and
 - a separately approved write-synchronization/admin-migration architecture is active and operationally validated.
 
-The last condition is mandatory. While the current admin writes only `posts.json`, it is **not safe** to end the editorial freeze and keep the NEW reader in continuous production operation. NEW may be exercised briefly under the freeze for the controlled cutover and rollback window, but continued legacy-admin editing with NEW active is not approved.
+The last condition was mandatory for the pre-atomic editor, which wrote only `posts.json`. The current atomic writer has superseded that restriction by committing `posts.json` and the corresponding HY-store files in one transaction; NEW may remain active under the normal writer integrity and conflict controls.
 
 ### Why dual-write is not a Stage 10C remedy
 
