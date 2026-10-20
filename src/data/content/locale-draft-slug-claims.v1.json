@@ -1,4 +1,10 @@
 {
-  "claims": [],
+  "claims": [
+    {
+      "content_id": "466dd767-3a05-545b-bde7-ae64937f866b",
+      "locale": "ru",
+      "slug": "сонник-гонять-уток"
+    }
+  ],
   "version": 1
 }
