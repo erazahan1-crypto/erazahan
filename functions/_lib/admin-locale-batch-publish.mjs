@@ -6,17 +6,20 @@ import {
   updateLocaleDraft,
 } from '../../src/lib/content-write/locale-writer-domain.mjs';
 import { validateLocaleDraftSlugClaims } from '../../src/lib/content-write/locale-draft-slug-claims.mjs';
-import { validateLocaleDocumentStorage, validateLocaleSlugReservations } from '../../src/lib/content-schema/multilingual-contract.mjs';
+import { publicPathFor, validateLocaleDocumentStorage, validateLocaleSlugReservations } from '../../src/lib/content-schema/multilingual-contract.mjs';
 import { isContentId, validateContentItem } from '../../src/lib/content-schema/schema.mjs';
 import { deriveTranslationState } from '../../src/lib/content-schema/state.mjs';
 import { classifyAlphabetKey } from '../../src/lib/content-schema/locale-alphabet.mjs';
 import { hyStorePaths } from '../../src/lib/content-write/project-hy-post.mjs';
+import { createMediaManifestIndex } from '../../src/lib/content-source/media-manifest-contract.mjs';
+import { projectHyImageReferences } from '../../src/lib/content-source/hy-legacy-images.mjs';
 import { commitMultiFileTransaction, loadMultiFileSnapshot } from './github-multifile.mjs';
 import { localizedAuthoringContext } from './localized-reference-context.mjs';
 import { LocalizedContentValidationError, validateLocalizedBody } from '../../src/lib/localized-content-pipeline.mjs';
 
 export const DRAFT_CLAIMS_PATH = 'src/data/content/locale-draft-slug-claims.v1.json';
 export const PUBLISHED_RESERVATIONS_PATH = 'src/data/content/locale-slug-reservations.v1.json';
+export const MEDIA_MANIFEST_PATH = 'src/data/content/media-manifest.v1.json';
 const LOCALES = Object.freeze(['ru', 'en']);
 
 export class AdminLocaleBatchPublishError extends Error {
@@ -36,7 +39,7 @@ function parseRequired(snapshot, path, label) {
 }
 function emptyDocument(contentId, locale) { return { schema_version: 1, content_id: contentId, locale, draft: null, published: null }; }
 function documentPath(paths, locale) { return `${paths.directory}/${locale}.json`; }
-function validateLogicalBody(document, mode) {
+function validateLogicalBody(document, mode, mediaIndex) {
   const snapshot = mode === 'publish' ? document.published : document.draft;
   try {
     validateLocalizedBody({
@@ -45,6 +48,7 @@ function validateLogicalBody(document, mode) {
       locale: document.locale,
       currentContentId: document.content_id,
       ...localizedAuthoringContext,
+      mediaIndex,
       mode,
     });
   } catch (error) {
@@ -60,6 +64,8 @@ function validateLoadedSnapshot({ snapshot, contentId, paths }) {
   const hy = parseRequired(snapshot, paths.hy, 'HY locale document');
   const claims = parseRequired(snapshot, DRAFT_CLAIMS_PATH, 'draft slug claims registry');
   const reservations = parseRequired(snapshot, PUBLISHED_RESERVATIONS_PATH, 'published slug reservations registry');
+  const mediaManifest = parseRequired(snapshot, MEDIA_MANIFEST_PATH, 'managed media manifest');
+  let mediaIndex;
   try {
     validateContentItem(item);
     if (item.content_id !== contentId || item.source_locale !== 'hy') fail('CONTENT_NOT_FOUND', 'Requested content identity is unavailable');
@@ -67,6 +73,7 @@ function validateLoadedSnapshot({ snapshot, contentId, paths }) {
     if (!hy.published || hy.draft !== null) fail('INVALID_HY_SOURCE', 'HY source must be published without a draft');
     validateLocaleDraftSlugClaims(claims);
     validateLocaleSlugReservations(reservations);
+    mediaIndex = createMediaManifestIndex(mediaManifest);
   } catch (error) {
     if (error instanceof AdminLocaleBatchPublishError) throw error;
     fail('INVALID_SNAPSHOT_STATE', error instanceof Error ? error.message : String(error), error);
@@ -93,7 +100,7 @@ function validateLoadedSnapshot({ snapshot, contentId, paths }) {
       fail('INVALID_SNAPSHOT_STATE', error instanceof Error ? error.message : String(error), error);
     }
   }
-  return { item, hy, claims, reservations, documents, blobShas };
+  return { item, hy, claims, reservations, mediaIndex, documents, blobShas };
 }
 
 export async function loadLocaleBatchSnapshot(client, { branch, contentId }) {
@@ -107,6 +114,7 @@ export async function loadLocaleBatchSnapshot(client, { branch, contentId }) {
       ...LOCALES.map((locale) => documentPath(paths, locale)),
       DRAFT_CLAIMS_PATH,
       PUBLISHED_RESERVATIONS_PATH,
+      MEDIA_MANIFEST_PATH,
     ],
   });
   return { snapshot, paths, ...validateLoadedSnapshot({ snapshot, contentId, paths }) };
@@ -122,6 +130,7 @@ function projectDocumentSummary(item, document, locale, blobSha) {
     translation_state: state,
     slug_locked: Boolean(document?.published),
     alphabet_suggestion: classifyAlphabetKey(locale, current.draft?.title ?? current.published?.title ?? ''),
+    published_path: current.published ? publicPathFor(locale, current.published.slug) : null,
   };
 }
 
@@ -133,12 +142,16 @@ export async function loadLocaleBatchEditorState(client, input) {
       revision: loaded.item.source_revision,
       fingerprint: loaded.item.source_fingerprint,
       title: loaded.hy.published.title,
+      slug: loaded.hy.published.slug,
+      published_path: publicPathFor('hy', loaded.hy.published.slug),
       description: loaded.hy.published.description,
       content: loaded.hy.published.content,
       image_alts: structuredClone(loaded.hy.published.image_alts),
       tags: structuredClone(loaded.hy.published.tags),
       alphabet_key: loaded.hy.published.alphabet_key,
     },
+    hy_images: projectHyImageReferences(loaded.hy.published.content, loaded.mediaIndex)
+      .map(({ source_url, ...image }) => ({ ...image, url: source_url })),
     locales: Object.fromEntries(LOCALES.map((locale) => [locale, projectDocumentSummary(loaded.item, loaded.documents[locale], locale, loaded.blobShas[locale])])),
   };
 }
@@ -188,7 +201,7 @@ function replacePayloadAsCurrentSource({ item, locale, document, payload, claims
   return { document: updated.localeDocument, claims: updated.draftClaims, reservations: updated.publishedReservations };
 }
 
-function applySelection({ item, selection, document, claims, reservations, publishedAt }) {
+function applySelection({ item, selection, document, claims, reservations, mediaIndex, publishedAt }) {
   let current = document;
   let nextClaims = claims;
   let nextReservations = reservations;
@@ -197,7 +210,7 @@ function applySelection({ item, selection, document, claims, reservations, publi
     current = replacement.document;
     nextClaims = replacement.claims;
     nextReservations = replacement.reservations;
-    validateLogicalBody(current, 'draft');
+    validateLogicalBody(current, 'draft', mediaIndex);
   }
   if (!current?.draft) fail('NO_DRAFT', `${selection.locale.toUpperCase()} has no draft to publish`);
   if (current.published && selection.replacePublished !== true) fail('PUBLISHED_REPLACEMENT_CONFIRMATION_REQUIRED', `${selection.locale.toUpperCase()} already has a published translation`);
@@ -211,7 +224,7 @@ function applySelection({ item, selection, document, claims, reservations, publi
     publishedAt,
     allowOutdatedSource: selection.allowOutdatedSource === true,
   });
-  validateLogicalBody(published.localeDocument, 'publish');
+  validateLogicalBody(published.localeDocument, 'publish', mediaIndex);
   return { document: published.localeDocument, claims: published.draftClaims, reservations: published.publishedReservations };
 }
 
@@ -261,7 +274,7 @@ export async function prepareLocaleBatchPublish(client, { branch, contentId, exp
   const summary = [];
   for (const selection of selections) {
     const previous = documents[selection.locale];
-    const next = forLocale(selection.locale, () => applySelection({ item: loaded.item, selection, document: previous, claims, reservations, publishedAt }));
+    const next = forLocale(selection.locale, () => applySelection({ item: loaded.item, selection, document: previous, claims, reservations, mediaIndex: loaded.mediaIndex, publishedAt }));
     documents[selection.locale] = next.document;
     claims = next.claims;
     reservations = next.reservations;

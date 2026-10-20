@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs';
 import { loadTranslationMediaIndex } from '../../src/lib/content-source/translation-media-index.mjs';
 
 const index = loadTranslationMediaIndex();
-assert.equal(index.length, 3, 'current manifest projection count');
+const manifest = JSON.parse(readFileSync('src/data/content/media-manifest.v1.json', 'utf8'));
+assert.equal(index.length, manifest.assets.length, 'current manifest projection count');
 assert.deepEqual(index, loadTranslationMediaIndex(), 'projection is deterministic');
 assert.equal(new Set(index.map((asset) => asset.asset_id)).size, index.length, 'asset IDs are unique');
 for (const asset of index) {

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { canonicalJson } from '../../src/lib/content-write/canonical-json.mjs';
-import { DRAFT_CLAIMS_PATH, PUBLISHED_RESERVATIONS_PATH, prepareLocaleBatchPublish, publishLocaleBatch } from '../../functions/_lib/admin-locale-batch-publish.mjs';
+import { DRAFT_CLAIMS_PATH, MEDIA_MANIFEST_PATH, PUBLISHED_RESERVATIONS_PATH, loadLocaleBatchEditorState, prepareLocaleBatchPublish, publishLocaleBatch } from '../../functions/_lib/admin-locale-batch-publish.mjs';
 
 const ID = 'efa61838-86c8-56b8-815c-0a38b0a83242';
 const OTHER = 'cadd4552-097e-5845-b59e-223c36c82488';
@@ -17,11 +17,12 @@ const payload = (locale, overrides = {}) => locale === 'ru'
 const localized = (locale, overrides = {}) => ({ ...payload(locale), based_on_source_revision: 7, based_on_source_fingerprint: FP, ...overrides });
 const document = (locale, { draft = null, published = null } = {}) => ({ schema_version: 1, content_id: ID, locale, draft, published });
 
-function fixture({ ru = null, en = null, claims = { version: 1, claims: [] }, reservations = { version: 1, reservations: [] }, branchConflict = false, branchUnknown = false, stateful = false } = {}) {
+function fixture({ ru = null, en = null, claims = { version: 1, claims: [] }, reservations = { version: 1, reservations: [] }, mediaManifest = { schema_version: 1, assets: [] }, hyContent = hy.published.content, branchConflict = false, branchUnknown = false, stateful = false } = {}) {
+  const currentHy = { ...hy, published: { ...hy.published, content: hyContent } };
   const files = new Map([
-    [paths.item, { sha: 'item-sha', content: canonicalJson(item) }], [paths.hy, { sha: 'hy-sha', content: canonicalJson(hy) }],
+    [paths.item, { sha: 'item-sha', content: canonicalJson(item) }], [paths.hy, { sha: 'hy-sha', content: canonicalJson(currentHy) }],
     [paths.ru, ru ? { sha: 'ru-sha', content: canonicalJson(ru) } : null], [paths.en, en ? { sha: 'en-sha', content: canonicalJson(en) } : null],
-    [DRAFT_CLAIMS_PATH, { sha: 'claims-sha', content: canonicalJson(claims) }], [PUBLISHED_RESERVATIONS_PATH, { sha: 'reservations-sha', content: canonicalJson(reservations) }],
+    [DRAFT_CLAIMS_PATH, { sha: 'claims-sha', content: canonicalJson(claims) }], [PUBLISHED_RESERVATIONS_PATH, { sha: 'reservations-sha', content: canonicalJson(reservations) }], [MEDIA_MANIFEST_PATH, { sha: 'media-sha', content: canonicalJson(mediaManifest) }],
   ]);
   const calls = { blobs: [], trees: [], commits: 0, updates: 0, reads: [] };
   const blobContents = new Map(); let pendingEntries = [];
@@ -46,6 +47,41 @@ function treePaths(test) { return test.calls.trees[0]?.entries.map((entry) => en
 { const test = fixture(); const result = await publishLocaleBatch(test.client, input([selection('ru'), selection('en')])); assert.deepEqual(treePaths(test), [paths.ru, paths.en, PUBLISHED_RESERVATIONS_PATH]); assert.equal(result.transaction.commitSha, 'commit-next'); assert.equal(test.calls.commits, 1, 'RU + EN must create one commit'); assert.equal(test.calls.updates, 1); assert.deepEqual(result.changes.some((change) => change.path === paths.item || change.path === paths.hy), false, 'batch must not mutate HY'); }
 { const test = fixture(); const invalid = selection('ru', { payload: payload('ru', { alphabet_key: 'Z' }) }); await assert.rejects(() => prepareLocaleBatchPublish(test.client, input([invalid])), (error) => error?.code === 'DRAFT_INVALID' && error?.locale === 'ru'); assert.equal(test.calls.blobs.length, 0); assert.equal(test.calls.trees.length, 0); }
 { const test = fixture(); const invalid = selection('ru', { payload: payload('ru', { content: '(asset://019c2a10-4e61-7a32-8c15-2a37bcf94d02)', image_alts: { '019c2a10-4e61-7a32-8c15-2a37bcf94d02': 'Изображение' } }) }); await rejects('DRAFT_INVALID', () => publishLocaleBatch(test.client, input([invalid, selection('en')]))); assert.equal(test.calls.blobs.length, 0); assert.equal(test.calls.trees.length, 0); assert.equal(test.calls.updates, 0); }
+{
+  const assetId = '019c2a10-4e61-7a32-8c15-2a37bcf94d02';
+  const sourceUrl = 'https://images.erazahan.info/posts/hy-source.webp';
+  const test = fixture({
+    hyContent: `![HY](${sourceUrl})`,
+    mediaManifest: { schema_version: 1, assets: [{ asset_id: assetId, public_url: sourceUrl, source_url: sourceUrl, mime_type: 'image/webp' }] },
+  });
+  const editor = await loadLocaleBatchEditorState(test.client, { branch: 'main', contentId: ID });
+  assert.equal(editor.hy_images[0].asset_id, assetId, 'Batch state projects registered HY images from its fresh GitHub snapshot');
+  const reused = selection('en', { payload: payload('en', { content: `![](asset://${assetId})`, image_alts: { [assetId]: 'Localized image' } }) });
+  const result = await prepareLocaleBatchPublish(test.client, input([reused]));
+  assert.equal(result.summary[0].published.image_alts[assetId], 'Localized image', 'registered HY asset validates without waiting for a deployed static media index');
+}
+{
+  const assetId = '019c2a10-4e61-7a32-8c15-2a37bcf94d02';
+  const sourceUrl = 'https://images.erazahan.info/posts/hy-source.webp';
+  const imagePayload = (locale, alt) => payload(locale, { content: `![](asset://${assetId})\n\n${payload(locale).content}`, image_alts: { [assetId]: alt } });
+  const test = fixture({ hyContent: `![HY](${sourceUrl})`, mediaManifest: { schema_version: 1, assets: [{ asset_id: assetId, public_url: sourceUrl, source_url: sourceUrl, mime_type: 'image/webp' }] } });
+  const result = await publishLocaleBatch(test.client, input([
+    selection('ru', { payload: imagePayload('ru', 'Русский ALT') }),
+    selection('en', { payload: imagePayload('en', 'English ALT') }),
+  ]));
+  assert.equal(result.documents.ru.published.image_alts[assetId], 'Русский ALT');
+  assert.equal(result.documents.en.published.image_alts[assetId], 'English ALT');
+  assert.deepEqual(treePaths(test), [paths.ru, paths.en, PUBLISHED_RESERVATIONS_PATH], 'both locales reuse one registered HY asset in the same atomic translation transaction without rewriting the manifest');
+  assert.equal(test.calls.commits, 1);
+}
+{
+  const assetId = '019c2a10-4e61-7a32-8c15-2a37bcf94d02';
+  const sourceUrl = 'https://images.erazahan.info/posts/hy-source.webp';
+  const test = fixture({ hyContent: `![HY](${sourceUrl})`, mediaManifest: { schema_version: 1, assets: [{ asset_id: assetId, public_url: sourceUrl, source_url: sourceUrl, mime_type: 'image/webp' }] } });
+  const result = await prepareLocaleBatchPublish(test.client, input([selection('ru', { payload: payload('ru', { content: `![](asset://${assetId})\n\nВорон`, image_alts: { [assetId]: 'Русский ALT' } }) })]));
+  assert.equal(result.documents.ru.published.image_alts[assetId], 'Русский ALT');
+  assert.equal(result.documents.en, null, 'selecting HY image for RU does not create or modify EN');
+}
 { const test = fixture(); const invalid = selection('en', { payload: payload('en', { content: '[missing](content://aaaaaaaa-aaaa-5aaa-8aaa-aaaaaaaaaaaa)' }) }); await rejects('DRAFT_INVALID', () => publishLocaleBatch(test.client, input([selection('ru'), invalid]))); assert.equal(test.calls.blobs.length, 0); assert.equal(test.calls.trees.length, 0); }
 { const test = fixture(); const linked = (locale) => selection(locale, { payload: payload(locale, { content: `[related](content://${TARGET})` }) }); const result = await prepareLocaleBatchPublish(test.client, input([linked('ru'), linked('en')])); assert.equal(result.summary.length, 2, 'known content references remain valid when both locales publish together'); }
 { const published = { ...localized('en'), version: 1, published_at: '2026-10-19' }; const test = fixture({ en: document('en', { published }), reservations: { version: 1, reservations: [{ locale: 'en', slug: 'crow', content_id: ID, kind: 'active' }] } }); await rejects('PUBLISHED_REPLACEMENT_CONFIRMATION_REQUIRED', () => prepareLocaleBatchPublish(test.client, input([selection('en', { expectedLocaleBlobSha: 'en-sha', expectedLocaleAbsent: undefined })]))); assert.equal(test.calls.trees.length, 0); }
